@@ -1,0 +1,220 @@
+interpreter: bash -c
+name: blockbench
+options:
+  configdir:
+    usage: >
+      The common root for the config. Defaults to the launch directory. All
+      options are relative to this directory.
+    environment: PWD
+  config:
+    usage: >
+      Base filename of the config file to use in configdir. Enables alternate
+      configs for the same network.
+    default:
+      bench.json
+
+  gethimage:
+    usage: >
+      Image name to use for geth. (prioritised over bench.json)
+
+  env:
+    private: true
+    usage: >
+      This option exists to force reading of the config early and once. It can
+      not be set on the command line
+    default:
+      command: |
+        echo $(cd ${configdir} && \
+        python3 -c \
+        "import json; [print(f'export {k}=\"{v}\"') for k, v in json.load(open('${config}')).items()]")
+  thistusk:
+    private: true
+    usage: "so this tusk file can refer to its own file name for recursive execution"
+    default: tusk.yml
+
+  configvars:
+    private: true
+    usage: >
+      The list of config VARS supported by most tasks. Use --configshow
+      for any command to get the definite list.
+    default: "nodesdir maxnodes image genesis quorum_src pyenv"
+  configshow:
+    usage: "Report which, if any, supported configdir config file VAR's"
+    type: bool
+
+tasks:
+
+  gendoc:
+    usage: render the template gensis document refered to by the configuration
+    options:
+      account:
+        usage: "the wallet to allocate the genesis balance to - suggest you change the default!"
+        short: "w"
+        default: "0x5b38ab0d3a31efeffd3a3ac88421816ca227432c"
+      extra:
+        usage: "extraData for the genesis doc"
+        default: ""
+    run:
+      - command:
+          exec: |
+            set -e
+
+            cd ${configdir}
+
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            eval $(echo -e "${env}")
+            if ${configshow}; then
+              for v in ${CONFIGVARS}; do echo "$v=${!v}"; done
+              exit 0
+            fi
+            [ -n "${extra}" ] && gendoc_extra="${extra}"
+            cat <<PYEND | python3
+            import os, json
+            from pathlib import Path
+
+            templatefile = Path(os.environ["genesis"]).resolve()
+
+            o = json.load(open(templatefile))
+            try:
+                del o["alloc"]["0x0000000000000000000000000000000000000000"]
+            except KeyError:
+                pass
+            o["alloc"]["${account}"] = dict(balance="${gendoc_balance}")
+
+            extraData = os.environ["gendoc_extra"]
+            if not extraData.startswith("0x"):
+                extraData = "0x" + extraData
+            o["extraData"] = extraData
+            print(json.dumps(o, indent=2, sort_keys=True))
+            PYEND
+
+  genkeys:
+    usage: "regenerate all node keys and wallets"
+    run:
+      - command:
+          exec: |
+            set -e
+
+            cd ${configdir}
+
+            CONFIGVARS="${configvars}"
+            eval $(echo -e "${env}")
+            if ${configshow}; then
+              for v in ${CONFIGVARS}; do echo "$v=${!v}"; done
+              exit 0
+            fi
+            source ${pyenv}/bin/activate
+
+            cat <<PYEND | python3
+            import os, coincurve
+            from pathlib import Path
+
+            for i in range(int(os.environ['maxnodes'])):
+                dirname = f"{os.environ['nodesdir']}/node{i}"
+
+                # delete the keys first so we don't ever end up in a weird state
+                for fn in ("key", "enode"):
+                    try:
+                        os.remove(f"{dirname}/{fn}")
+                    except OSError:
+                      pass
+
+                p = coincurve.PrivateKey()
+                enode = p.public_key.format(compressed=False)[1:].hex()
+                key = p.to_hex()
+
+                for fn in ("key", "enode"):
+                    with open(Path(f"{dirname}/{fn}"), "w") as f:
+                        f.write(locals()[fn])
+                        print(f"Wrote {dirname}/{fn}")
+            PYEND
+
+  # rrr consensus
+  rrrgen:
+    usage: "recreate the genesis document (without changing keys or alpha)"
+    options:
+      account:
+        usage: "the wallet to allocate the genesis balance to - suggest you change the default!"
+        short: "w"
+        default: "0x5b38ab0d3a31efeffd3a3ac88421816ca227432c"
+    run:
+      - command:
+          exec: |
+            set -e
+            EXTRADATA=$(tusk -qf ${thistusk} rrrextra --configdir=${configdir})
+            tusk -qf ${thistusk} gendoc --extra $EXTRADATA --configdir=${configdir} --account ${account}
+
+  rrralpha:
+    usage: "generate the rrr alpha.json docs required by rrrextra (for the genesis VRF seed)"
+    run:
+      - command:
+          exec: |
+            set -e
+
+            cd ${configdir}
+
+            CONFIGVARS="${configvars}"
+            eval $(echo -e "${env}")
+            if ${configshow}; then
+              for v in ${CONFIGVARS}; do echo "$v=${!v}"; done
+              exit 0
+            fi
+            source ${pyenv}/bin/activate
+
+            cat <<PYEND | python3
+            import os, coincurve, sha3, secrets, pathlib
+
+            for i in range(int(os.environ['maxnodes'])):
+                dirname = f"{os.environ['nodesdir']}/node{i}"
+
+                key = open(f"{dirname}/key", 'r').read()
+                key = coincurve.PrivateKey.from_hex(key[:-1])
+
+                rawpub = coincurve.PublicKey.from_valid_secret(key.secret).format(compressed=False)
+                nodeid = sha3.keccak_256(rawpub[1:]).digest()
+
+                # This nodes contribution to the genesis seed alpha
+                alpha = secrets.token_bytes(32)
+                sig = key.sign_recoverable(alpha, hasher=None)
+                doc = f'{{"nodeid":"0x{nodeid.hex()}", "alpha": "0x{alpha.hex()}", "sig": "0x{sig.hex()}"}}'
+                with open(pathlib.Path(f"{dirname}/alpha.json"), "w") as f:
+                    f.write(doc)
+                    print(f"Wrote: {dirname}/alpha.json")
+            PYEND
+
+  rrrextra:
+    usage: "generate the extradata hex string for the rrr genesis document"
+    options:
+      showids:
+        short: "i"
+        type: bool
+    run:
+      - command:
+          exec: |
+            set -e
+
+            cd ${configdir}
+
+            CONFIGVARS="${configvars} rrr_src"
+            eval $(echo -e "${env}")
+            if ${configshow}; then
+              for v in ${CONFIGVARS}; do echo "$v=${!v}"; done
+              exit 0
+            fi
+
+            # we cd to run the rrr tool, so these need to be absoloute
+            nodesdir=$(cd ${nodesdir} && pwd)
+            node0dir=${nodesdir}/node0
+
+            SHOWIDS=""
+            ${showids} && SHOWIDS="--showids"
+
+            ALPHAS=""
+            for n in $(seq 0 $((${maxnodes} - 1))); do
+              ALPHAS="$ALPHAS ${nodesdir}/node${n}/alpha.json"
+            done
+
+            cd ${rrr_src}/tools
+
+            go run cmd/rrrctl/main.go genextra \
+                ${SHOWIDS} --datadir ${node0dir} $ALPHAS
