@@ -1,0 +1,9 @@
+# need to define empty defaults else we cant process the fragment.
+x-node-defaults:
+  &node-defaults
+node:
+  <<: *node-defaults
+  working_dir: /nodes/node
+  ports:
+    - "8300"
+
