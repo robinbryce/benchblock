@@ -30,7 +30,7 @@ x-node-env-defaults:
   &node-env-defaults
   NETWORKID: "${NETWORKID}"
   PRIVATE_CONFIG: ignore
-  RRR_OPTS: "--rrr.nc 2 --rrr.ne 7 --rrr.q 4 --rrr.ta 2000 --rrr.intentphase 1500 --rrr.confirmphase 1500 --rrr.roundlength 5000"
+  RRR_OPTS: "${RRR_CONSENSUS_OPTS}"
   # DISCOVERY_OPTS: "--nodiscover"
   NAT_OPTS: "--nat=none"
   DISCOVERY_OPTS: "--netrestrict=${NETRESTRICT} --bootnodes=enode://${BOOTNODE0_PUB}@node0:7200"

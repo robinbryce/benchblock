@@ -235,7 +235,8 @@ tasks:
             keyfile = f"{os.environ['nodesdir']}/node0/key"
             pub = None
             with open(Path(keyfile)) as f:
-                pub = coincurve.PrivateKey.from_hex(f.read()).public_key.format(compressed=False)[1:]
+                key = coincurve.PrivateKey.from_hex(f.read())
+                pub = key.public_key.format(compressed=False)[1:]
             addr = pub[-20:]
 
             j = None
@@ -243,6 +244,7 @@ tasks:
                 j = json.load(f)
             j["gendoc_wallet"] = addr.hex()
             j["bootnode0"] = pub.hex()
+            print(f"Wrote bootnode0: {pub.hex()}")
             with open("bench.json", "w") as f:
                 json.dump(j, f, indent=2, sort_keys=True)
             PYEND
@@ -272,6 +274,36 @@ tasks:
         usage: >
           The config root directory.
     options:
+      numcandidates:
+        short: c
+        usage: "set the number of canidate leaders per round"
+        default: 2
+      numendorsers:
+        short: e
+        usage: "set the size of the endorser committee"
+        default: 7
+      committeequorum:
+        short: q
+        default: 4
+      activehorizon:
+        usage: >
+          number of blocks to allow for activity. Any identities without
+          endorsements or blocks in this number of blocks is droped. (and will
+          have to re-enrol).
+        short: a
+        default: 2000
+      intentphase:
+        usage: number of miliseconds for the rrr intent phase
+        default: 1500
+      confirmphase:
+        usage: number of milliseconds for the rrr confirm phase
+        default: 1500
+      roundlength:
+        usage: >
+          total roundlength in milliseconds. must be greater than intent + confirm (rember to
+          allow for block disemination, 2s  or more is fair)
+        default: 5000
+
       nodesdir:
         usage: "relative to configdir. each node gets a subdirectory here named node{N}"
         default: nodes
@@ -332,7 +364,14 @@ tasks:
               "delve_image": "${delve_image}",
               "rrr_src": "${rrr_src}",
               "genesis": "${genesis}",
-              "gendoc_balance": "${gendoc_balance}"
+              "gendoc_balance": "${gendoc_balance}",
+              "numcandidates": "${numcandidates}",
+              "numendorsers": "${numendorsers}",
+              "committeequorum": "${committeequorum}",
+              "activehorizon": "${activehorizon}",
+              "intentphase": "${intentphase}",
+              "confirmphase": "${confirmphase}",
+              "roundlength": "${roundlength}"
             }
             JEND
 
@@ -380,19 +419,23 @@ tasks:
             # clear out all the data dirs first to avoid mixed state if we fail
             # half way through
             ${sudo} && dosudo="sudo" || dosudo=""
-            set -x
-            for i in $(seq 0 ${maxnodes}); do
+
+            end=$((maxnodes - 1))
+            for i in $(seq 0 ${end}); do
               ${dosudo} rm -rf ${nodesdir}/node$i/data
             done
 
-            for i in $(seq 0 ${maxnodes}); do
+            for i in $(seq 0 ${end}); do
               rm -rf ${nodesdir}/node$i/data
             done
 
             genesis_doc=$(pwd)/genesis.json
-            for i in $(seq 0 ${maxnodes}); do
+            for i in $(seq 0 ${end}); do
               geth="docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) ${geth_image} --nousb"
-              ${geth} --datadir=$(pwd)/nodes/node${i}/data init $(pwd)/genesis.json
+              ${geth} \
+                  --datadir=$(pwd)/nodes/node${i}/data  \
+                  --nodekey $(pwd)/nodes/node${i}/key \
+                  init $(pwd)/genesis.json
             done
 
 
@@ -424,7 +467,7 @@ tasks:
 
             TUSKDIR=$(pwd)
 
-            CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance"
+            CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
 
@@ -437,6 +480,14 @@ tasks:
 
             cat <<END > env.env
             COMPOSE_PROJECT_NAME=${compose_project}
+            RRR_CONSENSUS_OPTS="\
+            --rrr.nc ${numcandidates} \
+            --rrr.ne ${numendorsers} \
+            --rrr.q ${committeequorum} \
+            --rrr.ta ${activehorizon} \
+            --rrr.intentphase ${intentphase} \
+            --rrr.confirmphase ${confirmphase} \
+            --rrr.roundlength ${roundlength}"
             NETWORKID=${networkid}
             NETRESTRICT=${netrestrict}
             ETHERBASE=${gendoc_wallet}
@@ -510,10 +561,11 @@ tasks:
                 dirname = f"{os.environ['nodesdir']}/node{i}"
 
                 key = open(f"{dirname}/key", 'r').read()
-                key = coincurve.PrivateKey.from_hex(key[:-1])
+                key = coincurve.PrivateKey.from_hex(key)
 
                 rawpub = coincurve.PublicKey.from_valid_secret(key.secret).format(compressed=False)
                 nodeid = sha3.keccak_256(rawpub[1:]).digest()
+                print(f"alpha[{i}] nodeid {nodeid.hex()}")
 
                 # This nodes contribution to the genesis seed alpha
                 alpha = secrets.token_bytes(32)
