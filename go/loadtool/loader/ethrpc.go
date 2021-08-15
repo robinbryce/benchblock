@@ -1,4 +1,4 @@
-package loadtool
+package loader
 
 import (
 	"context"
@@ -39,12 +39,14 @@ func GetBlockByNumber(eth *ethclient.Client, retries int, blockNumber int64) (*t
 func CheckReceipt(
 	ethC *ethclient.Client, tx *types.Transaction, retries int, expectedLatency time.Duration) bool {
 
+	// start := time.Now()
+	// fmt.Printf("checkreceipt: %s\n", tx.Hash().Hex())
 	for i := 0; i < retries; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), expectedLatency)
 		r, err := ethC.TransactionReceipt(ctx, tx.Hash())
 		cancel()
 		if r == nil || err != nil {
-			// fmt.Printf("backoff & retry: err=%v\n", err)
+			// fmt.Printf("trying for %v, backoff & retry: err=%v\n", time.Since(start), err)
 			time.Sleep(backoffDuration(i))
 			continue
 		}
@@ -57,7 +59,7 @@ func CheckReceipt(
 }
 
 // derived from https://blog.gopheracademy.com/advent-2014/backoff/
-var backoffms = []int{0, 0, 10, 10, 100, 100, 500, 500, 3000, 3000, 5000, 5000, 8000, 8000, 10000, 10000}
+var backoffms = []int{0, 500, 500, 1000, 1000, 2000, 2000, 4000, 4000, 10000, 10000, 10000, 10000, 10000, 10000}
 
 func backoffDuration(nth int) time.Duration {
 	if nth >= len(backoffms) {

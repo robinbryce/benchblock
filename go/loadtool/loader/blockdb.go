@@ -1,9 +1,11 @@
-package loadtool
+package loader
 
 import (
+	"context"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"net/url"
 	"os"
 	"time"
@@ -110,4 +112,65 @@ func (bdb *BlockDB) Insert(
 		hex.EncodeToString(header.Extra),
 	)
 	return err
+}
+
+func GetBlocks(cfg *Config, dbname string, dbshare bool, start, end int64) error {
+
+	var err error
+
+	eth, err := NewEthClient(cfg.EthEndpoint)
+	if err != nil {
+		return fmt.Errorf("creating eth client: %w", err)
+	}
+
+	db, err := NewBlockDB(dbname, dbshare) // returns nil for dbdsn == ""
+	if err != nil {
+		return err
+	}
+
+	if end < start {
+		return fmt.Errorf("start cant be greater than end")
+	}
+
+	tprev := int64(-1)
+	if start >= 1 {
+
+		block, err := eth.BlockByNumber(context.TODO(), new(big.Int).SetInt64(start-1))
+		if err != nil {
+			return fmt.Errorf("eth_blockByNumber %d: %w", start-1, err)
+		}
+		tprev = int64(block.Header().Time)
+	}
+
+	var block *types.Block
+
+	for n := start; n <= end; n++ {
+
+		block, err = GetBlockByNumber(eth, cfg.Retries, n)
+		if err != nil {
+			return fmt.Errorf("eth_blockByNumberd: %w", err)
+		}
+
+		h := block.Header()
+
+		if db != nil {
+			if err := db.Insert(block, h); err != nil {
+				println(fmt.Errorf("inserting block %v: %w", h.Number, err).Error())
+			}
+		}
+
+		// print out block number, sealer, endorer1 ... endorsern
+		delta := "NaN"
+		if tprev != -1 {
+			delta = fmt.Sprintf("%d", int64(h.Time)-tprev)
+		}
+		tprev = int64(h.Time)
+
+		s := int64(h.Time)
+		t := time.Unix(s, 0).Format(time.RFC3339)
+		fmt.Printf("%d %s %s", h.Number.Int64(), delta, t)
+		fmt.Println("")
+	}
+
+	return nil
 }

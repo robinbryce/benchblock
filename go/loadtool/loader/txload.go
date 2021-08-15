@@ -1,4 +1,4 @@
-package loadtool
+package loader
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +19,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -32,51 +33,71 @@ var (
 	big1 = big.NewInt(1)
 )
 
-// LoadConfig configures load for the runners
-type LoadConfig struct {
-	TargetTPS int
+// Config configures load for the runners
+type Config struct {
+	TPS int `mapstructure:"TPS"`
 
-	// Each thread issues transactions to a single client connection. If
-	// TargetSingleNode is set, then those connections are all to the same node.
+	// Each thread issues transactions to its own client connection. If
+	// SingleNode is set, then those connections are all to the same node.
 	// Otherwise each client connection connects to a different node.
-	NumThreads int
+	Threads int `mapstructure:"THREADS"`
 	// How many accounts to use on each thread. defaults to 5
-	AccountsPerThread int
+	ThreadAccounts int `mapstructure:"THREADACCOUNTS"`
 
 	// The target total number of transactions. At least NumThreads * AccountsPerThread tx are issued.
-	NumTransactions int
+	NumTransactions int `mapstructure:"TRANSACTIONS"`
 
-	DefaultGasLimit uint64
+	GasLimit uint64 `mapstructure:"GASLIMIT"`
 
-	PrivateFor []string // "base64pub:base64pub:..." defaults empty - no private tx
+	PrivateFor string `mapstructure:"PRIVATEFOR,omitempty"` // "base64pub:base64pub:..." defaults empty - no private tx
 
-	// TargetSingleNode is set if all transactions should be issued to the same
+	// SingleNode is set if all transactions should be issued to the same
 	// node. This isolates the load for transaction submission to a single node.
 	// We then get an idea of how efficiently the remaining nodes reach
 	// consensus on those transactions. Assuming that node is at least able to
 	// effectively gossip those transactions. If there is a significant
 	// difference with and without this set then the nodes are likely just under
 	// resourced.
-	TargetSingleNode bool
+	SingleNode bool `mapstructure:"SINGLENODE"`
 
 	// If true, confirm every transaction in a batch before doing the next batch.
-	CheckBatchReceipts bool
-	ReceiptRetries     int
+	CheckReceipts bool `mapstructure:"CHECK_RECEIPTS"`
+	Retries       int  `mapstructure:"RETRIES"`
 
-	NodeEndpoint    string
-	TesseraEndpoint string
+	EthEndpoint     string `mapstructure:"ETH"`
+	TesseraEndpoint string `mapstructure:"TESERA"`
 
-	ClientTimeout   time.Duration
-	ExpectedLatency time.Duration
+	ClientTimeout   time.Duration `mapstructure:"CLIENT_TIMEOUT"`
+	ExpectedLatency time.Duration `mapstructure:"EXPECTED_LATENCY"`
 
-	DeployGasLimit uint64
-	DeployKey      string // needs to have funds even for quorum, used to deploy contract
+	DeployGasLimit uint64 `mapstructure:"DEPLOY_GASLIMIT"`
+	DeployKey      string `mapstructure:"DEPLOY_KEY"` // needs to have funds even for quorum, used to deploy contract
+	RunOne         bool
+}
+
+var defaultCfg = Config{
+	TPS:             220,
+	Threads:         10,
+	ThreadAccounts:  5,
+	NumTransactions: 5000,
+	GasLimit:        60000,
+	PrivateFor:      "",
+	SingleNode:      false,
+	CheckReceipts:   false,
+	Retries:         10,
+	EthEndpoint:     "http://127.0.0.1:8300/",
+	TesseraEndpoint: "",
+	ClientTimeout:   60 * time.Second,
+	ExpectedLatency: 10 * time.Second,
+	DeployGasLimit:  600000,
+	DeployKey:       "",
+	RunOne:          false,
 }
 
 // Adder runs a load of 'add' contract calls, according to the load
 // configuration, to the standard get/set/add example solidity contract.
 type Adder struct {
-	cfg     *LoadConfig
+	cfg     *Config
 	limiter *time.Ticker
 	// One AccountSet per thread
 	accounts []AccountSet
@@ -94,6 +115,96 @@ type AccountSet struct {
 	Wallets []common.Address
 	Keys    []*ecdsa.PrivateKey
 	Auth    []*bind.TransactOpts
+}
+
+func SetViperDefaults(v *viper.Viper) {
+	v.SetDefault("TPS", defaultCfg.TPS)
+	v.SetDefault("THREADS", defaultCfg.Threads)
+	v.SetDefault("THREADACCOUNTS", defaultCfg.ThreadAccounts)
+	v.SetDefault("TRANSACTIONS", defaultCfg.NumTransactions)
+	v.SetDefault("GASLIMIT", defaultCfg.GasLimit)
+
+	v.SetDefault("PRIVATEFOR", defaultCfg.PrivateFor)
+	v.SetDefault("SINGLENODE", defaultCfg.SingleNode)
+	v.SetDefault("CHECK_RECIEPTS", defaultCfg.CheckReceipts)
+	v.SetDefault("RETRIES", defaultCfg.Retries)
+
+	v.SetDefault("ETH", defaultCfg.EthEndpoint)
+	v.SetDefault("TESSERA", defaultCfg.TesseraEndpoint)
+
+	v.SetDefault("CLIENT_TIMEOUT", defaultCfg.ClientTimeout)
+	v.SetDefault("EXPECTED_LATENCY", 3*time.Second)
+
+	v.SetDefault("DEPLOY_GASLIMIT", defaultCfg.DeployGasLimit)
+	v.SetDefault("DEPLOY_KEY", defaultCfg.DeployKey)
+}
+
+func AddOptions(cmd *cobra.Command, cfg *Config) {
+
+	f := cmd.PersistentFlags()
+	f.IntVarP(
+		&cfg.TPS, "tps", "r", defaultCfg.TPS,
+		"the maximum transactions per second to issue transactions",
+	)
+	f.IntVarP(
+		&cfg.Threads, "threads", "t", defaultCfg.Threads,
+		"create this many client conections and run each in its own thread")
+	f.IntVarP(
+		&cfg.ThreadAccounts, "threadaccounts", "a", defaultCfg.ThreadAccounts, `
+each thread will issue transactions in batches of this size. a unique account is
+created for each batch entry. #accounts total = t * a`,
+	)
+	f.IntVarP(
+		&cfg.NumTransactions, "transactions", "n", defaultCfg.NumTransactions, `
+the total number of transactions to issue. note that this is rounded to be an
+even multiple of t * a. a minimum of t * a transactions will be issued
+regardless`,
+	)
+	f.Uint64VarP(
+		&cfg.GasLimit, "gaslimit", "g", defaultCfg.GasLimit,
+		"the gaslimit to set for each transaction")
+	f.StringVar(
+		&cfg.PrivateFor, "privatefor", "", `
+all transactions will be privatefor the ':' separated list of keys (quorum
+only).  if not set, the transactions will be public`)
+	f.BoolVar(
+		&cfg.SingleNode, "singlenode", false, "if set all clients will connect to the same node")
+	f.BoolVar(
+		&cfg.CheckReceipts, "check-reciepts", false, `
+if set, threads will verify the transactions issued for each batch at the end of
+each batch. otherwise transactions are not verified`)
+	f.IntVarP(
+		&cfg.Retries, "retries", "c", defaultCfg.Retries,
+		`
+number of retries for any eth request (a geometric backoff is applied between each try)`)
+	f.StringVarP(
+		&cfg.EthEndpoint, "eth", "e", defaultCfg.EthEndpoint, `
+ethereum json rpc endpoint. each thread derives a client url by adding its index
+to the port (unless --singlenode is set)`)
+	f.StringVar(
+		&cfg.TesseraEndpoint, "tessera", defaultCfg.TesseraEndpoint, `
+if privatefor is set, this must be the tessera endpoint to which the private
+payload can be submitted. each thread derives a client url by adding its index
+to the port (unless --singlenode is set)`)
+	f.DurationVar(
+		&cfg.ClientTimeout, "client-timeout", defaultCfg.ClientTimeout,
+		"every eth request sets this timeout")
+	f.DurationVar(
+		&cfg.ExpectedLatency, "expected-latency", defaultCfg.ExpectedLatency, `
+expected latency for mining transactions (anticipated block rate is a good
+choice). this just tunes the receipt retry rate, ignored if
+--check-receipts is not set`)
+
+	f.BoolVarP(
+		&cfg.RunOne, "one", "o", false,
+		"loads the configuration and issues a single transaction. use for testing the config")
+
+	f.Uint64Var(
+		&cfg.DeployGasLimit, "deploy-gaslimit", defaultCfg.DeployGasLimit,
+		"the gaslimit to set for deploying the contract")
+	f.StringVar(
+		&cfg.DeployKey, "deploy-key", defaultCfg.DeployKey, `the key to use to deploy the contract. (may need to be funded, if not leave unset)`,
+	)
 }
 
 func (a AccountSet) Len() int {
@@ -117,7 +228,7 @@ func (a AccountSet) WithTimeout(parent context.Context, d time.Duration, i int) 
 	}
 }
 
-func NewAccountSet(ctx context.Context, ethC *ethclient.Client, cfg *LoadConfig, n int) (AccountSet, error) {
+func NewAccountSet(ctx context.Context, ethC *ethclient.Client, cfg *Config, n int) (AccountSet, error) {
 
 	a := AccountSet{}
 	a.Wallets = make([]common.Address, n)
@@ -140,11 +251,10 @@ func NewAccountSet(ctx context.Context, ethC *ethclient.Client, cfg *LoadConfig,
 		copy(a.Wallets[i][:], pubHash[12:])       // wallet address is the trailing 20 bytes
 
 		a.Auth[i] = bind.NewKeyedTransactor(a.Keys[i])
-		if cfg.PrivateFor != nil { // empty but not nil is stil private
-			a.Auth[i].PrivateFor = make([]string, len(cfg.PrivateFor))
-			copy(a.Auth[i].PrivateFor, cfg.PrivateFor)
+		if cfg.PrivateFor != "" {
+			a.Auth[i].PrivateFor = strings.Split(cfg.PrivateFor, ":")
 		}
-		a.Auth[i].GasLimit = cfg.DefaultGasLimit
+		a.Auth[i].GasLimit = cfg.GasLimit
 		a.Auth[i].GasPrice = big.NewInt(0)
 
 		if nonce, err = ethC.PendingNonceAt(ctx, a.Wallets[i]); err != nil {
@@ -155,7 +265,7 @@ func NewAccountSet(ctx context.Context, ethC *ethclient.Client, cfg *LoadConfig,
 	return a, nil
 }
 
-func NewAdder(ctx context.Context, cfg *LoadConfig) (Adder, error) {
+func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 
 	lo := Adder{cfg: cfg}
 	if delta := lo.cfg.TruncateTargetTransactions(); delta != 0 {
@@ -164,9 +274,9 @@ func NewAdder(ctx context.Context, cfg *LoadConfig) (Adder, error) {
 			lo.cfg.NumTransactions+delta, lo.cfg.NumTransactions)
 	}
 
-	lo.limiter = time.NewTicker(time.Second / time.Duration(lo.cfg.TargetTPS))
+	lo.limiter = time.NewTicker(time.Second / time.Duration(lo.cfg.TPS))
 
-	qu, err := url.Parse(lo.cfg.NodeEndpoint)
+	qu, err := url.Parse(lo.cfg.EthEndpoint)
 	if err != nil {
 		return Adder{}, err
 	}
@@ -192,9 +302,9 @@ func NewAdder(ctx context.Context, cfg *LoadConfig) (Adder, error) {
 		}
 	}
 
-	lo.accounts = make([]AccountSet, lo.cfg.NumThreads)
-	lo.ethC = make([]*ethclient.Client, lo.cfg.NumThreads)
-	lo.ethCUrl = make([]string, lo.cfg.NumThreads)
+	lo.accounts = make([]AccountSet, lo.cfg.Threads)
+	lo.ethC = make([]*ethclient.Client, lo.cfg.Threads)
+	lo.ethCUrl = make([]string, lo.cfg.Threads)
 
 	var tx *types.Transaction
 
@@ -224,11 +334,11 @@ func NewAdder(ctx context.Context, cfg *LoadConfig) (Adder, error) {
 	// tessEndpoint := fmt.Sprintf("http://localhost:90%02d", 8+i)
 	// Otherwise we hit the same node with multiple clients
 
-	for i := 0; i < lo.cfg.NumThreads; i++ {
-		qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort+(i%lo.cfg.NumThreads))
+	for i := 0; i < lo.cfg.Threads; i++ {
+		qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort+(i%lo.cfg.Threads))
 		var tuEndpoint string
 		if tu != nil {
-			tu.Host = fmt.Sprintf("%s:%d", tuHostname, baseTesseraPort+(i%lo.cfg.NumThreads))
+			tu.Host = fmt.Sprintf("%s:%d", tuHostname, baseTesseraPort+(i%lo.cfg.Threads))
 			tuEndpoint = tu.String()
 		}
 
@@ -238,7 +348,9 @@ func NewAdder(ctx context.Context, cfg *LoadConfig) (Adder, error) {
 		}
 		lo.ethCUrl[i] = qu.String()
 
-		lo.accounts[i], err = NewAccountSet(ctx, lo.ethC[i], lo.cfg, lo.cfg.AccountsPerThread)
+		fmt.Printf("building account set for client[%d]: %s\n", i, qu.String())
+
+		lo.accounts[i], err = NewAccountSet(ctx, lo.ethC[i], lo.cfg, lo.cfg.ThreadAccounts)
 		if err != nil {
 			return Adder{}, err
 		}
@@ -253,7 +365,7 @@ func NewAdder(ctx context.Context, cfg *LoadConfig) (Adder, error) {
 	if err != nil {
 		return Adder{}, err
 	}
-	if ok := CheckReceipt(lo.ethC[0], tx, lo.cfg.ReceiptRetries, lo.cfg.ExpectedLatency); !ok {
+	if ok := CheckReceipt(lo.ethC[0], tx, lo.cfg.Retries, lo.cfg.ExpectedLatency); !ok {
 		return Adder{}, fmt.Errorf("failed to deploy contract")
 	}
 
@@ -265,7 +377,7 @@ func NewAdder(ctx context.Context, cfg *LoadConfig) (Adder, error) {
 func (a *Adder) Run() {
 
 	var wg sync.WaitGroup
-	for i := 0; i < a.cfg.NumThreads; i++ {
+	for i := 0; i < a.cfg.Threads; i++ {
 
 		wg.Add(1)
 		go a.adder(a.ethC[i], &wg, fmt.Sprintf("client-%d", i), i)
@@ -295,7 +407,7 @@ func (lo *Adder) RunOne() error {
 	if err != nil {
 		return err
 	}
-	if ok := CheckReceipt(ethC, tx, lo.cfg.ReceiptRetries, lo.cfg.ClientTimeout); !ok {
+	if ok := CheckReceipt(ethC, tx, lo.cfg.Retries, lo.cfg.ClientTimeout); !ok {
 		return fmt.Errorf("transaction %s failed or not completed in %v", tx.Hash().Hex(), lo.cfg.ClientTimeout)
 	}
 	return nil
@@ -310,17 +422,17 @@ func (lo *Adder) adder(ethC *ethclient.Client, wg *sync.WaitGroup, banner string
 	// Note: NumTransactions is adjusted by TruncateTargetTransactions so
 	// everything works out as whole numbers. And so that
 	//  NumTransactions >= lo.cfg.NumThreads * lo.cfg.AccountsPerThread
-	numBatches := lo.cfg.NumTransactions / (lo.cfg.NumThreads * lo.cfg.AccountsPerThread)
+	numBatches := lo.cfg.NumTransactions / (lo.cfg.Threads * lo.cfg.ThreadAccounts)
 
 	// Each batch issues on tx per account. The batching is only worth it if
 	// CheckBatchReciepts is true (it cleans up the picture by reducing the eth
 	// rpc load  on the node)
-	batch := make([]*types.Transaction, lo.cfg.AccountsPerThread)
+	batch := make([]*types.Transaction, lo.cfg.ThreadAccounts)
 
 	var err error
 
 	// First, initialise the nonces for the transactors in the AccountSet, and also set the ctx in the auth's
-	for i := 0; i < lo.cfg.AccountsPerThread; i++ {
+	for i := 0; i < lo.cfg.ThreadAccounts; i++ {
 		var nonce uint64
 		ctx, cancel := context.WithTimeout(context.Background(), lo.cfg.ClientTimeout)
 		nonce, err = ethC.PendingNonceAt(ctx, lo.accounts[ias].Wallets[i])
@@ -335,7 +447,7 @@ func (lo *Adder) adder(ethC *ethclient.Client, wg *sync.WaitGroup, banner string
 	for r := 0; r < numBatches; r++ {
 		fmt.Printf("%s: batch %d, node %s\n", banner, r, lo.ethCUrl[ias])
 
-		for i := 0; i < lo.cfg.AccountsPerThread; i++ {
+		for i := 0; i < lo.cfg.ThreadAccounts; i++ {
 			if lo.limiter != nil {
 				<-lo.limiter.C
 			}
@@ -352,9 +464,9 @@ func (lo *Adder) adder(ethC *ethclient.Client, wg *sync.WaitGroup, banner string
 			lo.accounts[ias].IncNonce(i)
 			batch[i] = tx
 		}
-		if lo.cfg.CheckBatchReceipts {
-			for i := 0; i < lo.cfg.AccountsPerThread; i++ {
-				if ok := CheckReceipt(ethC, batch[i], lo.cfg.ReceiptRetries, lo.cfg.ExpectedLatency); !ok {
+		if lo.cfg.CheckReceipts {
+			for i := 0; i < lo.cfg.ThreadAccounts; i++ {
+				if ok := CheckReceipt(ethC, batch[i], lo.cfg.Retries, lo.cfg.ExpectedLatency); !ok {
 					fmt.Printf("terminating client for %s. no valid receipt found for tx: %s\n",
 						lo.ethCUrl[ias], tx.Hash().Hex())
 				}
@@ -363,49 +475,12 @@ func (lo *Adder) adder(ethC *ethclient.Client, wg *sync.WaitGroup, banner string
 	}
 }
 
-// NewConfigFromEnv populates a config from the environment. For each
-// PublicMember in the Config we read  from the corresponding upper cased
-// environment variable. Eg: PUBLIC_MEMBER. This facility allows the load test
-// to be run as a unittest.
-func NewConfigFromEnv() LoadConfig {
-	cfg := LoadConfig{}
-
-	cfg.TargetTPS = intFromEnv("TARGET_TPS", 220)
-	cfg.NumThreads = intFromEnv("NUM_THREADS", 10)
-	cfg.AccountsPerThread = intFromEnv("NUM_ACCOUNTS_PER_THREAD", 5)
-	cfg.NumTransactions = intFromEnv("NUM_TRANSACTIONS", 5000)
-	cfg.DefaultGasLimit = uint64(intFromEnv("DEFAULT_GASLIMIT", 60000))
-
-	privateFor := fromEnv("PRIVATE_FOR", "")
-	if privateFor != "" {
-		cfg.PrivateFor = strings.Split(privateFor, ":")
-	}
-
-	n := intFromEnv("TARGET_SINGLE_NODE", 0)
-	if n > 0 {
-		cfg.TargetSingleNode = true
-	}
-	cfg.CheckBatchReceipts = intFromEnv("CHECK_BATCH_RECIEPTS", 0) > 0
-	cfg.ReceiptRetries = intFromEnv("RECEIPT_RETRIES", 15)
-
-	cfg.NodeEndpoint = fromEnv("NODE_ENDPOINT", "http://127.0.0.1:8300")
-	cfg.TesseraEndpoint = fromEnv("NODE_ENDPOINT", "" /* "http://127.0.0.1:9008"*/)
-
-	cfg.ClientTimeout = durationFromEnv("CLIENT_TIMEOUT", 60*time.Second)
-	cfg.ExpectedLatency = durationFromEnv("EXPECTED_LATENCY", 3*time.Second)
-
-	cfg.DeployGasLimit = uint64(intFromEnv("DEPLOY_GASLIMIT", 600000))
-	cfg.DeployKey = fromEnv("DEPLOY_KEY", "")
-
-	return cfg
-}
-
 // TruncageTargetTransactions conditions the requested NumTransactions so that
 // all threads serve the same number of transactions. Each thread will serve at
 // least one tx.
-func (cfg *LoadConfig) TruncateTargetTransactions() int {
+func (cfg *Config) TruncateTargetTransactions() int {
 	// 1 tx per account per thread is our minimum
-	x := cfg.NumThreads * cfg.AccountsPerThread
+	x := cfg.Threads * cfg.ThreadAccounts
 	y := cfg.NumTransactions % x
 
 	if y == 0 {
@@ -424,35 +499,4 @@ func (cfg *LoadConfig) TruncateTargetTransactions() int {
 	cfg.NumTransactions = n
 
 	return delta
-}
-
-func fromEnv(key, fallback string) string {
-	if val, ok := os.LookupEnv(key); ok {
-		return val
-	}
-	return fallback
-}
-
-func intFromEnv(key string, fallback int) int {
-	val, ok := os.LookupEnv(key)
-	if !ok {
-		return fallback
-	}
-	value, err := strconv.Atoi(val)
-	if err != nil {
-		panic(err)
-	}
-	return value
-}
-
-func durationFromEnv(key string, fallback time.Duration) time.Duration {
-	val, ok := os.LookupEnv(key)
-	if !ok {
-		return fallback
-	}
-	value, err := time.ParseDuration(val)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }

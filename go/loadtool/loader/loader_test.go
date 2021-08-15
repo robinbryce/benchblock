@@ -6,13 +6,13 @@
 // correctly in vscode, TestQuorum will have a little grey "run test" hyperlink
 // above it.
 
-package loadtool_test
+package loader_test
 
 import (
-	"context"
 	"testing"
 
-	"github.com/robinbryce/blockbench/loadtool"
+	"github.com/robinbryce/blockbench/loadtool/cmd"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -27,30 +27,27 @@ type QuorumSuite struct {
 	assert  *assert.Assertions
 	require *require.Assertions
 
-	loadtool.LoadConfig
-	adder loadtool.Adder
+	cmd *cobra.Command
 }
 
 func (s *QuorumSuite) SetupSuite() {
 	s.assert = assert.New(s.T())
 	s.require = require.New(s.T())
 
-	s.LoadConfig = loadtool.NewConfigFromEnv()
-	var err error
-	s.adder, err = loadtool.NewAdder(context.Background(), &s.LoadConfig)
-	s.require.NoError(err)
-
+	s.cmd = cmd.NewRootCmd()
 }
 
 // TestOneTransact succeedes if a single "add" transaction can be made for the
 // test contract.
 func (s *QuorumSuite) TestOneTransact() {
-	err := s.adder.RunOne()
-	s.require.NoError(err)
+
+	s.cmd.SetArgs([]string{"--one"})
+	s.cmd.Execute()
 }
 
 // TestQuorum issues "add" transactions from multiple threads. Note that it is
 // not very chatty.
 func (s *QuorumSuite) TestQuorum() {
-	s.adder.Run()
+	s.cmd.SetArgs([]string{})
+	s.cmd.Execute()
 }
