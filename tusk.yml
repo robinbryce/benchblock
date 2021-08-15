@@ -38,7 +38,68 @@ options:
 
 tasks:
 
-  rrrcfg-compose:
+  raft:
+    usage: >
+      Configure a new raft network
+    options:
+      maxnodes:
+        default: 5
+
+      geth_image:
+        usage: "the docker image to use for geth-rrr"
+        default: "eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
+      delve_image:
+        usage: "the docker image to use for running geth-rrr in for remote debug"
+        default: "eu.gcr.io/fetlar-1/rrr-delve:fetlar-latest"
+
+      quorum_src:
+        usage: |
+            the host directory to be mounted as /go/src/quorum. must contain quorum clone.
+            only required if you need to interactively debug the node.
+        default:
+          command: echo "${launchdir}/quorum"
+
+      maxnodes:
+        usage: "the total number of nodes for the network"
+        default: 5
+
+    args:
+      configdir:
+        usage: Directory to put the network in
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - task:
+          name: gethcfg
+          options:
+            geth_image: ${geth_image}
+            delve_image: ${delve_image}
+            maxnodes: ${maxnodes}
+            quorum_src: ${quorum_src}
+          args:
+            - ${configdir}
+      - task:
+          name: gethkeys
+          args:
+            - ${configdir}
+      - task:
+          name: raftstatic
+          args:
+            - ${configdir}
+      - task:
+          name: gethgen
+          args:
+            - ${configdir}
+      - task:
+          name: gethcompose
+          options:
+            base: $(pwd)/compose/raft
+          args:
+            - ${configdir}
+
+  rrr:
     usage: >
       Configure a new docker compose based rrr network
       # This task also ilustrates the full sequence of steps to prepare an rrr
@@ -77,7 +138,7 @@ tasks:
           args:
             - ${configdir}
       - task:
-          name: rrrinit
+          name: rrrcfg
           options:
             geth_image: ${geth_image}
             delve_image: ${delve_image}
@@ -265,9 +326,261 @@ tasks:
               echo "Updated .env for docker-compose"
             fi
 
+  raftstatic:
+    usage: "make static-nodes.json for all the raft nodes"
+    options:
+      last:
+        usage: >
+          Set to the last node index to include (0 means all which is the default)
+        default: "0"
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+
+      - command:
+          exec: |
+            set -e
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            end=${last}
+            [ "${end}" == "0" ] && end=$((maxnodes -1))
+            export end
+
+            source ${pyenv}/bin/activate
+
+            cat <<PYEND | python3
+            import os, json, coincurve, sha3, secrets, pathlib
+
+            static=[]
+
+            p2port="7200"
+            raftport="50000"
+
+            for i in range(int(os.environ['end']) + 1):
+
+                dirname = f"{os.environ['nodesdir']}/node{i}"
+
+                # always derive from the private key directly, avoids issues
+                # with enode files getting out of sync
+
+                key = coincurve.PrivateKey.from_hex(open(f"{dirname}/key", 'r').read())
+                rawpub = coincurve.PublicKey.from_valid_secret(key.secret).format(compressed=False)
+                enode = sha3.keccak_256(rawpub[1:]).digest()
+
+                static.append(
+                  f"enode://{enode.hex()}@node{i}:{p2port}?discport=0&raftport={raftport}"
+                )
+
+            # now go round again and put a full copy in the right directory
+            for i in range(int(os.environ['end']) + 1):
+                datadir = f"{os.environ['nodesdir']}/node{i}/data"
+                pathlib.Path(datadir).mkdir(parents=True, exist_ok=True)
+                with open(pathlib.Path(datadir).joinpath("static-nodes.json"), "w") as f:
+                    json.dump(static, f, indent=2, sort_keys=True)
+            PYEND
+
+
+  gethcompose:
+    usage: "make a docker-compose for a geth network from a base.yml and a node.yml"
+
+    options:
+      base:
+        usage: "directory containing base.yml and node.yml to build the docker-compose.yml from"
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+
+            TUSKDIR=$(pwd)
+
+            BASEDIR=$(cd ${launchdir} && cd ${base} && pwd)
+
+            CONFIGVARS="${configvars}"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            # Merge in the appropriate number of copies of node.yml to the
+            # docker-compose.yml we are generating. As we do that add the
+            # numeric suffices to each nodes service entry and the working_dir
+            # it uses
+            cp ${BASEDIR}//base.yml .
+            cp ${BASEDIR}//node.yml .
+            cp base.yml docker-compose.yml
+
+            # each document fragment has to be valid. so they all need the
+            # x-node-defaults anchor to be defined.
+            cat <<END > tmp.yml
+            x-node-defaults:
+              &node-defaults
+            END
+            for i in $(seq 0 $((${maxnodes} - 1)))
+            do
+                VAL=$i yq eval '
+                  .node |= .working_dir += env(VAL) | del(.x-node-defaults) |
+                  with_entries(.key |= .  + env(VAL))
+                ' node.yml
+            done >> tmp.yml
+            yq eval-all --inplace '
+                select(fileIndex == 0) * {"services": select(fileIndex == 1)}
+                | del(.services.x-node-defaults)' docker-compose.yml tmp.yml
+            # yq eval-all --inplace 'select(fileIndex == 0) * {"services": select(fileIndex == 1)} | del(.services.x-node-defaults)' docker-compose.yml tmp.yml
+
+  gethcfg:
+    usage: "inititialise for geth (no particular consensus)."
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    options:
+
+      nodesdir:
+        usage: "relative to configdir. each node gets a subdirectory here named node{N}"
+        default: nodes
+      maxnodes:
+        usage: "the total number of nodes for the network"
+        default: 5
+      genesis:
+        default: "genesis-in.json"
+      gendoc_balance:
+        default: "1000000000000000000000000000"
+      geth_image:
+        usage: "the docker image to use for geth-rrr"
+        default: "eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
+      delve_image:
+        usage: "the docker image to use for running geth-rrr in for remote debug"
+        default: "eu.gcr.io/fetlar-1/rrr-delve:fetlar-latest"
+      quorum_src:
+        usage: |
+            the host directory to be mounted as /go/src/quorum. must contain quorum clone.
+            only required if you need to interactively debug the node.
+        # TODO: adjust the compose file so this can be ../../quorum
+        default:
+          command: echo "${launchdir}/quorum"
+
+    run:
+      - command:
+          exec: |
+            set -e
+
+            TUSKDIR=$(pwd)
+
+            cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
+            mkdir -p ${nodesdir}/node0
+
+
+            # we don't allow this to be set on the cli, if you want another
+            # env thats fine, just edit bench.json afterwords to point to yours
+            # and make sure you install the requirements.txt
+            pyenv="env"
+
+            echo "Initialising in: $(pwd)"
+
+            python3 -m venv ${pyenv}
+            source ${pyenv}/bin/activate
+            pip3 install -r ${TUSKDIR}/requirements.txt
+
+            # generate the config from the options
+            cat <<JEND  > bench.json
+            {
+              "pyenv": "${pyenv}",
+              "maxnodes": "${maxnodes}",
+              "nodesdir": "$(pwd)/${nodesdir}",
+              "quorum_src": "${quorum_src}",
+              "geth_image": "${geth_image}",
+              "delve_image": "${delve_image}",
+              "genesis": "${genesis}",
+              "gendoc_balance": "${gendoc_balance}"
+            }
+            JEND
+
+            cat bench.json
+            echo "Wrote: $(pwd)/bench.json"
+
+  gethgen:
+    usage: "rrr genesis - keeps existing keys and alpha contributions"
+    options:
+      sudo:
+        type: bool
+      genesisfor:
+        default: raft
+      extradata:
+        default: ""
+
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+
+            TUSKDIR=$(pwd)
+
+            CONFIGVARS="${configvars} gendoc_extra"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            EXTRADATA="${extradata}"
+            [ -n "${EXTRADATA}" ] && EXTRADATA=${gendoc_extra}
+            [ -n "${EXTRADATA}" ] && EXTRADATA=""
+
+
+            CONFIGDIR=$(pwd)
+
+            cp ${TUSKDIR}/compose/${genesisfor}/genesis-in.json .
+
+            pushd ${launchdir} # restore launchdir before recursive invoke
+              tusk -qf ${thistusk} gethgendoc ${configdir} --extra "$EXTRADATA" | tee ${CONFIGDIR}/genesis.json
+            popd
+
+            # clear out all the data dirs first to avoid mixed state if we fail
+            # half way through
+            ${sudo} && dosudo="sudo" || dosudo=""
+
+            end=$((maxnodes - 1))
+            for i in $(seq 0 ${end}); do
+              ${dosudo} rm -rf ${nodesdir}/node$i/data
+            done
+
+            for i in $(seq 0 ${end}); do
+              rm -rf ${nodesdir}/node$i/data
+            done
+
+            genesis_doc=$(pwd)/genesis.json
+            for i in $(seq 0 ${end}); do
+              geth="docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) ${geth_image} --nousb"
+              ${geth} \
+                  --datadir=$(pwd)/nodes/node${i}/data  \
+                  --nodekey $(pwd)/nodes/node${i}/key \
+                  init $(pwd)/genesis.json
+            done
+
   # rrr consensus commands
-  # rrr - init
-  rrrinit:
+  rrrcfg:
     usage: "inititialise for rrr consensus network"
     args:
       configdir:
@@ -473,11 +786,6 @@ tasks:
 
             cd ${launchdir} && cd ${configdir}
 
-            cp ${TUSKDIR}/compose/rrr/base.yml .
-            cp ${TUSKDIR}/compose/rrr/node.yml .
-            cp base.yml docker-compose.yml
-
-
             cat <<END > env.env
             COMPOSE_PROJECT_NAME=${compose_project}
             RRR_CONSENSUS_OPTS="\
@@ -512,7 +820,12 @@ tasks:
             echo "Wrote .env"
 
             # Merge in the appropriate number of copies of node.yml to the
-            # docker-compose.yml we are generating.
+            # docker-compose.yml we are generating. As we do that add the
+            # numeric suffices to each nodes service entry and the working_dir
+            # it uses
+            cp ${TUSKDIR}/compose/rrr/base.yml .
+            cp ${TUSKDIR}/compose/rrr/node.yml .
+            cp base.yml docker-compose.yml
 
             # each document fragment has to be valid. so they all need the
             # x-node-defaults anchor to be defined.
@@ -520,12 +833,17 @@ tasks:
             x-node-defaults:
               &node-defaults
             END
+
+            PORT=8300
             for i in $(seq 0 $((${maxnodes} - 1)))
             do
-                VAL=$i yq eval '
-                  .node |= .working_dir += env(VAL) | del(.x-node-defaults) |
+                VAL=$i EXPOSED="\"${PORT}:\"" yq eval '
+                  .node |= .working_dir += env(VAL) |
+                  del(.x-node-defaults) |
+                  .node.ports[0] |= . = env(EXPOSED) + . |
                   with_entries(.key |= .  + env(VAL))
                 ' node.yml
+                PORT=$((PORT + 1))
             done >> tmp.yml
             yq eval-all --inplace '
                 select(fileIndex == 0) * {"services": select(fileIndex == 1)}
