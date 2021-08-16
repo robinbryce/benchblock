@@ -44,6 +44,7 @@ tasks:
     options:
       maxnodes:
         default: 5
+        short: "n"
 
       geth_image:
         usage: "the docker image to use for geth-rrr"
@@ -58,10 +59,6 @@ tasks:
             only required if you need to interactively debug the node.
         default:
           command: echo "${launchdir}/quorum"
-
-      maxnodes:
-        usage: "the total number of nodes for the network"
-        default: 5
 
     args:
       configdir:
@@ -94,8 +91,6 @@ tasks:
             - ${configdir}
       - task:
           name: raftcompose
-          options:
-            base: $(pwd)/compose/raft
           args:
             - ${configdir}
 
@@ -358,6 +353,7 @@ tasks:
             end=${last}
             [ "${end}" == "0" ] && end=$((maxnodes -1))
             export end
+            echo "raftstatic: end=$end"
 
             source ${pyenv}/bin/activate
 
@@ -385,6 +381,9 @@ tasks:
                 pathlib.Path(datadir).mkdir(parents=True, exist_ok=True)
                 with open(pathlib.Path(datadir).joinpath("static-nodes.json"), "w") as f:
                     json.dump(static, f, indent=2, sort_keys=True)
+                    f.flush()
+                    print(f"Wrote: {datadir}/static-nodes.json")
+                    print(json.loads(open(f"{datadir}/static-nodes.json").read()))
             PYEND
 
 

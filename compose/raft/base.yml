@@ -1,13 +1,8 @@
 version: "3.8"
 
-# This compose file supports running a prebuild image, running via go run from
-# mounted sources, and running under dlv for host debugging. Network discovery
-# is enabled (and restricted to a CIDR), the first compose node is the
-# bootnode
-#
-# The debug service exists to build the image that is used to host the go tool
-# chain for go run and dlv modes. It only needs to be built if the base go lang
-# version is updated or delve needs to be upgraded.
+# This compose file supports running a stock image, running via go run from
+# mounted go-quorum sources, and running under dlv for host debugging. See
+# compose/delve-debug/README.md
 #
 # An .env file which sets the following variables MUST be in place
 # - GETH_IMAGE: image name for the geth node (must be go-ethereum/go-quorum
@@ -22,8 +17,6 @@ version: "3.8"
 #   only if node is using node-gorun or node-debug (rather than node-default)
 # - DELVE_IMAGE: image name for a go lang image with the delve debugger installed
 #   Required only for the node-gorun or node-debug configurations
-
-# If any are set to node-gorun or node-debug, it must be set.
 
 x-node-env-defaults:
   &node-env-defaults
@@ -88,14 +81,10 @@ x-node-base:
       # nodes and start again. (this tooling isn't aimed at long lived
       # networks)
 
-      # construct the static-nodes.json from the raft.cluster output.
-      # Note: this is not robust if removePeer is used
-
       # The RUN_GETH_CMD variable is set by the environment of each of the
       # supported x-node-{flavour}'s, the others all come from node-env-defaults
       # It is assumed that the service entry sets the working_dir to the
-      # correct node directory for the --nodek
-      # y and --datadir options
+      # correct node directory for the --nodekey and --datadir options
       $${RUN_GETH_CMD} \
           $${RAFT_OPTS} \
           --networkid $${NETWORKID} \
@@ -156,6 +145,7 @@ x-node-gorun:
 
 
 networks:
+  # todo: probably don't need an isolated network for raft as discovery is off
   raft:
     internal: false
     ipam:
@@ -164,15 +154,8 @@ networks:
 
 services:
 
-  # * One of the nodes can be set to << : *node-debug, to be debuged via a
-  #   delve connection from the host, but the others must all be node-default or
-  #   node-gorun
-  # * Any can be set to << : *node-gorun, but more than 3 or 4 set that way
-  #   significantly slow down startup.
-  #   node-defaults assumes the image referenced by x-node-defaults has been
-  #   built.
   node0:
-    # << : *node-debug
+    # <<: *node-debug
     <<: *node-defaults
     working_dir: /nodes/node0
     ports:
