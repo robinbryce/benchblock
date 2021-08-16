@@ -9,6 +9,8 @@
 package loader_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/robinbryce/blockbench/loadtool/cmd"
@@ -31,6 +33,7 @@ type QuorumSuite struct {
 }
 
 func (s *QuorumSuite) SetupSuite() {
+	fmt.Printf("THREADS: %s\n", os.Getenv("THREADS"))
 	s.assert = assert.New(s.T())
 	s.require = require.New(s.T())
 

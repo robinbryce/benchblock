@@ -72,7 +72,7 @@ tasks:
           args:
             - ${configdir}
       - task:
-          name: gethcfg
+          name: raftcfg
           options:
             geth_image: ${geth_image}
             delve_image: ${delve_image}
@@ -93,7 +93,7 @@ tasks:
           args:
             - ${configdir}
       - task:
-          name: gethcompose
+          name: raftcompose
           options:
             base: $(pwd)/compose/raft
           args:
@@ -284,8 +284,12 @@ tasks:
                       pass
 
                 p = coincurve.PrivateKey()
-                enode = p.public_key.format(compressed=False)[1:].hex()
                 key = p.to_hex()
+
+                x, y = p.public_key.point()
+                x = x.to_bytes(length=256//8, byteorder="big").hex()
+                y = y.to_bytes(length=256//8, byteorder="big").hex()
+                enode = x + y
 
                 for fn in ("key", "enode"):
                     with open(Path(f"{dirname}/{fn}"), "w") as f:
@@ -369,15 +373,10 @@ tasks:
 
                 dirname = f"{os.environ['nodesdir']}/node{i}"
 
-                # always derive from the private key directly, avoids issues
-                # with enode files getting out of sync
-
-                key = coincurve.PrivateKey.from_hex(open(f"{dirname}/key", 'r').read())
-                rawpub = coincurve.PublicKey.from_valid_secret(key.secret).format(compressed=False)
-                enode = sha3.keccak_256(rawpub[1:]).digest()
+                enode = open(f"{dirname}/enode", 'r').read()
 
                 static.append(
-                  f"enode://{enode.hex()}@node{i}:{p2port}?discport=0&raftport={raftport}"
+                  f"enode://{enode}@node{i}:{p2port}?discport=0&raftport={raftport}"
                 )
 
             # now go round again and put a full copy in the right directory
@@ -389,12 +388,19 @@ tasks:
             PYEND
 
 
-  gethcompose:
+  raftcompose:
     usage: "make a docker-compose for a geth network from a base.yml and a node.yml"
 
     options:
-      base:
-        usage: "directory containing base.yml and node.yml to build the docker-compose.yml from"
+      compose_project:
+        default: "raft"
+      networkid:
+        default: "53456"
+      netrestrict:
+        # Use a different CIDR for each consensus type please. just bump the
+        # 3rd digit
+        default: 172.19.1.10/24
+
     args:
       configdir:
         usage: >
@@ -410,19 +416,32 @@ tasks:
 
             TUSKDIR=$(pwd)
 
-            BASEDIR=$(cd ${launchdir} && cd ${base} && pwd)
-
-            CONFIGVARS="${configvars}"
+            CONFIGVARS="${configvars} compose_project networkid netrestrict raft_blocktime"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
             cd ${launchdir} && cd ${configdir}
+            CONFIGDIR=$(pwd)
+
+            cat <<END > .env
+            COMPOSE_PROJECT_NAME=raft
+            RAFT_CONSENSUS_OPTS="\
+            --raft --raftport 50000 --raftdnsenable --raftblocktime ${raft_blocktime}"
+            NETWORKID=${networkid}
+            NETRESTRICT=${netrestrict}
+            ETHERBASE=${gendoc_wallet}
+            QUORUM_SRC=${quorum_src}
+            NODESDIR=${nodesdir}
+            GETH_IMAGE= ${geth_image}
+            DELVE_IMAGE=${delve_image}
+            END
+            echo "Wrote .env"
 
             # Merge in the appropriate number of copies of node.yml to the
             # docker-compose.yml we are generating. As we do that add the
             # numeric suffices to each nodes service entry and the working_dir
             # it uses
-            cp ${BASEDIR}//base.yml .
-            cp ${BASEDIR}//node.yml .
+            cp ${TUSKDIR}/compose/raft/base.yml .
+            cp ${TUSKDIR}/compose/raft/node.yml .
             cp base.yml docker-compose.yml
 
             # each document fragment has to be valid. so they all need the
@@ -431,19 +450,25 @@ tasks:
             x-node-defaults:
               &node-defaults
             END
+
+            PORT=8300
             for i in $(seq 0 $((${maxnodes} - 1)))
             do
-                VAL=$i yq eval '
-                  .node |= .working_dir += env(VAL) | del(.x-node-defaults) |
+                VAL=$i EXPOSED="\"${PORT}:\"" yq eval '
+                  .node |= .working_dir += env(VAL) |
+                  del(.x-node-defaults) |
+                  .node.ports[0] |= . = env(EXPOSED) + . |
                   with_entries(.key |= .  + env(VAL))
                 ' node.yml
+                PORT=$((PORT + 1))
             done >> tmp.yml
             yq eval-all --inplace '
                 select(fileIndex == 0) * {"services": select(fileIndex == 1)}
                 | del(.services.x-node-defaults)' docker-compose.yml tmp.yml
-            # yq eval-all --inplace 'select(fileIndex == 0) * {"services": select(fileIndex == 1)} | del(.services.x-node-defaults)' docker-compose.yml tmp.yml
+            echo "Wrote docker-compose.yml"
 
-  gethcfg:
+
+  raftcfg:
     usage: "inititialise for geth (no particular consensus)."
     args:
       configdir:
@@ -474,6 +499,11 @@ tasks:
         # TODO: adjust the compose file so this can be ../../quorum
         default:
           command: echo "${launchdir}/quorum"
+
+      raft_blocktime:
+        usage: |
+          the --raftblocktime cosensus parameter for starting geth (ms)
+        default: 50
 
     run:
       - command:
@@ -507,7 +537,8 @@ tasks:
               "geth_image": "${geth_image}",
               "delve_image": "${delve_image}",
               "genesis": "${genesis}",
-              "gendoc_balance": "${gendoc_balance}"
+              "gendoc_balance": "${gendoc_balance}",
+              "raft_blocktime": "${raft_blocktime}"
             }
             JEND
 

@@ -1,0 +1,186 @@
+version: "3.8"
+
+# This compose file supports running a prebuild image, running via go run from
+# mounted sources, and running under dlv for host debugging. Network discovery
+# is enabled (and restricted to a CIDR), the first compose node is the
+# bootnode
+#
+# The debug service exists to build the image that is used to host the go tool
+# chain for go run and dlv modes. It only needs to be built if the base go lang
+# version is updated or delve needs to be upgraded.
+#
+# An .env file which sets the following variables MUST be in place
+# - GETH_IMAGE: image name for the geth node (must be go-ethereum/go-quorum
+#   compatible image layout and binary names etc)
+# - NODESDIR path to a directory containing node[n] data directories
+#   for geth
+# - NETRESTRICT: (set to 172.19.0.10/24 or something compatible with your hosts networking)
+# - ETHERBASE:  any wallet address
+#
+# An .env file which sets the following variables MAY be in place
+# - QUORUM_SRC path to rrr's quorum fork top directory 'go-etherum'. Required
+#   only if node is using node-gorun or node-debug (rather than node-default)
+# - DELVE_IMAGE: image name for a go lang image with the delve debugger installed
+#   Required only for the node-gorun or node-debug configurations
+
+# If any are set to node-gorun or node-debug, it must be set.
+
+x-node-env-defaults:
+  &node-env-defaults
+  NETWORKID: "${NETWORKID}"
+  PRIVATE_CONFIG: ignore
+  RAFT_OPTS: "${RAFT_CONSENSUS_OPTS}"
+  DISCOVERY_OPTS: "--nodiscover"
+  P2P_PORT: 7200
+  RPC_OPTS: "\
+   --allow-insecure-unlock \
+   --http \
+   --http.addr 0.0.0.0 \
+   --http.port 8300 \
+   --http.corsdomain '*' \
+   --http.vhosts '*'"
+  WS_OPTS: "--ws --wsport 8400 --wsorigins '*'"
+  MINER_OPTS: "\
+   --mine --miner.threads 1 --miner.etherbase ${ETHERBASE} \
+   --miner.gastarget 18200000 --miner.gaslimit 18200000"
+  LOG_OPTS: "--vmodule consensus/*=5,miner/*=7,eth/*=2,p2p/*=3 --verbosity 3"
+  # --debug adds source and line no
+  # LOG_OPTS: "--debug --vmodule consensus/*=7,miner/*=5 --verbosity 3"
+
+  # Different default ways to start geth
+  LAUNCH_DIR: "/"
+  RUN_GETH_CMD: geth
+
+# env for debuging from the host via dlv
+x-node-env-debug:
+  &node-env-debug
+  << : *node-env-defaults
+  GOCACHE: /tmp/go-cache
+  LAUNCH_DIR: "/go/src/quorum"
+  RUN_GETH_CMD: "/dbg/dlv debug --only-same-user=false --headless --listen=:2345 --api-version=2 github.com/ethereum/go-ethereum/cmd/geth -- "
+
+# env for running from host sources (rather than building the image) - faster
+# turnaround for very small networks, but more than 4 or 5 nodes takes a long
+# time to startup.
+x-node-env-gorun:
+  &node-env-gorun
+  << : *node-env-defaults
+  GOCACHE: /tmp/go-cache
+  LAUNCH_DIR: "/go/src/quorum"
+  RUN_GETH_CMD: go run github.com/ethereum/go-ethereum/cmd/geth
+
+x-node-base:
+  &node-base
+  volumes:
+    # Defined in the .env file
+    - ${NODESDIR}:/nodes
+
+  entrypoint:
+    - /bin/sh
+    - -cx
+    - |
+      NODE_DIR=$$(pwd)
+      # The compose file starts us in the node director (eg nodes/node0)
+      cd $${LAUNCH_DIR}
+
+      # All nodes are in static-nodes.json. We don't support
+      # addPeer/removePeer. Instead, just re-generate the network with more
+      # nodes and start again. (this tooling isn't aimed at long lived
+      # networks)
+
+      # construct the static-nodes.json from the raft.cluster output.
+      # Note: this is not robust if removePeer is used
+
+      # The RUN_GETH_CMD variable is set by the environment of each of the
+      # supported x-node-{flavour}'s, the others all come from node-env-defaults
+      # It is assumed that the service entry sets the working_dir to the
+      # correct node directory for the --nodek
+      # y and --datadir options
+      $${RUN_GETH_CMD} \
+          $${RAFT_OPTS} \
+          --networkid $${NETWORKID} \
+          $${NAT_OPTS} $${DISCOVERY_OPTS} \
+          --port $${P2P_PORT} \
+          --nodekey $${NODE_DIR}/key \
+          --datadir $${NODE_DIR}/data \
+          --gcmode archive  --syncmode full \
+          --nousb \
+          --rpcapi "raft,admin,db,eth,debug,miner,net,shh,txpool,personal,web3,quorum" \
+          $${MINER_OPTS} \
+          $${RPC_OPTS} \
+          $${LOG_OPTS}
+
+x-node-defaults:
+  &node-defaults
+  <<: *node-base
+  environment:
+    << : *node-env-defaults
+  image: ${GETH_IMAGE}
+  volumes:
+    # Defined in the .env file
+    - ${NODESDIR}:/nodes
+  networks:
+    raft:
+
+x-node-debug:
+  &node-debug
+  <<: *node-base
+  environment:
+    <<: *node-env-debug
+  image: ${DELVE_IMAGE}
+  volumes:
+    - go-cache-volume:/tmp/go-cache
+    - go-pkg-volume:/go/pkg
+    # These variables are defined in the .env file
+    - ${QUORUM_SRC}:/go/src
+    - ${NODESDIR}:/nodes
+  ports:
+    - "8545:8300"
+    - "2345:2345"
+  networks:
+    raft:
+
+x-node-gorun:
+  &node-gorun
+  <<: *node-base
+  environment:
+    << : *node-env-gorun
+  image: ${DELVE_IMAGE}
+  volumes:
+    - go-cache-volume:/tmp/go-cache
+    - go-pkg-volume:/go/pkg
+    # These variables are defined in the .env file
+    - ${QUORUM_SRC}:/go/src/quorum
+    - ${NODESDIR}:/nodes
+  # ports from node-base
+
+
+networks:
+  raft:
+    internal: false
+    ipam:
+      config:
+        - subnet: ${NETRESTRICT}
+
+services:
+
+  # * One of the nodes can be set to << : *node-debug, to be debuged via a
+  #   delve connection from the host, but the others must all be node-default or
+  #   node-gorun
+  # * Any can be set to << : *node-gorun, but more than 3 or 4 set that way
+  #   significantly slow down startup.
+  #   node-defaults assumes the image referenced by x-node-defaults has been
+  #   built.
+  node0:
+    # << : *node-debug
+    <<: *node-defaults
+    working_dir: /nodes/node0
+    ports:
+      - "8300:8300"
+      - "50000"
+
+  # The node entries are generated using yq and the node.yml
+
+volumes:
+  go-pkg-volume:
+  go-cache-volume:

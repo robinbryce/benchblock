@@ -16,7 +16,7 @@ import (
 // the most succinct and clear example of cobra & viper together
 
 var (
-	envPrefix = "ETHLOAD"
+	envPrefix = ""
 )
 
 func Execute() {

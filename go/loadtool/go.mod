@@ -21,6 +21,7 @@ require (
 	github.com/aristanetworks/goarista v0.0.0-20210204223745-64c208b2a430 // indirect
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/cespare/cp v1.1.1 // indirect
+	github.com/cheggaaa/pb/v3 v3.0.8
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/elastic/gosigar v0.14.0 // indirect
@@ -55,6 +56,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0 // indirect
 	github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
+	github.com/vbauerster/mpb/v7 v7.1.3
 	github.com/wsddn/go-ecdh v0.0.0-20161211032359-48726bab9208 // indirect
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
 	gopkg.in/karalabe/cookiejar.v2 v2.0.0-20150724131613-8dcd6a7f4951 // indirect

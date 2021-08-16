@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type BlockDB struct {
@@ -20,6 +21,7 @@ type BlockDB struct {
 }
 
 const (
+	// results collection compatible with chainhammer analysis scripts
 	CreateTableStmt = `CREATE TABLE IF NOT EXISTS blocks(
  	   	blocknumber INTEGER UNIQUE
  	   	,timestamp DECIMAL
@@ -146,7 +148,7 @@ func GetBlocks(cfg *Config, dbname string, dbshare bool, start, end int64) error
 
 	for n := start; n <= end; n++ {
 
-		block, err = GetBlockByNumber(eth, cfg.Retries, n)
+		block, err = GetBlockByNumber(context.TODO(), eth, cfg.Retries, n)
 		if err != nil {
 			return fmt.Errorf("eth_blockByNumberd: %w", err)
 		}

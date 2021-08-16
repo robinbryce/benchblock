@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/url"
@@ -21,6 +22,9 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/vbauerster/mpb/v7"
+	"github.com/vbauerster/mpb/v7/decor"
 )
 
 const (
@@ -51,6 +55,8 @@ type Config struct {
 
 	PrivateFor string `mapstructure:"PRIVATEFOR,omitempty"` // "base64pub:base64pub:..." defaults empty - no private tx
 
+	DBSource string `mapstructure:"DBSOURCE,omitempty"`
+
 	// SingleNode is set if all transactions should be issued to the same
 	// node. This isolates the load for transaction submission to a single node.
 	// We then get an idea of how efficiently the remaining nodes reach
@@ -70,9 +76,11 @@ type Config struct {
 	ClientTimeout   time.Duration `mapstructure:"CLIENT_TIMEOUT"`
 	ExpectedLatency time.Duration `mapstructure:"EXPECTED_LATENCY"`
 
-	DeployGasLimit uint64 `mapstructure:"DEPLOY_GASLIMIT"`
-	DeployKey      string `mapstructure:"DEPLOY_KEY"` // needs to have funds even for quorum, used to deploy contract
-	RunOne         bool
+	DeployGasLimit uint64        `mapstructure:"DEPLOY_GASLIMIT"`
+	DeployKey      string        `mapstructure:"DEPLOY_KEY"` // needs to have funds even for quorum, used to deploy contract
+	RunOne         bool          `mapstructure:"RUN_ONE"`
+	NoProgress     bool          `mapstructure:"NO_PROGRESS"`
+	CollectRate    time.Duration `mapstructure:"COLLECT_RATE"`
 }
 
 var defaultCfg = Config{
@@ -82,6 +90,7 @@ var defaultCfg = Config{
 	NumTransactions: 5000,
 	GasLimit:        60000,
 	PrivateFor:      "",
+	DBSource:        "",
 	SingleNode:      false,
 	CheckReceipts:   false,
 	Retries:         10,
@@ -92,20 +101,29 @@ var defaultCfg = Config{
 	DeployGasLimit:  600000,
 	DeployKey:       "",
 	RunOne:          false,
+	NoProgress:      true,
+	CollectRate:     10 * time.Second,
 }
 
 // Adder runs a load of 'add' contract calls, according to the load
 // configuration, to the standard get/set/add example solidity contract.
 type Adder struct {
-	cfg     *Config
+	cfg        *Config
+	db         *BlockDB
+	pbTxIssued *mpb.Bar
+	pbTxMined  *mpb.Bar
+
 	limiter *time.Ticker
 	// One AccountSet per thread
 	accounts []AccountSet
 	// One connection per thread
-	ethC      []*ethclient.Client
-	ethCUrl   []string
-	getSetAdd *bind.BoundContract
-	address   common.Address
+	ethC    []*Client
+	ethCUrl []string
+
+	getSetAdd      *bind.BoundContract
+	address        common.Address
+	collectLimiter *time.Ticker
+	numCollected   int
 }
 
 // AcountSet groups a set of accounts together. Each thread works with its own
@@ -125,6 +143,9 @@ func SetViperDefaults(v *viper.Viper) {
 	v.SetDefault("GASLIMIT", defaultCfg.GasLimit)
 
 	v.SetDefault("PRIVATEFOR", defaultCfg.PrivateFor)
+
+	v.SetDefault("DBSource", defaultCfg.DBSource)
+
 	v.SetDefault("SINGLENODE", defaultCfg.SingleNode)
 	v.SetDefault("CHECK_RECIEPTS", defaultCfg.CheckReceipts)
 	v.SetDefault("RETRIES", defaultCfg.Retries)
@@ -137,6 +158,9 @@ func SetViperDefaults(v *viper.Viper) {
 
 	v.SetDefault("DEPLOY_GASLIMIT", defaultCfg.DeployGasLimit)
 	v.SetDefault("DEPLOY_KEY", defaultCfg.DeployKey)
+	v.SetDefault("RUN_ONE", defaultCfg.RunOne)
+	v.SetDefault("PROGRESS", defaultCfg.NoProgress)
+	v.SetDefault("COLLECT_RATE", defaultCfg.CollectRate)
 }
 
 func AddOptions(cmd *cobra.Command, cfg *Config) {
@@ -167,6 +191,9 @@ regardless`,
 		&cfg.PrivateFor, "privatefor", "", `
 all transactions will be privatefor the ':' separated list of keys (quorum
 only).  if not set, the transactions will be public`)
+	f.StringVar(
+		&cfg.DBSource, "dbsource", "", `results will be recorded to this data source. empty (default) disables collection, :memory: collects (and reports) using in memory store.`)
+
 	f.BoolVar(
 		&cfg.SingleNode, "singlenode", false, "if set all clients will connect to the same node")
 	f.BoolVar(
@@ -205,6 +232,16 @@ choice). this just tunes the receipt retry rate, ignored if
 	f.StringVar(
 		&cfg.DeployKey, "deploy-key", defaultCfg.DeployKey, `the key to use to deploy the contract. (may need to be funded, if not leave unset)`,
 	)
+
+	f.BoolVar(
+		&cfg.NoProgress, "no-progress", false,
+		"disables progress meter")
+	f.DurationVar(
+		&cfg.CollectRate, "collect-rate", defaultCfg.CollectRate, `
+rate to collect blocks, also effectively the window over which the tps & tpb are
+averaged for the progress bar. ignored if dbsource is not set (set to :memory:
+if you don't want the results but do want the rate indicators)`)
+
 }
 
 func (a AccountSet) Len() int {
@@ -267,6 +304,8 @@ func NewAccountSet(ctx context.Context, ethC *ethclient.Client, cfg *Config, n i
 
 func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 
+	var err error
+
 	lo := Adder{cfg: cfg}
 	if delta := lo.cfg.TruncateTargetTransactions(); delta != 0 {
 		fmt.Printf(
@@ -274,7 +313,16 @@ func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 			lo.cfg.NumTransactions+delta, lo.cfg.NumTransactions)
 	}
 
+	// Are we collecting results for analysis?
+	if lo.cfg.DBSource != "" {
+		if lo.db, err = NewBlockDB(lo.cfg.DBSource, true /*share*/); err != nil {
+			return Adder{}, err
+		}
+	}
+
 	lo.limiter = time.NewTicker(time.Second / time.Duration(lo.cfg.TPS))
+
+	lo.collectLimiter = time.NewTicker(lo.cfg.CollectRate)
 
 	qu, err := url.Parse(lo.cfg.EthEndpoint)
 	if err != nil {
@@ -303,7 +351,7 @@ func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 	}
 
 	lo.accounts = make([]AccountSet, lo.cfg.Threads)
-	lo.ethC = make([]*ethclient.Client, lo.cfg.Threads)
+	lo.ethC = make([]*Client, lo.cfg.Threads)
 	lo.ethCUrl = make([]string, lo.cfg.Threads)
 
 	var tx *types.Transaction
@@ -342,7 +390,7 @@ func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 			tuEndpoint = tu.String()
 		}
 
-		lo.ethC[i], err = NewTransactor(qu.String(), tuEndpoint, lo.cfg.ClientTimeout)
+		lo.ethC[i], err = NewClient(qu.String(), tuEndpoint, lo.cfg.ClientTimeout)
 		if err != nil {
 			return Adder{}, err
 		}
@@ -350,7 +398,7 @@ func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 
 		fmt.Printf("building account set for client[%d]: %s\n", i, qu.String())
 
-		lo.accounts[i], err = NewAccountSet(ctx, lo.ethC[i], lo.cfg, lo.cfg.ThreadAccounts)
+		lo.accounts[i], err = NewAccountSet(ctx, lo.ethC[i].Client, lo.cfg, lo.cfg.ThreadAccounts)
 		if err != nil {
 			return Adder{}, err
 		}
@@ -365,7 +413,7 @@ func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 	if err != nil {
 		return Adder{}, err
 	}
-	if ok := CheckReceipt(lo.ethC[0], tx, lo.cfg.Retries, lo.cfg.ExpectedLatency); !ok {
+	if ok := CheckReceipt(lo.ethC[0].Client, tx, lo.cfg.Retries, lo.cfg.ExpectedLatency); !ok {
 		return Adder{}, fmt.Errorf("failed to deploy contract")
 	}
 
@@ -377,12 +425,45 @@ func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 func (a *Adder) Run() {
 
 	var wg sync.WaitGroup
-	for i := 0; i < a.cfg.Threads; i++ {
+	// p := mpb.New(mpb.WithWaitGroup(&wg))
+	p := mpb.New()
 
+	// Are we running the progress meter ?
+	if !a.cfg.NoProgress {
+		// wg.Add(2)
+
+		// pb.StartNew(lo.cfg.NumTransactions)
+		a.pbTxIssued = p.AddBar(
+			int64(a.cfg.NumTransactions), mpb.PrependDecorators(
+				decor.Name("sent", decor.WCSyncSpace),
+				decor.CurrentNoUnit("%d", decor.WCSyncSpace),
+				decor.AverageSpeed(0, "%f.2/s", decor.WCSyncSpace),
+				decor.Elapsed(decor.ET_STYLE_MMSS, decor.WCSyncSpace),
+			),
+		)
+		a.pbTxMined = p.AddBar(
+			int64(a.cfg.NumTransactions),
+			mpb.PrependDecorators(
+				decor.Name("mined", decor.WCSyncSpace),
+				decor.CurrentNoUnit("%d", decor.WCSyncSpace),
+				decor.AverageSpeed(0, "%f.2/s", decor.WCSyncSpace),
+				decor.Elapsed(decor.ET_STYLE_MMSS, decor.WCSyncSpace),
+			),
+		)
+	}
+
+	for i := 0; i < a.cfg.Threads; i++ {
 		wg.Add(1)
-		go a.adder(a.ethC[i], &wg, fmt.Sprintf("client-%d", i), i)
+		go a.adder(a.ethC[i].Client, &wg, fmt.Sprintf("client-%d", i), i)
+	}
+
+	if a.db != nil {
+		wg.Add(1)
+		go a.collector(a.ethC[0], &wg, fmt.Sprintf("client-%d", 0), 0)
 	}
 	wg.Wait()
+	fmt.Printf("sent: %d, mined: %d\n", a.pbTxIssued.Current(), a.pbTxIssued.Current())
+	// p.Wait()
 }
 
 // RunOne is provided for dignostic purposes. It issues a single transaction
@@ -407,10 +488,96 @@ func (lo *Adder) RunOne() error {
 	if err != nil {
 		return err
 	}
-	if ok := CheckReceipt(ethC, tx, lo.cfg.Retries, lo.cfg.ClientTimeout); !ok {
+	if ok := CheckReceipt(ethC.Client, tx, lo.cfg.Retries, lo.cfg.ClientTimeout); !ok {
 		return fmt.Errorf("transaction %s failed or not completed in %v", tx.Hash().Hex(), lo.cfg.ClientTimeout)
 	}
 	return nil
+}
+
+func (a *Adder) collector(ethC *Client, wg *sync.WaitGroup, banner string, ias int) {
+
+	defer wg.Done()
+
+	var err error
+	var raw json.RawMessage
+	var s string
+	var lastBlock, blockNumber int64
+	var block *types.Block
+	numCollected := 0
+
+	getBlockNumber := func() (int64, error) {
+
+		var num int64
+		// initialise last block number
+		ctx, cancel := context.WithTimeout(context.Background(), a.cfg.ClientTimeout)
+		err = ethC.RPC.CallContext(ctx, &raw, "eth_blockNumber")
+		cancel()
+		if err != nil {
+			fmt.Printf("error calling eth_blockNumber rpc: %v\n", err)
+			return 0, err
+		}
+		if err = json.Unmarshal(raw, &s); err != nil {
+			fmt.Printf("error decoding eth_blockNumber response: %v\n", err)
+			return 0, err
+		}
+		num, err = strconv.ParseInt(s, 0, 64)
+		if err != nil {
+			fmt.Printf("error decoding Result field on eth_blockNumber response: %v\n", err)
+			return 0, err
+		}
+		return num, nil
+	}
+
+	if lastBlock, err = getBlockNumber(); err != nil {
+		return
+	}
+
+	for range a.collectLimiter.C {
+
+		if blockNumber, err = getBlockNumber(); err != nil {
+			return
+		}
+
+		// re-orgs might mean we go backwards on some consensus algs, we
+		// don't really try to deal with that here. using <= is effectively
+		// ignoring the issue.
+		if blockNumber <= lastBlock {
+			if blockNumber < lastBlock {
+				fmt.Printf("re-org ? new head %d is < %dn", blockNumber, lastBlock)
+			}
+			if a.pbTxIssued == nil {
+				fmt.Printf("no more blocks since %d\n", blockNumber)
+			}
+			continue
+		}
+
+		for i := lastBlock + 1; i <= blockNumber; i++ {
+
+			ctx, cancel := context.WithTimeout(context.Background(), a.cfg.ClientTimeout)
+			block, err = GetBlockByNumber(ctx, ethC.Client, a.cfg.Retries, i)
+			cancel()
+			if err != nil {
+				fmt.Printf("error getting block %d: %v\n", i, err)
+				return
+			}
+
+			h := block.Header()
+			if err = a.db.Insert(block, h); err != nil {
+				println(fmt.Errorf("inserting block %v: %w", h.Number, err).Error())
+			}
+			lastBlock = i
+
+			// could actually capture and reconcile them if we wanted, for now just count them
+			ntx := len(block.Transactions())
+			a.pbTxMined.IncrBy(ntx)
+			numCollected += ntx
+			if numCollected >= a.cfg.NumTransactions {
+				fmt.Printf("collection complete: %d\n", numCollected)
+				a.pbTxMined.SetTotal(int64(a.cfg.NumTransactions), true)
+				return
+			}
+		}
+	}
 }
 
 func (lo *Adder) adder(ethC *ethclient.Client, wg *sync.WaitGroup, banner string, ias int) {
@@ -445,7 +612,10 @@ func (lo *Adder) adder(ethC *ethclient.Client, wg *sync.WaitGroup, banner string
 	}
 
 	for r := 0; r < numBatches; r++ {
-		fmt.Printf("%s: batch %d, node %s\n", banner, r, lo.ethCUrl[ias])
+
+		if lo.pbTxIssued == nil && lo.pbTxMined == nil {
+			fmt.Printf("%s: batch %d, node %s\n", banner, r, lo.ethCUrl[ias])
+		}
 
 		for i := 0; i < lo.cfg.ThreadAccounts; i++ {
 			if lo.limiter != nil {
@@ -459,6 +629,9 @@ func (lo *Adder) adder(ethC *ethclient.Client, wg *sync.WaitGroup, banner string
 			if err != nil {
 				fmt.Printf("terminating client for %s. error from transact: %v\n", lo.ethCUrl[ias], err)
 				return
+			}
+			if lo.pbTxIssued != nil {
+				lo.pbTxIssued.Increment()
 			}
 
 			lo.accounts[ias].IncNonce(i)

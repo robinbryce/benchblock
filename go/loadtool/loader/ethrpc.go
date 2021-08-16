@@ -2,6 +2,7 @@ package loader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -14,7 +15,7 @@ import (
 )
 
 // ethereum rpc requests
-func GetBlockByNumber(eth *ethclient.Client, retries int, blockNumber int64) (*types.Block, error) {
+func GetBlockByNumber(ctx context.Context, eth *ethclient.Client, retries int, blockNumber int64) (*types.Block, error) {
 
 	bigN := new(big.Int).SetInt64(blockNumber)
 
@@ -23,14 +24,13 @@ func GetBlockByNumber(eth *ethclient.Client, retries int, blockNumber int64) (*t
 
 	for i := 0; retries == 0 || i < retries; i++ {
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-
 		block, err = eth.BlockByNumber(ctx, bigN)
 		if err == nil {
-			cancel()
 			return block, nil
 		}
-		cancel()
+		if errors.Is(err, context.Canceled) {
+			return nil, err
+		}
 		time.Sleep(backoffDuration(i))
 	}
 	return block, err
@@ -90,21 +90,39 @@ func NewEthClient(ethEndpoint string) (*ethclient.Client, error) {
 }
 
 func NewTransactor(ethEndpoint, tesseraEndpoint string, clientTimeout time.Duration) (*ethclient.Client, error) {
+	ethC, err := NewClient(ethEndpoint, tesseraEndpoint, clientTimeout)
+	return ethC.Client, err
+}
+
+// Client makes both the ethclient and the underlying rpc.Client available on the same struct
+type Client struct {
+	*ethclient.Client
+	RPC *rpc.Client
+}
+
+func NewClient(
+	ethEndpoint, tesseraEndpoint string, clientTimeout time.Duration,
+) (*Client, error) {
+
+	c := &Client{}
 
 	ethRPC, err := rpc.DialHTTPWithClient(ethEndpoint, &http.Client{Timeout: clientTimeout})
 	if err != nil {
 		return nil, err
 	}
+	c.RPC = ethRPC
 	ethClient := ethclient.NewClient(ethRPC)
 	if ethClient == nil {
 		return nil, fmt.Errorf("failed creating ethclient")
 	}
+	c.Client = ethClient
 
 	if tesseraEndpoint != "" {
 		ethClient, err = ethClient.WithPrivateTransactionManager(tesseraEndpoint)
+		c.Client = ethClient
 		if err != nil {
 			return nil, err
 		}
 	}
-	return ethClient, nil
+	return c, nil
 }
