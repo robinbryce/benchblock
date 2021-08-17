@@ -1,0 +1,175 @@
+interpreter: bash -c
+name: bbres
+usage: >
+  tooling for managing and analysing the results
+
+options:
+
+  launchdir:
+    # treat this as private
+    usage: >
+      Don't set this option. Its a work around for a go-tusk peculiarity
+    environment: PWD
+
+  config:
+    usage: >
+      Base filename of the config file to use in configdir. Enables alternate
+      configs for the same network.
+    default:
+      bench.json
+  configshow:
+    usage: "Report which, if any, supported configdir config file VAR's"
+    type: bool
+
+tasks:
+  configure:
+    usage: >
+      Put the rune for reading the config file into an environment variable so
+      that it can be more readily re-used.  This one horror pays for a lot of
+      simplicity elsewhere. The double cd trick combines the launchdir captured
+      before tusk changes directory to the task file and then combines it with
+      the cli choice of current directory. So that the cli choice remains
+      relative to the launchdir.  Then we suck out the top level fields in the
+      json config directory and expose them in a bash friendly format. This
+      enables both shell tusk tasks and python to share the same config,
+      without having to duplicate a bunch of stuff.
+    private: true
+    args:
+      configdir:
+    run:
+      # execute these fragments in the task like this:
+      #   CONFIGVARS="${configvars} extra_config_var1 extra_config_var2"
+      #   eval ${READ_CONFIG}
+      #   if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+      set-environment: {
+        READ_CONFIG: "\
+          $(cd ${launchdir} && cd ${configdir} \
+          && python3 -c \"import json; \
+                          [print(f'export {k}=\"{v}\"') \
+                              for k, v in json.load(open('${config}')).items()]\")",
+        SHOW_CONFIG: "for v in ${CONFIGVARS}; do echo $v=${!v}; done"}
+
+  jupycfg:
+    usage: "inititialise for geth (no particular consensus)."
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+
+            TUSKDIR=$(pwd)
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            python3 -m venv ${pyenv}
+            source ${pyenv}/bin/activate
+            pip3 install -e ${TUSKDIR}/jupyter-support
+            cp ${TUSKDIR}/jupyter-support/standard-plots.md .
+            cat standard-plots.md | jupytext --from .md --to notebook --output standard-plots.ipynb
+
+  render:
+    usage: "plot all the graphs by rendering the notebook"
+    options:
+      dbfile:
+        usage: >
+          The datasource name of the blocks database
+        default: blocks.db
+      plot_prefix:
+        default: ""
+      firstblock:
+        default: 0
+        short: s
+      lastblock:
+        default: 0
+
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+
+            echo "THIS ISN'T FINISHED"
+            exit 1
+
+            TUSKDIR=$(pwd)
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            source ${pyenv}/bin/activate
+            cat standard-plots.md \
+            | jupytext --from .md --to notebook --set-kernel - --output - \
+            | jupyter nbconvert --to html --no-input --stdin --output standard-plots.html
+
+            # papermill doesn't seem to play nicely with virtual-envs
+            # | papermill # \
+            #-p dbfile ${dbfile} \
+            #    -p plot_prefix ${plot_prefix} \
+            #    -p firstblock ${firstblock} \
+            #    -p lastblock ${lastblock}
+            # | jupyter nbconvert --to html --no-input --stdin --output standard-plots.html
+
+  tonb:
+    usage: "convert the markdown notebook to ipython notebook format"
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+
+            TUSKDIR=$(pwd)
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            source ${pyenv}/bin/activate
+            cat standard-plots.md | jupytext --from .md --to notebook --output standard-plots.ipynb
+
+  tomd:
+    usage: "convert the ipython notebook format back to markdown"
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+
+            TUSKDIR=$(pwd)
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            source ${pyenv}/bin/activate
+            cat standard-plots.md | jupytext --from .md --to notebook --output standard-plots.ipynb

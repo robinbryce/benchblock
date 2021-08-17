@@ -1,0 +1,12 @@
+# Install these requirements to use the jupyter notebook and results graphing
+nbformat
+matplotlib
+pandas
+numpy
+ipython
+jupyter
+jupytext
+papermill
+
+
+
