@@ -34,7 +34,7 @@ options:
     usage: >
       The list of config VARS supported by most tasks. Use --configshow
       for any command to get the definite list.
-    default: "nodesdir maxnodes image genesis quorum_src geth_image delve_image pyenv"
+    default: "name nodesdir maxnodes image genesis quorum_src geth_image delve_image pyenv"
 
 tasks:
 
@@ -42,6 +42,11 @@ tasks:
     usage: >
       Configure a new raft network
     options:
+      name:
+        usage: >
+          The name for the configuration defaults to "raft{maxnodes}"
+        default: ""
+
       maxnodes:
         default: 5
         short: "n"
@@ -71,6 +76,7 @@ tasks:
       - task:
           name: raftcfg
           options:
+            name: "${name}"
             geth_image: ${geth_image}
             delve_image: ${delve_image}
             maxnodes: ${maxnodes}
@@ -100,6 +106,12 @@ tasks:
       # This task also ilustrates the full sequence of steps to prepare an rrr
       # compose setup
     options:
+
+      name:
+        usage: >
+          The name for the configuration defaults to "rrr{maxnodes}"
+        default: ""
+
       maxnodes:
         default: 17
 
@@ -135,6 +147,7 @@ tasks:
       - task:
           name: rrrcfg
           options:
+            name: ${name}
             geth_image: ${geth_image}
             delve_image: ${delve_image}
             maxnodes: ${maxnodes}
@@ -422,7 +435,7 @@ tasks:
             CONFIGDIR=$(pwd)
 
             cat <<END > .env
-            COMPOSE_PROJECT_NAME=raft
+            COMPOSE_PROJECT_NAME=${name}
             RAFT_CONSENSUS_OPTS="\
             --raft --raftport 50000 --raftdnsenable --raftblocktime ${raft_blocktime}"
             NETWORKID=${networkid}
@@ -475,6 +488,10 @@ tasks:
           The config root directory.
     options:
 
+      name:
+        usage: >
+          see raft command
+        default: ""
       nodesdir:
         usage: "relative to configdir. each node gets a subdirectory here named node{N}"
         default: nodes
@@ -526,9 +543,13 @@ tasks:
             source ${pyenv}/bin/activate
             pip3 install -r ${TUSKDIR}/requirements.txt
 
+            NAME="${name}"
+            [[ "${NAME}" == "" ]] && NAME="raft${maxnodes}"
+
             # generate the config from the options
             cat <<JEND  > bench.json
             {
+              "name": "${NAME}",
               "pyenv": "${pyenv}",
               "maxnodes": "${maxnodes}",
               "nodesdir": "$(pwd)/${nodesdir}",
@@ -617,6 +638,11 @@ tasks:
         usage: >
           The config root directory.
     options:
+      name:
+        usage: >
+          See rrr command
+        default: ""
+
       numcandidates:
         short: c
         usage: "set the number of canidate leaders per round"
@@ -696,9 +722,14 @@ tasks:
             source ${pyenv}/bin/activate
             pip3 install -r ${TUSKDIR}/requirements.txt
 
+            NAME="${name}"
+            [ -n "${NAME}" ] && NAME="raft${maxnodes}"
+
+
             # generate the config from the options
             cat <<JEND  > bench.json
             {
+              "name": "${NAME}",
               "pyenv": "${pyenv}",
               "maxnodes": "${maxnodes}",
               "nodesdir": "$(pwd)/${nodesdir}",
@@ -788,8 +819,6 @@ tasks:
     usage: |
       Generate a docker compose configuration for running rrr
     options:
-      compose_project:
-        default: "rrr"
       networkid:
         default: "53456"
       netrestrict:
@@ -817,7 +846,7 @@ tasks:
             cd ${launchdir} && cd ${configdir}
 
             cat <<END > env.env
-            COMPOSE_PROJECT_NAME=${compose_project}
+            COMPOSE_PROJECT_NAME=${name}
             RRR_CONSENSUS_OPTS="\
             --rrr.nc ${numcandidates} \
             --rrr.ne ${numendorsers} \
@@ -965,3 +994,158 @@ tasks:
 
             go run cmd/rrrctl/main.go genextra \
                 ${SHOWIDS} --datadir ${node0dir} $ALPHAS
+
+
+  jpycfg:
+    usage: "initialise jupyter based results reports"
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+
+            TUSKDIR=$(pwd)
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            cat <<END > parameters.yml
+            dbfile: "${name}.db"
+            plot_prefix: "${name}"
+            END
+
+            python3 -m venv ${pyenv}
+            source ${pyenv}/bin/activate
+            pip3 install -e ${TUSKDIR}/jupyter-support
+
+            KERNEL=bbench-${name}
+            echo "KERNEL: ${KERNEL}"
+            # --sys-prefix uses the *virtual-env* sys-prefix, which is what we
+            # want
+            python3 -m ipykernel install --sys-prefix --name ${KERNEL}
+            cp ${TUSKDIR}/jupyter-support/standard-plots.md .
+            cat standard-plots.md | jupytext \
+              --set-kernel ${KERNEL} \
+              --from .md --to notebook --output standard-plots.ipynb
+
+  jpyrender:
+    usage: >
+      Plot all the graphs by rendering the notebook.  Always reads from
+      standard-plots.md. Assumes tonb is used save work from the ipynb
+      interactive format back to md. This command will never change any
+      document (though it will over-write saved png files).
+
+    options:
+      dbfile:
+        usage: >
+          The datasource name of the blocks database. parameters.yml file is used by default.
+        default: ""
+        short: d
+      prefix:
+        usage: >
+          The prefix for all generated image names and plot titles plot. parameters.yml file is used by default.
+        default: ""
+        short: p
+      firstblock:
+        default: 0
+        short: s
+      lastblock:
+        default: 0
+        short: e
+
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+
+            TUSKDIR=$(pwd)
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            PREFIX="${prefix}"
+            DBFILE="${dbfile}"
+            echo "PREFIX: ${PREFIX:+ -p plot_prefix ${PREFIX}}"
+            echo "DBFILE: ${DBFILE:+ -p dbfile ${DBFILE}}"
+
+            source ${pyenv}/bin/activate
+            KERNEL=bbench-${name}
+            echo "env: ${pyenv}"
+            echo "KERNEL: ${KERNEL}"
+
+            cat standard-plots.md \
+            | jupytext --from .md --to notebook --set-kernel ${KERNEL} --output - \
+            | papermill \
+                --kernel=${KERNEL} \
+                - - \
+                -f parameters.yml \
+                ${DBFILE:+ -p dbfile ${DBFILE}} \
+                ${PREFIX:+ -p plot_prefix ${PREFIX}} \
+                -p firstblock ${firstblock} \
+                -p lastblock ${lastblock} \
+            | jupyter nbconvert --stdin --to html --output standard-plots.html
+
+  tonb:
+    usage: "convert the markdown notebook to ipython notebook format"
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+
+            TUSKDIR=$(pwd)
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            source ${pyenv}/bin/activate
+            cat standard-plots.md | jupytext --from .md --to notebook --output standard-plots.ipynb
+
+  tomd:
+    usage: "convert the ipython notebook format back to markdown"
+    args:
+      configdir:
+        usage: >
+          The config root directory.
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+
+            TUSKDIR=$(pwd)
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            source ${pyenv}/bin/activate
+            cat standard-plots.md | jupytext --from .md --to notebook --output standard-plots.ipynb

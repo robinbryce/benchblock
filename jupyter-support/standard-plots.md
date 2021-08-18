@@ -27,49 +27,36 @@ lastblock = 5000
 
 ```python tags=[hide-output, show-input]
 import bbench.db
-reload(bbench.db)
 blocks = bbench.db.Blocks(dbfile)
 for k, v in blocks.common_stats(firstblock=firstblock, lastblock=lastblock).items():
     print(f"{k}={v}")
 ```
 
 ```python
-from importlib import reload
-import bbench.db
 import bbench.plots
 import matplotlib.pyplot
-reload(bbench.db)
-reload(bbench.blockframe)
-reload(bbench.plots)
 
 matplotlib.rcParams["agg.path.chunksize"] = 10000
 
-bbench.plots.GAS(blocks).plot(
-    matplotlib.pyplot, "{plotprefix}-{firstblock}-{lastblock}-gas.png",
+bbench.plots.GAS(blocks, plot_prefix=plot_prefix).plot(
+    matplotlib.pyplot, "{plot_prefix}-{firstblock}-{lastblock}-gas.png",
     logy=False, firstblock=firstblock, lastblock=lastblock
     )
 
-bbench.plots.BSZ(blocks).plot(
-    matplotlib.pyplot, "{plotprefix}-{firstblock}-{lastblock}-bsz.png",
+bbench.plots.BSZ(blocks, plot_prefix=plot_prefix).plot(
+    matplotlib.pyplot, "{plot_prefix}-{firstblock}-{lastblock}-bsz.png",
     firstblock=firstblock, lastblock=lastblock
     )
 
 
-bbench.plots.BT(blocks).plot(
-    matplotlib.pyplot, "{plotprefix}-{firstblock}-{lastblock}-bt.png",
+bbench.plots.BT(blocks, plot_prefix=plot_prefix).plot(
+    matplotlib.pyplot, "{plot_prefix}-{firstblock}-{lastblock}-bt.png",
     logy=False, firstblock=firstblock, lastblock=lastblock
     )
 
-bbench.plots.TPS(blocks).plot(
-    matplotlib.pyplot, "{plotprefix}-{firstblock}-{lastblock}-tps.png",
+bbench.plots.TPS(blocks, plot_prefix=plot_prefix).plot(
+    matplotlib.pyplot, "{plot_prefix}-{firstblock}-{lastblock}-tps.png",
     firstblock=firstblock, lastblock=lastblock
     )
 
-#gps_cols = []
-#for window in [1, 3, 5]:
-#    gps_cols.append(bf.add_gups(window))
-#
-#glps_cols = []
-#for window in [1, 3, 5]:
-#    glps_cols.append(bf.add_glps(window))
 ```

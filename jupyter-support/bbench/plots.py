@@ -9,9 +9,9 @@ import matplotlib.pyplot
 from bbench.blockframe import Frame
 
 class TPS:
-    def __init__(self, blocks, plotprefix=""):
+    def __init__(self, blocks, plot_prefix=""):
         self._blocks = blocks
-        self.plotprefix = plotprefix
+        self.plot_prefix = plot_prefix
 
     def plot(self, plt, savefile=None, firstblock=None, lastblock=None):
 
@@ -36,14 +36,14 @@ class TPS:
         ax.legend(legend)
         # plt.tight_layout(pad=6.0, w_pad=6.0, h_pad=7.5)
         if savefile is not None:
-            plt.savefig(savefile.format(plotprefix=self.plotprefix, firstblock=firstblock, lastblock=lastblock))
+            plt.savefig(savefile.format(plot_prefix=self.plot_prefix, firstblock=firstblock, lastblock=lastblock))
 
 
 class BT:
 
-    def __init__(self, blocks, plotprefix=""):
+    def __init__(self, blocks, plot_prefix=""):
         self._blocks = blocks
-        self.plotprefix = plotprefix
+        self.plot_prefix = plot_prefix
 
     def plot(self, plt, savefile=None, logy=True, firstblock=None, lastblock=None):
 
@@ -67,14 +67,14 @@ class BT:
 
         # plt.tight_layout(pad=6.0, w_pad=6.0, h_pad=7.5)
         if savefile is not None:
-            plt.savefig(savefile.format(plotprefix=self.plotprefix, firstblock=firstblock, lastblock=lastblock))
+            plt.savefig(savefile.format(plot_prefix=self.plot_prefix, firstblock=firstblock, lastblock=lastblock))
 
 
 class BSZ: 
 
-    def __init__(self, blocks, plotprefix=""):
+    def __init__(self, blocks, plot_prefix=""):
         self._blocks = blocks
-        self.plotprefix = plotprefix
+        self.plot_prefix = plot_prefix
 
     def plot(self, plt, savefile=None, firstblock=None, lastblock=None):
 
@@ -94,14 +94,14 @@ class BSZ:
 
         # plt.tight_layout(pad=6.0, w_pad=6.0, h_pad=7.5)
         if savefile is not None:
-            plt.savefig(savefile.format(plotprefix=self.plotprefix, firstblock=firstblock, lastblock=lastblock))
+            plt.savefig(savefile.format(plot_prefix=self.plot_prefix, firstblock=firstblock, lastblock=lastblock))
 
 
 class GAS: 
 
-    def __init__(self, blocks, plotprefix=""):
+    def __init__(self, blocks, plot_prefix=""):
         self._blocks = blocks
-        self.plotprefix = plotprefix
+        self.plot_prefix = plot_prefix
 
     def plot(self, plt, savefile=None, logy=True, firstblock=None, lastblock=None):
 
@@ -130,4 +130,4 @@ class GAS:
 
         # plt.tight_layout(pad=6.0, w_pad=6.0, h_pad=7.5)
         if savefile is not None:
-            plt.savefig(savefile.format(plotprefix=self.plotprefix, firstblock=firstblock, lastblock=lastblock))
+            plt.savefig(savefile.format(plot_prefix=self.plot_prefix, firstblock=firstblock, lastblock=lastblock))
