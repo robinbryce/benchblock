@@ -1,0 +1,120 @@
+---
+usage: "inititialise for rrr consensus network"
+args:
+  configdir:
+    usage: >
+      The config root directory.
+options:
+  name:
+    usage: >
+      See rrr command
+    default: ""
+
+  numcandidates:
+    short: c
+    usage: "set the number of canidate leaders per round"
+    default: 2
+  numendorsers:
+    short: e
+    usage: "set the size of the endorser committee"
+    default: 7
+  committeequorum:
+    short: q
+    default: 4
+  activehorizon:
+    usage: >
+      number of blocks to allow for activity. Any identities without
+      endorsements or blocks in this number of blocks is droped. (and will
+      have to re-enrol).
+    short: a
+    default: 2000
+  intentphase:
+    usage: number of miliseconds for the rrr intent phase
+    default: 1500
+  confirmphase:
+    usage: number of milliseconds for the rrr confirm phase
+    default: 1500
+  roundlength:
+    usage: >
+      total roundlength in milliseconds. must be greater than intent + confirm (rember to
+      allow for block disemination, 2s  or more is fair)
+    default: 5000
+
+  nodesdir:
+    usage: "relative to configdir. each node gets a subdirectory here named node{N}"
+    default: nodes
+  maxnodes:
+    usage: "the total number of nodes for the network"
+    default: 17
+  genesis:
+    default: "genesis-in.json"
+  gendoc_balance:
+    default: "1000000000000000000000000000"
+  geth_image:
+    usage: "the docker image to use for geth-rrr"
+    default: "eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
+  delve_image:
+    usage: "the docker image to use for running geth-rrr in for remote debug"
+    default: "eu.gcr.io/fetlar-1/rrr-delve:fetlar-latest"
+  quorum_src:
+    usage: |
+        the host directory to be mounted as /go/src/quorum. must contain quorum clone.
+        only required if you need to interactively debug the node.
+    # TODO: adjust the compose file so this can be ../../quorum
+    default:
+      command: echo "${launchdir}/quorum"
+  rrr_src:
+    default:
+      command: echo "${launchdir}/go-rrr"
+
+run:
+  - command:
+      exec: |
+        set -e
+
+        TUSKDIR=$(pwd)
+
+        cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
+        mkdir -p ${nodesdir}/node0
+
+
+        # we don't allow this to be set on the cli, if you want another
+        # env thats fine, just edit bench.json afterwords to point to yours
+        # and make sure you install the requirements.txt
+        pyenv="env"
+
+        echo "Initialising in: $(pwd)"
+
+        python3 -m venv ${pyenv}
+        source ${pyenv}/bin/activate
+        pip3 install -r ${TUSKDIR}/requirements.txt
+
+        NAME="${name}"
+        [ -n "${NAME}" ] && NAME="raft${maxnodes}"
+
+
+        # generate the config from the options
+        cat <<JEND  > bench.json
+        {
+          "name": "${NAME}",
+          "pyenv": "${pyenv}",
+          "maxnodes": "${maxnodes}",
+          "nodesdir": "$(pwd)/${nodesdir}",
+          "quorum_src": "${quorum_src}",
+          "geth_image": "${geth_image}",
+          "delve_image": "${delve_image}",
+          "rrr_src": "${rrr_src}",
+          "genesis": "${genesis}",
+          "gendoc_balance": "${gendoc_balance}",
+          "numcandidates": "${numcandidates}",
+          "numendorsers": "${numendorsers}",
+          "committeequorum": "${committeequorum}",
+          "activehorizon": "${activehorizon}",
+          "intentphase": "${intentphase}",
+          "confirmphase": "${confirmphase}",
+          "roundlength": "${roundlength}"
+        }
+        JEND
+
+        cat bench.json
+        echo "Wrote: $(pwd)/bench.json"

@@ -1,0 +1,65 @@
+---
+usage: >
+  Plot all the graphs by rendering the notebook.  Always reads from
+  standard-plots.md. Assumes tonb is used save work from the ipynb interactive
+  format back to md. This command overwrites the .png files and the
+  standard-plots.html from any previous run.
+
+options:
+  dbfile:
+    usage: >
+      The datasource name of the blocks database. parameters.yml file is used by default.
+    default: ""
+    short: d
+  prefix:
+    usage: >
+      The prefix for all generated image names and plot titles plot. parameters.yml file is used by default.
+    default: ""
+    short: p
+  firstblock:
+    default: 0
+    short: s
+  lastblock:
+    default: 0
+    short: e
+
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+
+        TUSKDIR=$(pwd)
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
+
+        PREFIX="${prefix}"
+        DBFILE="${dbfile}"
+        echo "PREFIX: ${PREFIX:+ -p plot_prefix ${PREFIX}}"
+        echo "DBFILE: ${DBFILE:+ -p dbfile ${DBFILE}}"
+
+        source ${pyenv}/bin/activate
+        KERNEL=bbench-${name}
+        echo "env: ${pyenv}"
+        echo "KERNEL: ${KERNEL}"
+
+        cat standard-plots.md \
+        | jupytext --from .md --to notebook --set-kernel ${KERNEL} --output - \
+        | papermill \
+            --kernel=${KERNEL} \
+            - - \
+            -f parameters.yml \
+            ${DBFILE:+ -p dbfile ${DBFILE}} \
+            ${PREFIX:+ -p plot_prefix ${PREFIX}} \
+            -p firstblock ${firstblock} \
+            -p lastblock ${lastblock} \
+        | jupyter nbconvert --stdin --to html --output standard-plots.html

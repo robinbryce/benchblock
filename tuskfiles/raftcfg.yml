@@ -1,0 +1,84 @@
+---
+usage: "inititialise for geth (no particular consensus)."
+args:
+  configdir:
+    usage: >
+      The config root directory.
+options:
+
+  name:
+    usage: >
+      see raft command
+    default: ""
+  nodesdir:
+    usage: "relative to configdir. each node gets a subdirectory here named node{N}"
+    default: nodes
+  maxnodes:
+    usage: "the total number of nodes for the network"
+    default: 5
+  genesis:
+    default: "genesis-in.json"
+  gendoc_balance:
+    default: "1000000000000000000000000000"
+  geth_image:
+    usage: "the docker image to use for geth-rrr"
+    default: "eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
+  delve_image:
+    usage: "the docker image to use for running geth-rrr in for remote debug"
+    default: "eu.gcr.io/fetlar-1/rrr-delve:fetlar-latest"
+  quorum_src:
+    usage: |
+        the host directory to be mounted as /go/src/quorum. must contain quorum clone.
+        only required if you need to interactively debug the node.
+    # TODO: adjust the compose file so this can be ../../quorum
+    default:
+      command: echo "${launchdir}/quorum"
+
+  raft_blocktime:
+    usage: |
+      the --raftblocktime cosensus parameter for starting geth (ms)
+    default: 50
+
+run:
+  - command:
+      exec: |
+        set -e
+
+        TUSKDIR=$(pwd)
+
+        cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
+        mkdir -p ${nodesdir}/node0
+
+
+        # we don't allow this to be set on the cli, if you want another
+        # env thats fine, just edit bench.json afterwords to point to yours
+        # and make sure you install the requirements.txt
+        pyenv="env"
+
+        echo "Initialising in: $(pwd)"
+
+        python3 -m venv ${pyenv}
+        source ${pyenv}/bin/activate
+        pip3 install -r ${TUSKDIR}/requirements.txt
+
+        NAME="${name}"
+        [[ "${NAME}" == "" ]] && NAME="raft${maxnodes}"
+
+        # generate the config from the options
+        cat <<JEND  > bench.json
+        {
+          "name": "${NAME}",
+          "pyenv": "${pyenv}",
+          "maxnodes": "${maxnodes}",
+          "nodesdir": "$(pwd)/${nodesdir}",
+          "quorum_src": "${quorum_src}",
+          "geth_image": "${geth_image}",
+          "delve_image": "${delve_image}",
+          "genesis": "${genesis}",
+          "gendoc_balance": "${gendoc_balance}",
+          "raft_blocktime": "${raft_blocktime}"
+        }
+        JEND
+
+        cat bench.json
+        echo "Wrote: $(pwd)/bench.json"

@@ -1,0 +1,43 @@
+---
+usage: "generate the rrr alpha.json docs required by rrrextra (for the genesis VRF seed)"
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+
+  - command:
+      exec: |
+        set -e
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
+
+        source ${pyenv}/bin/activate
+        cat <<PYEND | python3
+        import os, coincurve, sha3, secrets, pathlib
+
+        for i in range(int(os.environ['maxnodes'])):
+
+            dirname = f"{os.environ['nodesdir']}/node{i}"
+
+            key = open(f"{dirname}/key", 'r').read()
+            key = coincurve.PrivateKey.from_hex(key)
+
+            rawpub = coincurve.PublicKey.from_valid_secret(key.secret).format(compressed=False)
+            nodeid = sha3.keccak_256(rawpub[1:]).digest()
+            print(f"alpha[{i}] nodeid {nodeid.hex()}")
+
+            # This nodes contribution to the genesis seed alpha
+            alpha = secrets.token_bytes(32)
+            sig = key.sign_recoverable(alpha, hasher=None)
+            doc = f'{{"nodeid":"0x{nodeid.hex()}", "alpha": "0x{alpha.hex()}", "sig": "0x{sig.hex()}"}}'
+            with open(pathlib.Path(f"{dirname}/alpha.json"), "w") as f:
+                f.write(doc)
+                print(f"Wrote: {dirname}/alpha.json")
+        PYEND

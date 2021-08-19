@@ -113,7 +113,7 @@ class GAS:
         gps_cols = []
         for window in [1, 3, 5]:
             gps_cols.append(f.add_gups(window))
-        
+
         glps_cols = []
         for window in [1, 3, 5]:
             glps_cols.append(f.add_glps(window))

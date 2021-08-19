@@ -1,0 +1,60 @@
+---
+usage: "make static-nodes.json for all the raft nodes"
+options:
+  last:
+    usage: >
+      Set to the last node index to include (0 means all which is the default)
+    default: "0"
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+
+  - command:
+      exec: |
+        set -e
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
+
+        end=${last}
+        [ "${end}" == "0" ] && end=$((maxnodes -1))
+        export end
+        echo "raftstatic: end=$end"
+
+        source ${pyenv}/bin/activate
+
+        cat <<PYEND | python3
+        import os, json, coincurve, sha3, secrets, pathlib
+
+        static=[]
+
+        p2port="7200"
+        raftport="50000"
+
+        for i in range(int(os.environ['end']) + 1):
+
+            dirname = f"{os.environ['nodesdir']}/node{i}"
+
+            enode = open(f"{dirname}/enode", 'r').read()
+
+            static.append(
+              f"enode://{enode}@node{i}:{p2port}?discport=0&raftport={raftport}"
+            )
+
+        # now go round again and put a full copy in the right directory
+        for i in range(int(os.environ['end']) + 1):
+            datadir = f"{os.environ['nodesdir']}/node{i}/data"
+            pathlib.Path(datadir).mkdir(parents=True, exist_ok=True)
+            with open(pathlib.Path(datadir).joinpath("static-nodes.json"), "w") as f:
+                json.dump(static, f, indent=2, sort_keys=True)
+                f.flush()
+                print(f"Wrote: {datadir}/static-nodes.json")
+                print(json.loads(open(f"{datadir}/static-nodes.json").read()))
+        PYEND

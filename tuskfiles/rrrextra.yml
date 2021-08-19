@@ -1,0 +1,42 @@
+---
+usage: "generate the extradata hex string for the rrr genesis document"
+options:
+  showids:
+    short: "i"
+    type: bool
+
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+
+  - command:
+      exec: |
+        set -e
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
+
+        # we cd to run the rrr tool, so these need to be absoloute
+        nodesdir=$(cd ${nodesdir} && pwd)
+        node0dir=${nodesdir}/node0
+
+        SHOWIDS=""
+        ${showids} && SHOWIDS="--showids"
+
+        ALPHAS=""
+        for n in $(seq 0 $((${maxnodes} - 1))); do
+          ALPHAS="$ALPHAS ${nodesdir}/node${n}/alpha.json"
+        done
+
+        cd ${rrr_src}/tools
+
+        go run cmd/rrrctl/main.go genextra \
+            ${SHOWIDS} --datadir ${node0dir} $ALPHAS
+

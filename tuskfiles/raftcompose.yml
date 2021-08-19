@@ -1,0 +1,78 @@
+---
+usage: "make a docker-compose for a geth network from a base.yml and a node.yml"
+
+options:
+  compose_project:
+    default: "raft"
+  networkid:
+    default: "53456"
+  netrestrict:
+    # Use a different CIDR for each consensus type please. just bump the
+    # 3rd digit
+    default: 172.19.1.10/24
+
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+
+        TUSKDIR=$(pwd)
+
+        CONFIGVARS="${configvars} compose_project networkid netrestrict raft_blocktime"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
+        CONFIGDIR=$(pwd)
+
+        cat <<END > .env
+        COMPOSE_PROJECT_NAME=${name}
+        RAFT_CONSENSUS_OPTS="\
+        --raft --raftport 50000 --raftdnsenable --raftblocktime ${raft_blocktime}"
+        NETWORKID=${networkid}
+        NETRESTRICT=${netrestrict}
+        ETHERBASE=${gendoc_wallet}
+        QUORUM_SRC=${quorum_src}
+        NODESDIR=${nodesdir}
+        GETH_IMAGE= ${geth_image}
+        DELVE_IMAGE=${delve_image}
+        END
+        echo "Wrote .env"
+
+        # Merge in the appropriate number of copies of node.yml to the
+        # docker-compose.yml we are generating. As we do that add the
+        # numeric suffices to each nodes service entry and the working_dir
+        # it uses
+        cp ${TUSKDIR}/compose/raft/base.yml .
+        cp ${TUSKDIR}/compose/raft/node.yml .
+        cp base.yml docker-compose.yml
+
+        # each document fragment has to be valid. so they all need the
+        # x-node-defaults anchor to be defined.
+        cat <<END > tmp.yml
+        x-node-defaults:
+          &node-defaults
+        END
+
+        PORT=8300
+        for i in $(seq 0 $((${maxnodes} - 1)))
+        do
+            VAL=$i EXPOSED="\"${PORT}:\"" yq eval '
+              .node |= .working_dir += env(VAL) |
+              del(.x-node-defaults) |
+              .node.ports[0] |= . = env(EXPOSED) + . |
+              with_entries(.key |= .  + env(VAL))
+            ' node.yml
+            PORT=$((PORT + 1))
+        done >> tmp.yml
+        yq eval-all --inplace '
+            select(fileIndex == 0) * {"services": select(fileIndex == 1)}
+            | del(.services.x-node-defaults)' docker-compose.yml tmp.yml
+        echo "Wrote docker-compose.yml"

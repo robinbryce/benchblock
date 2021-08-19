@@ -1,0 +1,58 @@
+---
+usage: "rrr genesis - keeps existing keys and alpha contributions"
+options:
+  sudo:
+    type: bool
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+
+        TUSKDIR=$(pwd)
+
+        CONFIGVARS="${configvars}"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
+
+        CONFIGDIR=$(pwd)
+
+        cp ${TUSKDIR}/compose/rrr/genesis-in.json .
+
+        pushd ${launchdir} # restore launchdir before recursive invoke
+
+          EXTRADATA=$(tusk -qf ${thistusk} rrrextra ${configdir})
+          tusk -qf ${thistusk} gethgendoc ${configdir} --extra $EXTRADATA | tee ${CONFIGDIR}/genesis.json
+
+        popd
+
+        # clear out all the data dirs first to avoid mixed state if we fail
+        # half way through
+        ${sudo} && dosudo="sudo" || dosudo=""
+
+        end=$((maxnodes - 1))
+        for i in $(seq 0 ${end}); do
+          ${dosudo} rm -rf ${nodesdir}/node$i/data
+        done
+
+        for i in $(seq 0 ${end}); do
+          rm -rf ${nodesdir}/node$i/data
+        done
+
+        genesis_doc=$(pwd)/genesis.json
+        for i in $(seq 0 ${end}); do
+          geth="docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) ${geth_image} --nousb"
+          ${geth} \
+              --datadir=$(pwd)/nodes/node${i}/data  \
+              --nodekey $(pwd)/nodes/node${i}/key \
+              init $(pwd)/genesis.json
+        done
+

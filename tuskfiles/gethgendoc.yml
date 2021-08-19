@@ -1,0 +1,48 @@
+---
+usage: render the template gensis document refered to by the configuration
+options:
+  extra:
+    usage: "extraData for the genesis doc"
+    default: ""
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
+
+        EXTRADATA=""
+        [ -n "${gendoc_extra}" ] && EXTRADATA="${gendoc_extra}"
+        [ -n "${extra}" ] && EXTRADATA="${extra}"
+        export EXTRADATA
+
+        cat <<PYEND | python3
+        import os, json
+        from pathlib import Path
+
+        templatefile = Path(os.environ["genesis"]).resolve()
+
+        o = json.load(open(templatefile))
+        try:
+            del o["alloc"]["0x0000000000000000000000000000000000000000"]
+        except KeyError:
+            pass
+        o["alloc"][os.environ["gendoc_wallet"]] = dict(balance="${gendoc_balance}")
+
+        extraData = os.environ["EXTRADATA"]
+        if not extraData.startswith("0x"):
+            extraData = "0x" + extraData
+        o["extraData"] = extraData
+        print(json.dumps(o, indent=2, sort_keys=True))
+        PYEND
+

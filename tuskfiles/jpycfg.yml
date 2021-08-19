@@ -1,0 +1,39 @@
+---
+usage: "initialise jupyter based results reports"
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+
+        TUSKDIR=$(pwd)
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
+
+        cat <<END > parameters.yml
+        dbfile: "${name}.db"
+        plot_prefix: "${name}"
+        END
+
+        python3 -m venv ${pyenv}
+        source ${pyenv}/bin/activate
+        pip3 install -e ${TUSKDIR}/jupyter-support
+
+        KERNEL=bbench-${name}
+        echo "KERNEL: ${KERNEL}"
+        # --sys-prefix uses the *virtual-env* sys-prefix, which is what we
+        # want
+        python3 -m ipykernel install --sys-prefix --name ${KERNEL}
+        cp ${TUSKDIR}/jupyter-support/standard-plots.md .
+        cat standard-plots.md | jupytext \
+          --set-kernel ${KERNEL} \
+          --from .md --to notebook --output standard-plots.ipynb

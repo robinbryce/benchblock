@@ -1,0 +1,90 @@
+---
+usage: "regenerate all node keys and wallets"
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+
+  - command:
+      exec: |
+        set -e
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
+
+        source ${pyenv}/bin/activate
+
+        # Use the address of node0's node key as the genesis account (which
+        # gets the gendoc_balance)
+        source ${pyenv}/bin/activate
+
+        cat <<PYEND | python3
+        import os, json, coincurve
+        from pathlib import Path
+
+        for i in range(int(os.environ['maxnodes'])):
+
+            dirname = f"{os.environ['nodesdir']}/node{i}"
+
+            Path(dirname).mkdir(parents=True, exist_ok=True)
+
+            # delete the keys first so we don't ever end up in a weird state
+            for fn in ("key", "enode"):
+                try:
+                    os.remove(f"{dirname}/{fn}")
+                except OSError:
+                  pass
+
+            p = coincurve.PrivateKey()
+            key = p.to_hex()
+
+            x, y = p.public_key.point()
+            x = x.to_bytes(length=256//8, byteorder="big").hex()
+            y = y.to_bytes(length=256//8, byteorder="big").hex()
+            enode = x + y
+
+            for fn in ("key", "enode"):
+                with open(Path(f"{dirname}/{fn}"), "w") as f:
+                    f.write(locals()[fn])
+                    print(f"Wrote {dirname}/{fn}")
+
+        # Now make node0 the genesis wallet
+        keyfile = f"{os.environ['nodesdir']}/node0/key"
+        pub = None
+        with open(Path(keyfile)) as f:
+            key = coincurve.PrivateKey.from_hex(f.read())
+            pub = key.public_key.format(compressed=False)[1:]
+        addr = pub[-20:]
+
+        j = None
+        with open("bench.json") as f:
+            j = json.load(f)
+        j["gendoc_wallet"] = addr.hex()
+        j["bootnode0"] = pub.hex()
+        print(f"Wrote bootnode0: {pub.hex()}")
+        with open("bench.json", "w") as f:
+            json.dump(j, f, indent=2, sort_keys=True)
+        PYEND
+        echo "gethkeys: done"
+        cat bench.json
+        echo "updated gendoc_wallet: done"
+
+
+        cat <<END > bootnodes.env
+        BOOTNODE0_PUB=$(cat ${nodesdir}/node0/enode)
+        END
+        cat bootnodes.env
+        echo "Updated bootnode.env for docker-compose"
+
+        if [ -f env.env ]; then
+          cat env.env bootnodes.env > .env
+          cat .env
+          echo "Updated .env for docker-compose"
+        fi
+
