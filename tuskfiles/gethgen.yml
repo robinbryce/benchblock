@@ -32,7 +32,6 @@ run:
         [ -n "${EXTRADATA}" ] && EXTRADATA=${gendoc_extra}
         [ -n "${EXTRADATA}" ] && EXTRADATA=""
 
-
         CONFIGDIR=$(pwd)
 
         cp ${TUSKDIR}/compose/${genesisfor}/genesis-in.json .

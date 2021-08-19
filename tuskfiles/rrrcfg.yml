@@ -39,7 +39,6 @@ options:
       total roundlength in milliseconds. must be greater than intent + confirm (rember to
       allow for block disemination, 2s  or more is fair)
     default: 5000
-
   nodesdir:
     usage: "relative to configdir. each node gets a subdirectory here named node{N}"
     default: nodes

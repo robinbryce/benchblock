@@ -10,6 +10,14 @@ options:
     # Use a different CIDR for each consensus type please. just bump the
     # 3rd digit
     default: 172.19.1.10/24
+  gastarget:
+    usage: "sets the --miner.gastarget option for the nodes"
+    default: "18200000"
+  gaslimit:
+    usage: "sets the --miner.gaslimit option for the nodes"
+    default: "18200000"
+  recommit:
+    usage: "sets the --miner.recommit option for the nodes"
 
 args:
   configdir:
@@ -31,6 +39,7 @@ run:
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
         CONFIGDIR=$(pwd)
+        RECOMMIT="${recommit}"
 
         cat <<END > .env
         COMPOSE_PROJECT_NAME=${name}
@@ -43,6 +52,7 @@ run:
         NODESDIR=${nodesdir}
         GETH_IMAGE= ${geth_image}
         DELVE_IMAGE=${delve_image}
+        GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
         END
         echo "Wrote .env"
 

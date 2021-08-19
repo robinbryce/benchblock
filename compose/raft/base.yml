@@ -34,8 +34,11 @@ x-node-env-defaults:
    --http.vhosts '*'"
   WS_OPTS: "--ws --wsport 8400 --wsorigins '*'"
   MINER_OPTS: "\
-   --mine --miner.threads 1 --miner.etherbase ${ETHERBASE} \
-   --miner.gastarget 18200000 --miner.gaslimit 18200000"
+   --mine --miner.threads 1 --miner.etherbase ${ETHERBASE}"
+
+  # --miner.gastarget --miner.gaslimit
+  GAS_OPTS: "${GAS_OPTS}"
+
   LOG_OPTS: "--vmodule consensus/*=5,miner/*=7,eth/*=2,p2p/*=3 --verbosity 3"
   # --debug adds source and line no
   # LOG_OPTS: "--debug --vmodule consensus/*=7,miner/*=5 --verbosity 3"
@@ -86,7 +89,7 @@ x-node-base:
       # It is assumed that the service entry sets the working_dir to the
       # correct node directory for the --nodekey and --datadir options
       $${RUN_GETH_CMD} \
-          $${RAFT_OPTS} \
+          $${RAFT_OPTS} $${GAS_OPTS} \
           --networkid $${NETWORKID} \
           $${NAT_OPTS} $${DISCOVERY_OPTS} \
           --port $${P2P_PORT} \

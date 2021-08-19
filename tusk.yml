@@ -54,6 +54,7 @@ tasks:
       geth_image:
         usage: "the docker image to use for geth-rrr"
         default: "eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
+
       delve_image:
         usage: "the docker image to use for running geth-rrr in for remote debug"
         default: "eu.gcr.io/fetlar-1/rrr-delve:fetlar-latest"
@@ -64,6 +65,18 @@ tasks:
             only required if you need to interactively debug the node.
         default:
           command: echo "${launchdir}/quorum"
+
+      gastarget:
+        usage: "sets the --miner.gastarget option for the nodes"
+        default: "18200000"
+
+      gaslimit:
+        usage: "sets the --miner.gaslimit option for the nodes"
+        default: "18200000"
+
+      recommit:
+        usage: "sets the --miner.recommit option for the nodes."
+        default: "2s"
 
     args:
       configdir:
@@ -97,6 +110,10 @@ tasks:
             - ${configdir}
       - task:
           name: raftcompose
+          options:
+            gastarget: "${gastarget}"
+            gaslimit: "${gaslimit}"
+            recommit: "${recommit}"
           args:
             - ${configdir}
 
@@ -130,6 +147,18 @@ tasks:
       rrr_src:
         default:
           command: echo "${launchdir}/go-rrr"
+
+      gastarget:
+        usage: "sets the --miner.gastarget option for the nodes"
+        default: "18200000"
+
+      gaslimit:
+        usage: "sets the --miner.gaslimit option for the nodes"
+        default: "18200000"
+
+      recommit:
+        usage: "sets the --miner.recommit option for the nodes."
+        default: "2s"
 
       maxnodes:
         usage: "the total number of nodes for the network"
@@ -168,6 +197,10 @@ tasks:
             - ${configdir}
       - task:
           name: rrrcompose
+          options:
+            gastarget: "${gastarget}"
+            gaslimit: "${gaslimit}"
+            recommit: "${recommit}"
           args:
             - ${configdir}
 
