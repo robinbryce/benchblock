@@ -56,10 +56,11 @@ run:
         | jupytext --from .md --to notebook --set-kernel ${KERNEL} --output - \
         | papermill \
             --kernel=${KERNEL} \
+            --no-progress-bar \
             - - \
             -f parameters.yml \
             ${DBFILE:+ -p dbfile ${DBFILE}} \
             ${PREFIX:+ -p plot_prefix ${PREFIX}} \
             -p firstblock ${firstblock} \
             -p lastblock ${lastblock} \
-        | jupyter nbconvert --stdin --to html --output standard-plots.html
+          | jupyter nbconvert --stdin --to html --output standard-plots.html

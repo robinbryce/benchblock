@@ -26,35 +26,36 @@ lastblock = 5000
 # Summary
 
 ```python tags=[hide-output, show-input]
-import bbench.db
-blocks = bbench.db.Blocks(dbfile)
+import bbplots.db as db
+import bbplots.plots as plots
+import matplotlib
+
+blocks = db.Blocks(dbfile)
 for k, v in blocks.common_stats(firstblock=firstblock, lastblock=lastblock).items():
     print(f"{k}={v}")
 ```
 
 ```python
-import bbench.plots
-import matplotlib.pyplot
 
 matplotlib.rcParams["agg.path.chunksize"] = 10000
 
-bbench.plots.GAS(blocks, plot_prefix=plot_prefix).plot(
+plots.GAS(blocks, plot_prefix=plot_prefix).plot(
     matplotlib.pyplot, "{plot_prefix}-{firstblock}-{lastblock}-gas.png",
     logy=False, firstblock=firstblock, lastblock=lastblock
     )
 
-bbench.plots.BSZ(blocks, plot_prefix=plot_prefix).plot(
+plots.BSZ(blocks, plot_prefix=plot_prefix).plot(
     matplotlib.pyplot, "{plot_prefix}-{firstblock}-{lastblock}-bsz.png",
     firstblock=firstblock, lastblock=lastblock
     )
 
 
-bbench.plots.BT(blocks, plot_prefix=plot_prefix).plot(
+plots.BT(blocks, plot_prefix=plot_prefix).plot(
     matplotlib.pyplot, "{plot_prefix}-{firstblock}-{lastblock}-bt.png",
     logy=False, firstblock=firstblock, lastblock=lastblock
     )
 
-bbench.plots.TPS(blocks, plot_prefix=plot_prefix).plot(
+plots.TPS(blocks, plot_prefix=plot_prefix).plot(
     matplotlib.pyplot, "{plot_prefix}-{firstblock}-{lastblock}-tps.png",
     firstblock=firstblock, lastblock=lastblock
     )

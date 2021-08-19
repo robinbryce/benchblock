@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 
 HERE = os.path.dirname(__file__)
 REPO_URL = 'https://github.com/robinbryce/blockbench/jupyiter-support/'
-NAME = "bbench"
+NAME = "blockbench-plots"
 
 with open(os.path.join(HERE, 'README.md')) as FF:
     DESC = FF.read()

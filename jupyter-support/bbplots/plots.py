@@ -6,7 +6,7 @@ MIT License
 
 """
 import matplotlib.pyplot
-from bbench.blockframe import Frame
+from bbplots.blockframe import Frame
 
 class TPS:
     def __init__(self, blocks, plot_prefix=""):
