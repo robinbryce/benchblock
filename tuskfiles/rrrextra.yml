@@ -37,6 +37,18 @@ run:
 
         cd ${rrr_src}/tools
 
-        go run cmd/rrrctl/main.go genextra \
-            ${SHOWIDS} --datadir ${node0dir} $ALPHAS
+        EXTRADATA=$(go run cmd/rrrctl/main.go genextra \
+            ${SHOWIDS} --datadir ${node0dir} $ALPHAS)
 
+        cat <<PYEND | python3
+        import os, sys, json
+        j = None
+        with open("bench.json") as f:
+            j = json.load(f)
+        if j is None:
+            sys.exit(-1)
+        j["gendoc_extra"] = os.environ["EXTRADATA"]
+        with open("bench.json", "w") as f:
+            json.dump(j, f, indent=2, sort_keys=True)
+        PYEND
+        echo $EXTRADATA

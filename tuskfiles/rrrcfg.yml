@@ -5,6 +5,7 @@ args:
     usage: >
       The config root directory.
 options:
+
   name:
     usage: >
       See rrr command
@@ -39,32 +40,25 @@ options:
       total roundlength in milliseconds. must be greater than intent + confirm (rember to
       allow for block disemination, 2s  or more is fair)
     default: 5000
+
+  recommit:
+    usage: "sets the --miner.recommit option for the nodes."
+    default: "2s"
+
   nodesdir:
     usage: "relative to configdir. each node gets a subdirectory here named node{N}"
     default: nodes
-  maxnodes:
-    usage: "the total number of nodes for the network"
-    default: 17
-  genesis:
-    default: "genesis-in.json"
-  gendoc_balance:
-    default: "1000000000000000000000000000"
-  geth_image:
-    usage: "the docker image to use for geth-rrr"
-    default: "eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
-  delve_image:
-    usage: "the docker image to use for running geth-rrr in for remote debug"
-    default: "eu.gcr.io/fetlar-1/rrr-delve:fetlar-latest"
-  quorum_src:
-    usage: |
-        the host directory to be mounted as /go/src/quorum. must contain quorum clone.
-        only required if you need to interactively debug the node.
-    # TODO: adjust the compose file so this can be ../../quorum
-    default:
-      command: echo "${launchdir}/quorum"
   rrr_src:
     default:
       command: echo "${launchdir}/go-rrr"
+  # these declarations duplicate the global options in the parent tusk. because
+  # otherwise they can't be supplied to  - task: subcommands
+  geth_image:
+  delve_image:
+  quorum_src:
+  maxnodes:
+  gendoc_wallet:
+  nodeallocs:
 
 run:
   - command:
@@ -104,7 +98,9 @@ run:
           "delve_image": "${delve_image}",
           "rrr_src": "${rrr_src}",
           "genesis": "${genesis}",
+          "gendoc_wallet": "${gendoc_wallet}",
           "gendoc_balance": "${gendoc_balance}",
+          "nodeallocs": "${nodeallocs}",
           "numcandidates": "${numcandidates}",
           "numendorsers": "${numendorsers}",
           "committeequorum": "${committeequorum}",

@@ -1,5 +1,5 @@
 ---
-usage: "inititialise for geth/raft. for any options that have no help, please see the top level raft command"
+usage: "inititialise for geth/ibft. (please see the ibft command for help on options missing help)"
 args:
   configdir:
     usage: >
@@ -7,28 +7,27 @@ args:
 options:
 
   name:
-    usage: >
-      see raft command
-    default: ""
 
   nodesdir:
-    usage: "relative to configdir. each node gets a subdirectory here named node{N}"
     default: nodes
 
   genesis:
     default: "genesis-in.json"
 
-  raft_blocktime:
+  istanbul_tools_src:
     usage: |
-      the --raftblocktime cosensus parameter for starting geth (ms)
-    default: 50
-
-  recommit:
-    usage: "sets the --miner.recommit option for the nodes."
-    default: ""
+      git clone of https://github.com/ConsenSys/istanbul-tools.git
+    default:
+      command: echo "${launchdir}/istanbul-tools"
 
   # these declarations duplicate the global options in the parent tusk. because
-  # otherwise they can't be supplied to  - task: subcommands
+  # otherwise they can't be supplied to tusk sub command invocation. Eg, for
+  # calling task like
+  # -run:
+  #   - task:
+  #       name: ibftcfg
+  #       options:
+  #         only options that are declared here can be based in this stanza
   geth_image:
   delve_image:
   quorum_src:
@@ -44,7 +43,11 @@ run:
         TUSKDIR=$(pwd)
 
         cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
+        CONFIGDIR=$(pwd)
+
         mkdir -p ${nodesdir}/node0
+        mkdir -p ${configdir}/bin
+
 
         # we don't allow this to be set on the cli, if you want another
         # env thats fine, just edit bench.json afterwords to point to yours
@@ -58,25 +61,38 @@ run:
         pip3 install -r ${TUSKDIR}/requirements.txt
 
         NAME="${name}"
-        [[ "${NAME}" == "" ]] && NAME="raft${maxnodes}"
+        [[ "${NAME}" == "" ]] && NAME="ibft${maxnodes}"
+
+        NODESDIR=$(pwd)/${nodesdir}
+
+        # TODO: use this idiom for all 'cfg commands
+        PYENVDIR=$(cd ${launchdir} && cd ${pyenv} && pwd)
 
         # generate the config from the options
-        cat <<JEND  > bench.json
+        cat <<END  > bench.json
         {
           "name": "${NAME}",
-          "pyenv": "${pyenv}",
+          "pyenv": "${PYENVDIR}",
           "maxnodes": "${maxnodes}",
-          "nodesdir": "$(pwd)/${nodesdir}",
+          "nodesdir": "${NODESDIR}",
           "quorum_src": "${quorum_src}",
+          "istanbul_tools_src": "${istanbul_tools_src}",
           "geth_image": "${geth_image}",
           "delve_image": "${delve_image}",
           "genesis": "${genesis}",
           "gendoc_wallet": "${gendoc_wallet}",
-          "nodeallocs": "${nodeallocs}",
           "gendoc_balance": "${gendoc_balance}",
-          "raft_blocktime": "${raft_blocktime}"
+          "nodeallocs": "${maxnodes}"
         }
-        JEND
+        END
 
         cat bench.json
         echo "Wrote: $(pwd)/bench.json"
+        exit 0
+
+        cd ${launchdir} && cd ${istanbul_tools_src}
+        make
+
+        cp build/bin/istanbul ${CONFIGDIR}/bin/
+        cd ${CONFIGDIR}
+

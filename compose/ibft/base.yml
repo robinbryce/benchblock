@@ -1,13 +1,8 @@
 version: "3.8"
 
-# This compose file supports running a prebuild image, running via go run from
-# mounted sources, and running under dlv for host debugging. Network discovery
-# is enabled (and restricted to a CIDR), the first compose node is the
-# bootnode
-#
-# The debug service exists to build the image that is used to host the go tool
-# chain for go run and dlv modes. It only needs to be built if the base go lang
-# version is updated or delve needs to be upgraded.
+# This compose file supports running a stock image, running via go run from
+# mounted go-quorum sources, and running under dlv for host debugging. See
+# compose/delve-debug/README.md
 #
 # An .env file which sets the following variables MUST be in place
 # - GETH_IMAGE: image name for the geth node (must be go-ethereum/go-quorum
@@ -16,7 +11,6 @@ version: "3.8"
 #   for geth
 # - NETRESTRICT: (set to 172.19.0.10/24 or something compatible with your hosts networking)
 # - ETHERBASE:  any wallet address
-# - BOOTNODE0_PUB: must be the public key of the node0
 #
 # An .env file which sets the following variables MAY be in place
 # - QUORUM_SRC path to rrr's quorum fork top directory 'go-etherum'. Required
@@ -24,16 +18,12 @@ version: "3.8"
 # - DELVE_IMAGE: image name for a go lang image with the delve debugger installed
 #   Required only for the node-gorun or node-debug configurations
 
-# If any are set to node-gorun or node-debug, it must be set.
-
 x-node-env-defaults:
   &node-env-defaults
   NETWORKID: "${NETWORKID}"
   PRIVATE_CONFIG: ignore
-  RRR_OPTS: "${RRR_CONSENSUS_OPTS}"
-  # DISCOVERY_OPTS: "--nodiscover"
-  NAT_OPTS: "--nat=none"
-  DISCOVERY_OPTS: "--netrestrict=${NETRESTRICT} --bootnodes=enode://${BOOTNODE0_PUB}@node0:7200"
+  IBFT_OPTS: "${IBFT_CONSENSUS_OPTS}"
+  DISCOVERY_OPTS: "--nodiscover"
   P2P_PORT: 7200
   RPC_OPTS: "\
    --allow-insecure-unlock \
@@ -43,7 +33,12 @@ x-node-env-defaults:
    --http.corsdomain '*' \
    --http.vhosts '*'"
   WS_OPTS: "--ws --wsport 8400 --wsorigins '*'"
-  MINER_OPTS: "--mine --miner.threads 1 --miner.etherbase ${ETHERBASE}"
+  MINER_OPTS: "\
+   --mine --miner.threads 1 --miner.etherbase ${ETHERBASE}"
+
+  # --miner.gastarget --miner.gaslimit
+  GAS_OPTS: "${GAS_OPTS}"
+
   LOG_OPTS: "--vmodule consensus/*=5,miner/*=7,eth/*=2,p2p/*=3 --verbosity 3"
   # --debug adds source and line no
   # LOG_OPTS: "--debug --vmodule consensus/*=7,miner/*=5 --verbosity 3"
@@ -81,14 +76,20 @@ x-node-base:
     - -cx
     - |
       NODE_DIR=$$(pwd)
+      # The compose file starts us in the node director (eg nodes/node0)
       cd $${LAUNCH_DIR}
+
+      # All nodes are in static-nodes.json. We don't support
+      # addPeer/removePeer. Instead, just re-generate the network with more
+      # nodes and start again. (this tooling isn't aimed at long lived
+      # networks)
+
       # The RUN_GETH_CMD variable is set by the environment of each of the
       # supported x-node-{flavour}'s, the others all come from node-env-defaults
       # It is assumed that the service entry sets the working_dir to the
-      # correct node directory for the --nodek
-      # y and --datadir options
+      # correct node directory for the --nodekey and --datadir options
       $${RUN_GETH_CMD} \
-          $${RRR_OPTS} $${GAS_OPTS} \
+          $${IBFT_OPTS} $${GAS_OPTS} \
           --networkid $${NETWORKID} \
           $${NAT_OPTS} $${DISCOVERY_OPTS} \
           --port $${P2P_PORT} \
@@ -96,7 +97,7 @@ x-node-base:
           --datadir $${NODE_DIR}/data \
           --gcmode archive  --syncmode full \
           --nousb \
-          --rpcapi "rrr,admin,db,eth,debug,miner,net,shh,txpool,personal,web3,quorum" \
+          --rpcapi "istanbul,admin,db,eth,debug,miner,net,shh,txpool,personal,web3,quorum" \
           $${MINER_OPTS} \
           $${RPC_OPTS} \
           $${LOG_OPTS}
@@ -111,7 +112,7 @@ x-node-defaults:
     # Defined in the .env file
     - ${NODESDIR}:/nodes
   networks:
-    rrr:
+    ibft:
 
 x-node-debug:
   &node-debug
@@ -126,10 +127,10 @@ x-node-debug:
     - ${QUORUM_SRC}:/go/src/quorum
     - ${NODESDIR}:/nodes
   ports:
-    - "2345:2345"
     - "8545:8300"
+    - "2345:2345"
   networks:
-    rrr:
+    ibft:
 
 x-node-gorun:
   &node-gorun
@@ -142,13 +143,14 @@ x-node-gorun:
     - go-pkg-volume:/go/pkg
     # These variables are defined in the .env file
     - ${QUORUM_SRC}:/go/src/quorum
-    - ${RRR_SRC}:/go/src/go-rrr
     - ${NODESDIR}:/nodes
   # ports from node-base
 
 
 networks:
-  rrr:
+  # the isolated network is only realy useful if discovery is being used. only
+  # the rrr config does that for now.
+  ibft:
     internal: false
     ipam:
       config:
@@ -156,23 +158,17 @@ networks:
 
 services:
 
-  # * One of the nodes can be set to << : *node-debug, to be debuged via a
-  #   delve connection from the host, but the others must all be node-default or
-  #   node-gorun
-  # * Any can be set to << : *node-gorun, but more than 3 or 4 set that way
-  #   significantly slow down startup.
-  #   node-defaults assumes the image referenced by x-node-defaults has been
-  #   built.
   node0:
-    # << : *node-debug
+    # <<: *node-debug
     <<: *node-defaults
     working_dir: /nodes/node0
     ports:
       - "8300:8300"
+      # if node-debug is used above, then the debug port
+      # must be exposed
+      # - "2345:2345"
 
-  # The node entries are generated using this rune
-  # for i in $(seq 0 ${maxnodes}); do VAL=$i yq eval '{"node": .node} | with_entries(.key |= .  + env(VAL))' node.yml; done
-
+  # The node entries are generated using yq and the node.yml
 
 volumes:
   go-pkg-volume:

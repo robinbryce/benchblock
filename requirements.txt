@@ -3,3 +3,4 @@ eth-utils~=1.9.5
 rlp~=1.2.0
 coincurve~=15.0.0
 pysha3~=1.0.2
+rlp~=1.2.0

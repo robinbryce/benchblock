@@ -16,7 +16,7 @@ run:
   - command:
       exec: |
         set -e
-        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        CONFIGVARS="${configvars} nodeallocs gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
@@ -26,23 +26,47 @@ run:
         [ -n "${extra}" ] && EXTRADATA="${extra}"
         export EXTRADATA
 
+        source ${pyenv}/bin/activate
         cat <<PYEND | python3
-        import os, json
+        import os, json, coincurve, sha3
         from pathlib import Path
+
+        nodesdir = os.environ['nodesdir']
+
+        def readnodeaddr(nodenum):
+            keyfile = f"{nodesdir}/node{nodenum}/key"
+            pub = None
+            with open(Path(keyfile)) as f:
+                key = coincurve.PrivateKey.from_hex(f.read())
+                pub = key.public_key.format(compressed=False)[1:]
+                addr = sha3.keccak_256(pub).digest()[-20:]
+                return addr
 
         templatefile = Path(os.environ["genesis"]).resolve()
 
+        # if we have neither nodeallocs nor an explicit genesis wallet, make a
+        # wallet for node0's key.
+        maxnodes = int(os.environ['maxnodes'])
+        nodeallocs = int(os.environ.get('nodeallocs', '0'))
+        gendoc_wallet = os.environ.get('gendoc_wallet', '')
+        gendoc_balance = os.environ.get("gendoc_balance", "1230000000000000000000000000")
+
+        allocs = {}
+        if not gendoc_wallet and nodeallocs == 0:
+            allocs[readnodeaddr(0).hex()] = dict(balance=gendoc_balance)
+        else:
+            if gendoc_wallet:
+                allocs[gendoc_wallet] = dict(balance=gendoc_balance)
+            for i in range(nodeallocs):
+                allocs[readnodeaddr(i).hex()] = dict(balance=gendoc_balance)
+
         o = json.load(open(templatefile))
-        try:
-            del o["alloc"]["0x0000000000000000000000000000000000000000"]
-        except KeyError:
-            pass
-        o["alloc"][os.environ["gendoc_wallet"]] = dict(balance="${gendoc_balance}")
+        o["alloc"] = allocs
 
         extraData = os.environ["EXTRADATA"]
-        if not extraData.startswith("0x"):
+        if extraData and not extraData.startswith("0x"):
             extraData = "0x" + extraData
-        o["extraData"] = extraData
+        if extraData:
+            o["extraData"] = extraData
         print(json.dumps(o, indent=2, sort_keys=True))
         PYEND
-

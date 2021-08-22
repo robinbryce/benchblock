@@ -1,0 +1,64 @@
+---
+usage: "generate the extradata hex string for the ibft genesis document"
+options:
+  showids:
+    short: "i"
+    type: bool
+
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+
+  - command:
+      exec: |
+        set -e
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
+
+        source ${pyenv}/bin/activate
+
+        cat <<PYEND | python3
+        import os, json, coincurve, rlp, sha3
+        from pathlib import Path
+
+        ibftextravanitylen = 32
+        ibftseallen = 65
+
+        validators = []
+
+        vanity = bytes.fromhex("00") * ibftextravanitylen
+
+        for i in range(int(os.environ['maxnodes'])):
+
+            keyfile = Path(os.environ['nodesdir']).joinpath(f"node{i}", "key")
+            pub = None
+            with open(keyfile) as f:
+                key = coincurve.PrivateKey.from_hex(f.read())
+                pub = key.public_key.format(compressed=False)[1:]
+                addr = sha3.keccak_256(pub).digest()[-20:]
+            validators.append(addr)
+
+        istanbulixtra = [
+          validators,
+          b'', # Seal - a single zero length byte-string
+          [], # CommittedSeal - empty list of byte-strings
+        ]
+
+        extra = "0x" + (vanity + rlp.encode(istanbulixtra)).hex()
+        j = None
+        with open("bench.json") as f:
+            j = json.load(f)
+            j["gendoc_extra"] = extra
+        if j is not None:
+            with open("bench.json", "w") as f:
+                json.dump(j, f, indent=2, sort_keys=True)
+        print(extra)
+        PYEND

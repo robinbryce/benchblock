@@ -1,0 +1,51 @@
+---
+usage: "make static-nodes.json for all the ibft nodes"
+options:
+  last:
+    usage: >
+      Set to the last node index to include (0 means all which is the default)
+    default: "0"
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+
+  - command:
+      exec: |
+        set -e
+        CONFIGVARS="${configvars}"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
+
+        end=${last}
+        [ "${end}" == "0" ] && end=$((maxnodes -1))
+        export end
+
+        cat <<PYEND | python3
+        import os, json, pathlib
+
+        nodesdir=os.environ["nodesdir"]
+
+        static=[]
+
+        p2port="7200"
+
+        for i in range(int(os.environ['end']) + 1):
+
+            dirname = f"{nodesdir}/node{i}"
+            enode = open(f"{dirname}/enode", 'r').read()
+            static.append(
+              f"enode://{enode}@node{i}:{p2port}?discport=0"
+            )
+
+        with open("static-nodes.json", "w") as f:
+            json.dump(static, f, indent=2, sort_keys=True)
+            f.flush()
+            print(f"Wrote: {nodesdir}/static-nodes.json")
+        PYEND

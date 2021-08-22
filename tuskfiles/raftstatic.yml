@@ -58,3 +58,4 @@ run:
                 print(f"Wrote: {datadir}/static-nodes.json")
                 print(json.loads(open(f"{datadir}/static-nodes.json").read()))
         PYEND
+        echo "okokok"

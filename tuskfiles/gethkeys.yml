@@ -13,7 +13,7 @@ run:
   - command:
       exec: |
         set -e
-        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance nodeallocs"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
@@ -54,7 +54,8 @@ run:
                     f.write(locals()[fn])
                     print(f"Wrote {dirname}/{fn}")
 
-        # Now make node0 the genesis wallet
+        # Now record the node0 pub key as the bootnode address (not all
+        # configurations support discovery)
         keyfile = f"{os.environ['nodesdir']}/node0/key"
         pub = None
         with open(Path(keyfile)) as f:
@@ -65,16 +66,13 @@ run:
         j = None
         with open("bench.json") as f:
             j = json.load(f)
-        j["gendoc_wallet"] = addr.hex()
         j["bootnode0"] = pub.hex()
-        print(f"Wrote bootnode0: {pub.hex()}")
         with open("bench.json", "w") as f:
             json.dump(j, f, indent=2, sort_keys=True)
+        print(f"Wrote bootnode0 to config: {pub.hex()}")
         PYEND
         echo "gethkeys: done"
         cat bench.json
-        echo "updated gendoc_wallet: done"
-
 
         cat <<END > bootnodes.env
         BOOTNODE0_PUB=$(cat ${nodesdir}/node0/enode)

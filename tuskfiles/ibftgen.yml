@@ -1,12 +1,19 @@
 ---
-usage: "geth genral purpose genesis - keeps existing keys and so on"
+usage: "rrr genesis - keeps existing keys and alpha contributions"
 options:
   sudo:
     type: bool
-  consensus:
+  genesisfor:
     default: raft
   extradata:
     default: ""
+
+  mixhash:
+    usage: >
+      for ibft set this to 0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365
+    default: ""
+  chainid:
+    default: "12345678"
 
 args:
   configdir:
@@ -23,19 +30,21 @@ run:
 
         TUSKDIR=$(pwd)
 
-        CONFIGVARS="${configvars}"
+        CONFIGVARS="${configvars} gendoc_extra"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
         EXTRADATA="${extradata}"
+        [ -n "${EXTRADATA}" ] && EXTRADATA=${gendoc_extra}
+        [ -n "${EXTRADATA}" ] && EXTRADATA=""
 
         CONFIGDIR=$(pwd)
 
-        cp ${TUSKDIR}/compose/${consensus}/genesis-in.json .
+        cp ${TUSKDIR}/compose/${genesisfor}/genesis-in.json .
 
         pushd ${launchdir} # restore launchdir before recursive invoke
-          tusk -qf ${thistusk} gethgendoc ${configdir} ${EXTRADATA:+  --extra "$EXTRADATA"} | tee ${CONFIGDIR}/genesis.json
+          tusk -qf ${thistusk} gethgendoc ${configdir} --extra "$EXTRADATA" | tee ${CONFIGDIR}/genesis.json
         popd
 
         # clear out all the data dirs first to avoid mixed state if we fail
@@ -47,6 +56,10 @@ run:
           ${dosudo} rm -rf ${nodesdir}/node$i/data
         done
 
+        for i in $(seq 0 ${end}); do
+          rm -rf ${nodesdir}/node$i/data
+        done
+
         genesis_doc=$(pwd)/genesis.json
         for i in $(seq 0 ${end}); do
           geth="docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) ${geth_image} --nousb"
@@ -55,11 +68,3 @@ run:
               --nodekey $(pwd)/nodes/node${i}/key \
               init $(pwd)/genesis.json
         done
-
-        if [ -f static-nodes.json ]; then
-          for i in $(seq 0 ${end})
-          do
-            mkdir -p nodes/node${i}/data/
-            cp -v static-nodes.json nodes/node${i}/data/
-          done
-        fi

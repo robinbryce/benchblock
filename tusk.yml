@@ -36,7 +36,142 @@ options:
       for any command to get the definite list.
     default: "name nodesdir maxnodes image genesis quorum_src geth_image delve_image pyenv"
 
+  # These  options make sense for most supported consensus schemes. Some
+  # defaults are overrident by the specific *cfg command for a particular
+  # scheme
+  maxnodes:
+    usage: >
+      The number of nodes for the network. For PoA networks, it is the number of *validating* nodes.
+    default: 5
+    short: "n"
+
+  geth_image:
+    usage: "the docker image to use for geth-rrr"
+    default: "eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
+
+  delve_image:
+    usage: "the docker image to use for running geth-rrr in for remote debug"
+    default: "eu.gcr.io/fetlar-1/rrr-delve:fetlar-latest"
+
+  quorum_src:
+    usage: >
+        the host directory to be mounted as /go/src/quorum. must contain quorum clone.
+        only required if you need to interactively debug the node.
+    default:
+      command: echo "${launchdir}/quorum"
+
+  gastarget:
+    usage: "sets the --miner.gastarget option for the nodes"
+    default: "18200000"
+
+  gaslimit:
+    usage: "sets the --miner.gaslimit option for the nodes"
+    default: "18200000"
+
+  recommit:
+    usage: "sets the --miner.recommit option for the nodes."
+    default: ""
+
+  genesis_wallet:
+    usage: >
+      This wallet address will be included in the gensis document allocs.
+      Its balance is set by gendoc_balance. This is a convenience that
+      enables the same wallet key to be re-used accross multiple
+      configurations.
+    default: ""
+
+  gendoc_balance:
+    default: "1000000000000000000000000000"
+
+  nodeallocs:
+    usage: >
+      How many of the node keys to create alloc accounts for. The ballance
+      is set to gendoc_balance for all.
+    default: 0
+
 tasks:
+
+  attach:
+    usage: "geth attach using docker exec go run"
+    args:
+      project:
+        usage: >
+          docker compose project with the to attach to. try raft[n], ibft[n] or
+          rrr[n] where the n is the maxnodes for the network in question
+
+    run:
+      - command:
+          exec: |
+            set -e
+            docker exec -it ${project}_node${node}_1 \
+              geth attach /nodes/node${node}/data/geth.ipc
+
+  ibft:
+    usage: >
+      Configure a new ibft network
+    options:
+
+      name:
+        usage: >
+          The name for the configuration defaults to "ibft{maxnodes}"
+        default: ""
+
+      istanbul_tools_src:
+        usage: |
+          TODO: Don't think we need this
+          git clone of https://github.com/ConsenSys/istanbul-tools.git
+        default:
+          command: echo "${launchdir}/istanbul-tools"
+
+    args:
+      configdir:
+        usage: Directory to put the network in
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - task:
+          name: ibftcfg
+          options:
+            name: "${name}"
+            geth_image: ${geth_image}
+            delve_image: ${delve_image}
+            maxnodes: ${maxnodes}
+            gendoc_wallet: ${genesis_wallet}
+            quorum_src: ${quorum_src}
+            istanbul_tools_src: ${istanbul_tools_src}
+          args:
+            - ${configdir}
+      - task:
+          name: gethkeys
+          args:
+            - ${configdir}
+      - task:
+          name: ibftextra
+          args:
+            - ${configdir}
+      - task:
+          name: ibftstatic
+          args:
+            - ${configdir}
+      - task:
+          name: gethgen
+          options:
+            consensus: ibft
+          args:
+            - ${configdir}
+
+      - task:
+          name: ibftcompose
+          options:
+            gastarget: "${gastarget}"
+            gaslimit: "${gaslimit}"
+            recommit: "${recommit}"
+            requesttimeout: "${requesttimeout}"
+            blockperiod: "${blockperiod}"
+          args:
+            - ${configdir}
 
   raft:
     usage: >
@@ -92,8 +227,10 @@ tasks:
             name: "${name}"
             geth_image: ${geth_image}
             delve_image: ${delve_image}
-            maxnodes: ${maxnodes}
             quorum_src: ${quorum_src}
+            maxnodes: ${maxnodes}
+            gendoc_wallet: ${genesis_wallet}
+            nodeallocs: ${nodeallocs}
           args:
             - ${configdir}
       - task:
@@ -102,6 +239,8 @@ tasks:
             - ${configdir}
       - task:
           name: gethgen
+          options:
+            consensus: raft
           args:
             - ${configdir}
       - task:
@@ -128,41 +267,9 @@ tasks:
           The name for the configuration defaults to "rrr{maxnodes}"
         default: ""
 
-      maxnodes:
-        default: 17
-
-      geth_image:
-        usage: "the docker image to use for geth-rrr"
-        default: "eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
-      delve_image:
-        usage: "the docker image to use for running geth-rrr in for remote debug"
-        default: "eu.gcr.io/fetlar-1/rrr-delve:fetlar-latest"
-
-      quorum_src:
-        usage: |
-            the host directory to be mounted as /go/src/quorum. must contain quorum clone.
-            only required if you need to interactively debug the node.
-        default:
-          command: echo "${launchdir}/quorum"
       rrr_src:
         default:
           command: echo "${launchdir}/go-rrr"
-
-      gastarget:
-        usage: "sets the --miner.gastarget option for the nodes"
-        default: "18200000"
-
-      gaslimit:
-        usage: "sets the --miner.gaslimit option for the nodes"
-        default: "18200000"
-
-      recommit:
-        usage: "sets the --miner.recommit option for the nodes."
-        default: "2s"
-
-      maxnodes:
-        usage: "the total number of nodes for the network"
-        default: 17
 
     args:
       configdir:
@@ -178,9 +285,11 @@ tasks:
             name: ${name}
             geth_image: ${geth_image}
             delve_image: ${delve_image}
-            maxnodes: ${maxnodes}
             quorum_src: ${quorum_src}
             rrr_src: ${rrr_src}
+            maxnodes: ${maxnodes}
+            nodeallocs: ${nodeallocs}
+            gendoc_wallet: ${genesis_wallet}
           args:
             - ${configdir}
       - task:
@@ -237,6 +346,23 @@ tasks:
   gethkeys:
     include: tuskfiles/gethkeys.yml
 
+  gethgen:
+    include: tuskfiles/gethgen.yml
+
+  # ibft consensus commands
+  ibftcfg:
+    include: tuskfiles/ibftcfg.yml
+
+  ibftextra:
+    include: tuskfiles/ibftextra.yml
+
+  ibftstatic:
+    include: tuskfiles/ibftstatic.yml
+
+  ibftcompose:
+    include: tuskfiles/ibftcompose.yml
+
+  # raft consensus commands
   raftstatic:
     include: tuskfiles/raftstatic.yml
 
@@ -246,8 +372,6 @@ tasks:
   raftcfg:
     include: tuskfiles/raftcfg.yml
 
-  gethgen:
-    include: tuskfiles/gethgen.yml
 
   # rrr consensus commands
   rrrcfg:
@@ -289,7 +413,7 @@ tasks:
             set -e
 
             TUSKDIR=$(pwd)
-            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
             cd ${launchdir} && cd ${configdir}
@@ -313,10 +437,11 @@ tasks:
             set -e
 
             TUSKDIR=$(pwd)
-            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+            CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
             cd ${launchdir} && cd ${configdir}
 
             source ${pyenv}/bin/activate
             cat standard-plots.md | jupytext --from .md --to notebook --output standard-plots.ipynb
+

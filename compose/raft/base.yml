@@ -124,7 +124,7 @@ x-node-debug:
     - go-cache-volume:/tmp/go-cache
     - go-pkg-volume:/go/pkg
     # These variables are defined in the .env file
-    - ${QUORUM_SRC}:/go/src
+    - ${QUORUM_SRC}:/go/src/quorum
     - ${NODESDIR}:/nodes
   ports:
     - "8545:8300"
