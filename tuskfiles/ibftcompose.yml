@@ -55,7 +55,19 @@ run:
         [[ "${requesttimeout}" != "" ]] && IBFT_CONSENSUS_OPTS="${IBFT_CONSENSUS_OPTS} --istanbul.blockperiod ${blockperiod}"
 
         ETHERBASE=${gendoc_wallet}
-        [[ -z "${ETHERBASE}" ]] && ETHERBASE="0x0000000000000000000000000000000000000000"
+        source ${pyenv}/bin/activate
+
+        export ETHERBASE
+        ETHERBASE=$(cat <<PYEND | python3
+        import os, sys, pathlib, coincurve, sha3
+        if os.environ["ETHERBASE"] or os.environ["ETHERBASE"] == "0x0000000000000000000000000000000000000000":
+            sys.exit(-1)
+        with open(pathlib.Path(os.environ["nodesdir"]).joinpath("node0", "key")) as f:
+            key = coincurve.PrivateKey.from_hex(f.read())
+            pub = key.public_key.format(compressed=False)[1:]
+            print("0x" + sha3.keccak_256(pub).digest()[-20:].hex())
+        PYEND
+        )
 
         cat <<END > .env
         COMPOSE_PROJECT_NAME=${name}

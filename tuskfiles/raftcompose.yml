@@ -44,6 +44,7 @@ run:
         ETHERBASE=${gendoc_wallet}
         export ETHERBASE
 
+        source ${pyenv}/bin/activate
         ETHERBASE=$(cat <<PYEND | python3
         import os, sys, pathlib, coincurve, sha3
         if os.environ["ETHERBASE"] or os.environ["ETHERBASE"] == "0x0000000000000000000000000000000000000000":

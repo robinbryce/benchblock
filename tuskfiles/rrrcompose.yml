@@ -43,6 +43,7 @@ run:
         # For a development & experimental setup its not clear it really
         # matters what address we use for ETHERBASE. But using node0 seems like
         # a default that could be convenient.
+        source ${pyenv}/bin/activate
 
         export ETHERBASE
         ETHERBASE=$(cat <<PYEND | python3
