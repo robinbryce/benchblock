@@ -20,7 +20,7 @@ whether that project better suites your needs.
 
 # Quick example
 
-Having completed [Setup](#Setup), these are the steps to deploy and load test a 
+Having completed [Setup](#Setup), these are the steps to deploy and load test a raft 5 node network
 
 ```bash
 cd ~/workspace
