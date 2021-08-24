@@ -45,10 +45,21 @@ for k, v in stats.items():
 f = Frame(blocks.load_frame(firstblock=firstblock, lastblock=lastblock)) 
 df = f.df()
 duration = (df["timestamp"][len(df["timestamp"])-1] - df["timestamp"][0])/ timescale
+
 print(f"Sample duration    : {duration}")
 implied_rate = stats["txcount_sum"] / duration
 print(f"Total tx / duration: {implied_rate}")
 ```
+
+# Combined
+
+```python
+plots.Combined(blocks, plot_prefix=plot_prefix, timescale=timescale).plot(
+    matplotlib.pyplot, "{plot_prefix}-{firstblock}-{lastblock}-combined.png",
+    firstblock=firstblock, lastblock=lastblock
+    )
+```
+
 # Transactions/Sec
 ```python
 plots.TPS(blocks, plot_prefix=plot_prefix, timescale=timescale).plot(
