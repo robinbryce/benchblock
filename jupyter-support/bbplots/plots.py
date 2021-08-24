@@ -9,9 +9,10 @@ import matplotlib.pyplot
 from bbplots.blockframe import Frame
 
 class TPS:
-    def __init__(self, blocks, plot_prefix=""):
+    def __init__(self, blocks, plot_prefix="", timescale=None):
         self._blocks = blocks
         self.plot_prefix = plot_prefix
+        self.timescale = timescale
 
     def plot(self, plt, savefile=None, firstblock=None, lastblock=None):
 
@@ -19,18 +20,18 @@ class TPS:
 
         f = Frame(self._blocks.load_frame(firstblock=firstblock, lastblock=lastblock))
 
-        f.add_blocktime()
+        f.add_blocktime(timescale=self.timescale)
         tps_cols = []
         for window in [1, 3, 5, 10]:
             tps_cols.append(f.add_tps(window))
 
         df = f.df()
 
-        averages = df[tps_cols][firstblock:lastblock].mean()
+        averages = df[tps_cols].mean()
         legend = [col + " (av %.1f)" % averages[col] for col in tps_cols]
 
         cols = ["blocknumber"] + tps_cols
-        ax = df[cols][firstblock:lastblock].plot(x="blocknumber", rot=90)
+        ax = df[cols].plot(x="blocknumber", rot=90)
         ax.set_title("transactions per second")
         ax.get_xaxis().get_major_formatter().set_useOffset(False)
         ax.legend(legend)
@@ -41,16 +42,17 @@ class TPS:
 
 class BT:
 
-    def __init__(self, blocks, plot_prefix=""):
+    def __init__(self, blocks, plot_prefix="", timescale=None):
         self._blocks = blocks
         self.plot_prefix = plot_prefix
+        self.timescale = timescale
 
     def plot(self, plt, savefile=None, logy=True, firstblock=None, lastblock=None):
 
         firstblock, lastblock = self._blocks.checkrange(firstblock=firstblock, lastblock=lastblock)
         f = Frame(self._blocks.load_frame(firstblock=firstblock, lastblock=lastblock))
 
-        f.add_blocktime()
+        f.add_blocktime(timescale=self.timescale)
 
         df = f.df()
 
@@ -58,7 +60,7 @@ class BT:
 
         kind = "bar" if (lastblock - firstblock) < 2000 else "line"
 
-        ax=df[['blocknumber', 'blocktime']][firstblock:lastblock].plot(
+        ax=df[['blocknumber', 'blocktime']].plot(
             x='blocknumber', kind=kind, logy=logy
             )
     
@@ -86,7 +88,7 @@ class BSZ:
 
         kind = "bar" if (lastblock - firstblock) < 2000 else "line"
 
-        ax=df[["blocknumber", "size"]][firstblock:lastblock].plot(x="blocknumber", rot=90, kind=kind)
+        ax=df[["blocknumber", "size"]].plot(x="blocknumber", rot=90, kind=kind)
         # ax.get_xaxis().get_major_formatter().set_useOffset(False)
         ax.get_yaxis().get_major_formatter().set_scientific(False)
         ax.set_title("blocksize in bytes")
@@ -99,16 +101,17 @@ class BSZ:
 
 class GAS: 
 
-    def __init__(self, blocks, plot_prefix=""):
+    def __init__(self, blocks, plot_prefix="", timescale=None):
         self._blocks = blocks
         self.plot_prefix = plot_prefix
+        self.timescale = timescale
 
     def plot(self, plt, savefile=None, logy=True, firstblock=None, lastblock=None):
 
         f = Frame(self._blocks.load_frame(firstblock=firstblock, lastblock=lastblock))
         df = f.df()
 
-        f.add_blocktime()
+        f.add_blocktime(timescale=self.timescale)
 
         gps_cols = []
         for window in [1, 3, 5]:
@@ -118,10 +121,8 @@ class GAS:
         for window in [1, 3, 5]:
             glps_cols.append(f.add_glps(window))
 
-        firstblock, lastblock = self._blocks.checkrange(firstblock=firstblock, lastblock=lastblock)
-
         # gas
-        ax=df[['blocknumber', 'GLPS_1blk', 'GUPS_1blk']][firstblock:lastblock].plot(
+        ax=df[['blocknumber', 'GLPS_1blk', 'GUPS_1blk']].plot(
             x='blocknumber', rot=90, logy=logy)
         ax.get_xaxis().get_major_formatter().set_useOffset(False)
         if not logy:

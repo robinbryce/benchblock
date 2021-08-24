@@ -40,6 +40,17 @@ bbench jpycfg .
 bbench jpyrender .
 ```
 
+# Jupyter
+
+```sh
+# assumes `Quick example` (above)
+cd ~/workspace/raft5
+env/bin/jupyter notebook --ip=127.0.0.1
+
+# Follow the instructions in the log to access the environment in your browser
+
+```
+
 # Setup
 
 Python >= 3.8 and docker (with docker-compose) is assumed. Currently, a go ~1.15

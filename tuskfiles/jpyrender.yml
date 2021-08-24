@@ -17,10 +17,10 @@ options:
     default: ""
     short: p
   firstblock:
-    default: 0
+    default: ""
     short: s
   lastblock:
-    default: 0
+    default: ""
     short: e
 
 args:
@@ -44,8 +44,8 @@ run:
 
         PREFIX="${prefix}"
         DBFILE="${dbfile}"
-        echo "PREFIX: ${PREFIX:+ -p plot_prefix ${PREFIX}}"
-        echo "DBFILE: ${DBFILE:+ -p dbfile ${DBFILE}}"
+        FIRSTBLOCK="${firstblock}"
+        LASTBLOCK="${lastblock}"
 
         source ${pyenv}/bin/activate
         KERNEL=bbench-${name}
@@ -61,6 +61,6 @@ run:
             -f parameters.yml \
             ${DBFILE:+ -p dbfile ${DBFILE}} \
             ${PREFIX:+ -p plot_prefix ${PREFIX}} \
-            -p firstblock ${firstblock} \
-            -p lastblock ${lastblock} \
+            ${FIRSTBLOCK:+ -p firstblock ${FIRSTBLOCK}} \
+            ${LASTBLOCK:+ -p lastblock ${LASTBLOCK}} \
           | jupyter nbconvert --stdin --to html --output standard-plots.html

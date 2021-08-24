@@ -20,10 +20,14 @@ class Frame:
     def df(self):
         return self._df
 
-    def add_blocktime(self):
+    def add_blocktime(self, timescale=None):
         """
         blocktime = timestamp[n] - timestamp[n-1]
         """
+        if timescale is not None:
+            # raft reports at 1000000s
+            self._df["timestamp"] = self._df["timestamp"] / timescale
+
         self._df["blocktime"] = self._df["timestamp"] - self._df["timestamp"].shift()
         self._df.loc[1, "blocktime"] = numpy.nan
 
