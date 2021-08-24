@@ -36,7 +36,6 @@ go run main.go ethload -e http://127.0.0.1:8300/ -t 5 -a 3 --dbsource ~/workspac
 
 cd ~/workspace/raft5
 bbench jpycfg .
-# Note: still ironing out some rough edges with the chart generation
 bbench jpyrender .
 ```
 
