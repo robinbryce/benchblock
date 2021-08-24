@@ -74,7 +74,8 @@ run:
           "gendoc_wallet": "${gendoc_wallet}",
           "nodeallocs": "${nodeallocs}",
           "gendoc_balance": "${gendoc_balance}",
-          "raft_blocktime": "${raft_blocktime}"
+          "raft_blocktime": "${raft_blocktime}",
+          "timestamp_scale": "1000000000"
         }
         JEND
 

@@ -37,7 +37,7 @@ run:
         set -e
 
         TUSKDIR=$(pwd)
-        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance timestamp_scale"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
@@ -49,9 +49,9 @@ run:
 
         source ${pyenv}/bin/activate
         KERNEL=bbench-${name}
-        echo "env: ${pyenv}"
         echo "KERNEL: ${KERNEL}"
 
+        set -ex
         cat standard-plots.md \
         | jupytext --from .md --to notebook --set-kernel ${KERNEL} --output - \
         | papermill \
@@ -63,4 +63,5 @@ run:
             ${PREFIX:+ -p plot_prefix ${PREFIX}} \
             ${FIRSTBLOCK:+ -p firstblock ${FIRSTBLOCK}} \
             ${LASTBLOCK:+ -p lastblock ${LASTBLOCK}} \
-          | jupyter nbconvert --stdin --to html --output standard-plots.html
+            -p timescale ${timestamp_scale} \
+          | jupyter nbconvert --stdin --to html --output standard-plots.html 2> /dev/null
