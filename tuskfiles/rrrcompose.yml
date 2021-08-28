@@ -32,6 +32,7 @@ run:
 
         TUSKDIR=$(pwd)
 
+        # read the config file fields into BBENCH_ vars.
         CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
@@ -43,45 +44,48 @@ run:
         # For a development & experimental setup its not clear it really
         # matters what address we use for ETHERBASE. But using node0 seems like
         # a default that could be convenient.
-        source ${pyenv}/bin/activate
+        source ${BBENCH_PYENV}/bin/activate
 
         export ETHERBASE
         ETHERBASE=$(cat <<PYEND | python3
         import os, sys, pathlib, coincurve, sha3
         if os.environ["ETHERBASE"] or os.environ["ETHERBASE"] == "0x0000000000000000000000000000000000000000":
             sys.exit(-1)
-        with open(pathlib.Path(os.environ["nodesdir"]).joinpath("node0", "key")) as f:
+        with open(pathlib.Path(os.environ["BBENCH_NODESDIR"]).joinpath("node0", "key")) as f:
             key = coincurve.PrivateKey.from_hex(f.read())
             pub = key.public_key.format(compressed=False)[1:]
             print("0x" + sha3.keccak_256(pub).digest()[-20:].hex())
         PYEND
         )
 
+        export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
+        export RRR_CONSENSUS_OPTS="\
+        --rrr.nc ${BBENCH_NUMCANDIDATES} \
+        --rrr.ne ${BBENCH_NUMENDORSERS} \
+        --rrr.q ${BBENCH_COMMITTEEQUORUM} \
+        --rrr.ta ${BBENCH_ACTIVEHORIZON} \
+        --rrr.intentphase ${BBENCH_INTENTPHASE} \
+        --rrr.confirmphase ${BBENCH_CONFIRMPHASE} \
+        --rrr.roundlength ${BBENCH_ROUNDLENGTH}"
+
         cat <<END > env.env
-        COMPOSE_PROJECT_NAME=${name}
-        RRR_CONSENSUS_OPTS="\
-        --rrr.nc ${numcandidates} \
-        --rrr.ne ${numendorsers} \
-        --rrr.q ${committeequorum} \
-        --rrr.ta ${activehorizon} \
-        --rrr.intentphase ${intentphase} \
-        --rrr.confirmphase ${confirmphase} \
-        --rrr.roundlength ${roundlength}"
+        COMPOSE_PROJECT_NAME=${BBENCH_NAME}
+        RRR_CONSENSUS_OPTS=${RRR_CONSENSUS_OPTS}
         NETWORKID=${networkid}
         NETRESTRICT=${netrestrict}
         ETHERBASE=${ETHERBASE}
-        QUORUM_SRC=${quorum_src}
-        RRR_SRC=${rrr_src}
-        NODESDIR=${nodesdir}
-        GETH_IMAGE= ${geth_image}
-        DELVE_IMAGE=${delve_image}
-        GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
+        QUORUM_SRC=${BBENCH_QUORUM_SRC}
+        RRR_SRC=${BBENCH_RRR_SRC}
+        NODESDIR=${BBENCH_NODESDIR}
+        GETH_IMAGE= ${BBENCH_GETH_IMAGE}
+        DELVE_IMAGE=${BBENCH_DELVE_IMAGE}
+        GAS_OPTS=$GAS_OPTS
         END
         cat env.env
         echo "Wrote env.env"
 
         cat <<END > bootnodes.env
-        BOOTNODE0_PUB=$(cat ${nodesdir}/node0/enode)
+        BOOTNODE0_PUB=$(cat ${BBENCH_NODESDIR}/node0/enode)
         END
 
         cat bootnodes.env
@@ -90,6 +94,23 @@ run:
         cat env.env bootnodes.env > .env
         cat .env
         echo "Wrote .env"
+
+        source ${BBENCH_PYENV}/bin/activate
+        cat <<PYEND | python3
+        import os, json
+        j = None
+        with open("bench.json") as f:
+            j = json.load(f)
+            # The sourcing trick we use doesn't play well with variables that
+            # have spaces
+            # j["consensus_opts"] = os.environ["RRR_CONSENSUS_OPTS"]
+            # j["gas_opts"] = os.environ["GAS_OPTS"]
+            j["networkid"] = "${networkid}"
+            j["netrestrict"] = "${netrestrict}"
+        if j is not None:
+            with open("bench.json", "w") as f:
+                json.dump(j, f, indent=2, sort_keys=True)
+        PYEND
 
         # Merge in the appropriate number of copies of node.yml to the
         # docker-compose.yml we are generating. As we do that add the
@@ -107,7 +128,7 @@ run:
         END
 
         PORT=8300
-        for i in $(seq 0 $((${maxnodes} - 1)))
+        for i in $(seq 0 $((${BBENCH_MAXNODES} - 1)))
         do
             VAL=$i EXPOSED="\"${PORT}:\"" yq eval '
               .node |= .working_dir += env(VAL) |

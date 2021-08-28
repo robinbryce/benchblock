@@ -18,19 +18,24 @@ run:
   - command:
       exec: |
         set -e
+
+        # read the config file fields into BBENCH_ vars.
         CONFIGVARS="${configvars}"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
         end=${last}
-        [ "${end}" == "0" ] && end=$((maxnodes -1))
+        [ "${end}" == "0" ] && end=$((BBENCH_MAXNODES -1))
         export end
+
+
+        source ${BBENCH_PYENV}/bin/activate
 
         cat <<PYEND | python3
         import os, json, pathlib
 
-        nodesdir=os.environ["nodesdir"]
+        nodesdir=os.environ["BBENCH_NODESDIR"]
 
         static=[]
 

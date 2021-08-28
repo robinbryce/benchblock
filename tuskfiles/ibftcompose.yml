@@ -2,8 +2,6 @@
 usage: "make a docker-compose for a geth network from a base.yml and a node.yml"
 
 options:
-  compose_project:
-    default: "ibft"
   networkid:
     default: "53456"
   netrestrict:
@@ -43,6 +41,7 @@ run:
 
         TUSKDIR=$(pwd)
 
+        # read the config file fields into BBENCH_ vars.
         CONFIGVARS="${configvars} compose_project networkid netrestrict gendoc_wallet"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
@@ -53,35 +52,55 @@ run:
         IBFT_CONSENSUS_OPTS=""
         [[ "${requesttimeout}" != "" ]] && IBFT_CONSENSUS_OPTS="${IBFT_CONSENSUS_OPTS} --istanbul.requesttimeout ${requesttimeout}"
         [[ "${requesttimeout}" != "" ]] && IBFT_CONSENSUS_OPTS="${IBFT_CONSENSUS_OPTS} --istanbul.blockperiod ${blockperiod}"
+        export IBFT_CONSENSUS_OPTS
 
-        ETHERBASE=${gendoc_wallet}
-        source ${pyenv}/bin/activate
+        export ETHERBASE=${BBENCH_GENDOC_WALLET}
 
-        export ETHERBASE
+        source ${BBENCH_PYENV}/bin/activate
         ETHERBASE=$(cat <<PYEND | python3
         import os, sys, pathlib, coincurve, sha3
         if os.environ["ETHERBASE"] or os.environ["ETHERBASE"] == "0x0000000000000000000000000000000000000000":
             sys.exit(-1)
-        with open(pathlib.Path(os.environ["nodesdir"]).joinpath("node0", "key")) as f:
+        with open(pathlib.Path(os.environ["BBENCH_NODESDIR"]).joinpath("node0", "key")) as f:
             key = coincurve.PrivateKey.from_hex(f.read())
             pub = key.public_key.format(compressed=False)[1:]
             print("0x" + sha3.keccak_256(pub).digest()[-20:].hex())
         PYEND
         )
 
+        export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
+
         cat <<END > .env
-        COMPOSE_PROJECT_NAME=${name}
+        COMPOSE_PROJECT_NAME=${BBENCH_NAME}
         IBFT_CONSENSUS_OPTS=${IBFT_CONSENSUS_OPTS}
         NETWORKID=${networkid}
         NETRESTRICT=${netrestrict}
         ETHERBASE=${ETHERBASE}
-        QUORUM_SRC=${quorum_src}
-        NODESDIR=${nodesdir}
-        GETH_IMAGE= ${geth_image}
-        DELVE_IMAGE=${delve_image}
-        GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
+        QUORUM_SRC=${BBENCH_QUORUM_SRC}
+        NODESDIR=${BBENCH_NODESDIR}
+        GETH_IMAGE= ${BBENCH_GETH_IMAGE}
+        DELVE_IMAGE=${BBENCH_DELVE_IMAGE}
+        GAS_OPTS=${GAS_OPTS}
         END
         echo "Wrote .env"
+
+        source ${BBENCH_PYENV}/bin/activate
+        cat <<PYEND | python3
+        import os, json
+        j = None
+        with open("bench.json") as f:
+            j = json.load(f)
+            j["compose_project"] = "${compose_project}"
+            # The sourcing trick we use doesn't play well with variables that
+            # have spaces
+            #j["consensus_opts"] = os.environ["IBFT_CONSENSUS_OPTS"]
+            #j["gas_opts"] = os.environ["GAS_OPTS"]
+            j["networkid"] = "${networkid}"
+            j["netrestrict"] = "${netrestrict}"
+        if j is not None:
+            with open("bench.json", "w") as f:
+                json.dump(j, f, indent=2, sort_keys=True)
+        PYEND
 
         # Merge in the appropriate number of copies of node.yml to the
         # docker-compose.yml we are generating. As we do that add the
@@ -99,7 +118,7 @@ run:
         END
 
         PORT=8300
-        for i in $(seq 0 $((${maxnodes} - 1)))
+        for i in $(seq 0 $((${BBENCH_MAXNODES} - 1)))
         do
             VAL=$i EXPOSED="\"${PORT}:\"" yq eval '
               .node |= .working_dir += env(VAL) |

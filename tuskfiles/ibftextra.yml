@@ -18,12 +18,14 @@ run:
   - command:
       exec: |
         set -e
+
+        # read the config file fields into BBENCH_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
-        source ${pyenv}/bin/activate
+        source ${BBENCH_PYENV}/bin/activate
 
         cat <<PYEND | python3
         import os, json, coincurve, rlp, sha3
@@ -36,9 +38,9 @@ run:
 
         vanity = bytes.fromhex("00") * ibftextravanitylen
 
-        for i in range(int(os.environ['maxnodes'])):
+        for i in range(int(os.environ['BBENCH_MAXNODES'])):
 
-            keyfile = Path(os.environ['nodesdir']).joinpath(f"node{i}", "key")
+            keyfile = Path(os.environ['BBENCH_NODESDIR']).joinpath(f"node{i}", "key")
             pub = None
             with open(keyfile) as f:
                 key = coincurve.PrivateKey.from_hex(f.read())

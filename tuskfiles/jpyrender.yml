@@ -37,6 +37,8 @@ run:
         set -e
 
         TUSKDIR=$(pwd)
+
+        # read the config file fields into BBENCH_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance timestamp_scale"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
@@ -47,8 +49,12 @@ run:
         FIRSTBLOCK="${firstblock}"
         LASTBLOCK="${lastblock}"
 
-        source ${pyenv}/bin/activate
-        KERNEL=bbench-${name}
+        source ${BBENCH_PYENV}/bin/activate
+
+        KERNEL=bbench-${BBENCH_NAME}
+
+        [ -z ${DBFILE} ] && DBFILE=${BBENCH_NAME}.db
+
         echo "KERNEL: ${KERNEL}"
 
         set -ex
@@ -63,5 +69,5 @@ run:
             ${PREFIX:+ -p plot_prefix ${PREFIX}} \
             ${FIRSTBLOCK:+ -p firstblock ${FIRSTBLOCK}} \
             ${LASTBLOCK:+ -p lastblock ${LASTBLOCK}} \
-            -p timescale ${timestamp_scale} \
+            -p timescale ${BBENCH_TIMESTAMP_SCALE} \
           | jupyter nbconvert --stdin --to html --output standard-plots.html 2> /dev/null

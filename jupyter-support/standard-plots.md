@@ -38,6 +38,9 @@ from bbplots.blockframe import Frame
 matplotlib.rcParams["agg.path.chunksize"] = 10000
 
 blocks = db.Blocks(dbfile)
+
+firstblock, lastblock = blocks.checkrange(firstblock=firstblock, lastblock=lastblock)
+
 stats = blocks.common_stats(firstblock=firstblock, lastblock=lastblock)
 for k, v in stats.items():
     print(f"{k}={v}")

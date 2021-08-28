@@ -5,8 +5,6 @@ options:
     type: bool
   consensus:
     default: raft
-  extradata:
-    default: ""
 
 args:
   configdir:
@@ -28,28 +26,29 @@ run:
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
-        EXTRADATA="${extradata}"
-
         CONFIGDIR=$(pwd)
 
         cp ${TUSKDIR}/compose/${consensus}/genesis-in.json .
 
+        # To include extra data in genesis, save it in "gendoc_extra" in the
+        # config file before invoking this command. gethgendoc will read it
+        # from there
         pushd ${launchdir} # restore launchdir before recursive invoke
-          tusk -qf ${thistusk} gethgendoc ${configdir} ${EXTRADATA:+  --extra "$EXTRADATA"} | tee ${CONFIGDIR}/genesis.json
+          tusk -qf ${thistusk} gethgendoc ${configdir} | tee ${CONFIGDIR}/genesis.json
         popd
 
         # clear out all the data dirs first to avoid mixed state if we fail
         # half way through
         ${sudo} && dosudo="sudo" || dosudo=""
 
-        end=$((maxnodes - 1))
+        end=$((BBENCH_MAXNODES - 1))
         for i in $(seq 0 ${end}); do
-          ${dosudo} rm -rf ${nodesdir}/node$i/data
+          ${dosudo} rm -rf ${BBENCH_NODESDIR}/node$i/data
         done
 
         genesis_doc=$(pwd)/genesis.json
         for i in $(seq 0 ${end}); do
-          geth="docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) ${geth_image} --nousb"
+          geth="docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) ${BBENCH_GETH_IMAGE} --nousb"
           ${geth} \
               --datadir=$(pwd)/nodes/node${i}/data  \
               --nodekey $(pwd)/nodes/node${i}/key \

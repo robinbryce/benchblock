@@ -30,13 +30,14 @@ run:
 
         TUSKDIR=$(pwd)
 
+        # read the config file fields into BBENCH_ vars.
         CONFIGVARS="${configvars} gendoc_extra"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
         EXTRADATA="${extradata}"
-        [ -n "${EXTRADATA}" ] && EXTRADATA=${gendoc_extra}
+        [ -n "${EXTRADATA}" ] && EXTRADATA=${BBENCH_GENDOC_EXTRA}
         [ -n "${EXTRADATA}" ] && EXTRADATA=""
 
         CONFIGDIR=$(pwd)
@@ -51,18 +52,18 @@ run:
         # half way through
         ${sudo} && dosudo="sudo" || dosudo=""
 
-        end=$((maxnodes - 1))
+        end=$((BBENCH_MAXNODES - 1))
         for i in $(seq 0 ${end}); do
-          ${dosudo} rm -rf ${nodesdir}/node$i/data
+          ${dosudo} rm -rf ${BBENCH_NODESDIR}/node$i/data
         done
 
         for i in $(seq 0 ${end}); do
-          rm -rf ${nodesdir}/node$i/data
+          rm -rf ${BBENCH_NODESDIR}/node$i/data
         done
 
         genesis_doc=$(pwd)/genesis.json
         for i in $(seq 0 ${end}); do
-          geth="docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) ${geth_image} --nousb"
+          geth="docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) ${BBENCH_GETH_IMAGE} --nousb"
           ${geth} \
               --datadir=$(pwd)/nodes/node${i}/data  \
               --nodekey $(pwd)/nodes/node${i}/key \

@@ -189,6 +189,8 @@ class GAS:
 
     def plot(self, plt, savefile=None, logy=True, firstblock=None, lastblock=None):
 
+        firstblock, lastblock = self._blocks.checkrange(firstblock=firstblock, lastblock=lastblock)
+
         f = Frame(self._blocks.load_frame(firstblock=firstblock, lastblock=lastblock))
         df = f.df()
 

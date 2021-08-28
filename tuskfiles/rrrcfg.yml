@@ -7,9 +7,10 @@ args:
 options:
 
   name:
-    usage: >
-      See rrr command
     default: ""
+
+  genesis:
+    default: "genesis-in.json"
 
   numcandidates:
     short: c
@@ -82,15 +83,17 @@ run:
         source ${pyenv}/bin/activate
         pip3 install -r ${TUSKDIR}/requirements.txt
 
+        PYENVDIR=$(cd ${pyenv} && pwd)
+
         NAME="${name}"
-        [ -n "${NAME}" ] && NAME="raft${maxnodes}"
+        [ -z ${NAME} ] && NAME="rrr${maxnodes}"
 
 
         # generate the config from the options
         cat <<JEND  > bench.json
         {
           "name": "${NAME}",
-          "pyenv": "${pyenv}",
+          "pyenv": "${PYENVDIR}",
           "maxnodes": "${maxnodes}",
           "nodesdir": "$(pwd)/${nodesdir}",
           "quorum_src": "${quorum_src}",
@@ -100,6 +103,7 @@ run:
           "genesis": "${genesis}",
           "gendoc_wallet": "${gendoc_wallet}",
           "gendoc_balance": "${gendoc_balance}",
+          "timestamp_scale": "1",
           "nodeallocs": "${nodeallocs}",
           "numcandidates": "${numcandidates}",
           "numendorsers": "${numendorsers}",

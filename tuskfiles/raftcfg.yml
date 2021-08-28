@@ -7,8 +7,6 @@ args:
 options:
 
   name:
-    usage: >
-      see raft command
     default: ""
 
   nodesdir:
@@ -58,13 +56,14 @@ run:
         pip3 install -r ${TUSKDIR}/requirements.txt
 
         NAME="${name}"
-        [[ "${NAME}" == "" ]] && NAME="raft${maxnodes}"
+        [ -z ${NAME} ] && NAME="raft${maxnodes}"
 
+        PYENVDIR=$(cd ${pyenv} && pwd)
         # generate the config from the options
         cat <<JEND  > bench.json
         {
           "name": "${NAME}",
-          "pyenv": "${pyenv}",
+          "pyenv": "${PYENVDIR}",
           "maxnodes": "${maxnodes}",
           "nodesdir": "$(pwd)/${nodesdir}",
           "quorum_src": "${quorum_src}",

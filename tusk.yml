@@ -18,10 +18,6 @@ options:
     usage: "Report which, if any, supported configdir config file VAR's"
     type: bool
 
-  gethimage:
-    usage: >
-      Image name to use for geth. (prioritised over bench.json)
-
   # private vars
   thistusk:
     private: true
@@ -36,9 +32,10 @@ options:
       for any command to get the definite list.
     default: "name nodesdir maxnodes image genesis quorum_src geth_image delve_image pyenv"
 
-  # These  options make sense for most supported consensus schemes. Some
-  # defaults are overrident by the specific *cfg command for a particular
-  # scheme
+  gethimage:
+    usage: >
+      Image name to use for geth. (prioritised over bench.json)
+
   maxnodes:
     usage: >
       The number of nodes for the network. For PoA networks, it is the number of *validating* nodes.
@@ -93,6 +90,10 @@ tasks:
 
   attach:
     usage: "geth attach using docker exec go run"
+    options:
+      node:
+        default: "1"
+        short: "n"
     args:
       project:
         usage: >
@@ -266,10 +267,44 @@ tasks:
         usage: >
           The name for the configuration defaults to "rrr{maxnodes}"
         default: ""
-
       rrr_src:
         default:
           command: echo "${launchdir}/go-rrr"
+      maxnodes:
+        usage: >
+          The number of nodes for the network. For PoA networks, it is the number of *validating* nodes.
+        default: 12
+        short: "n"
+
+      numcandidates:
+        short: c
+        usage: "set the number of canidate leaders per round"
+        default: 2
+      numendorsers:
+        short: e
+        usage: "set the size of the endorser committee"
+        default: 7
+      committeequorum:
+        short: q
+        default: 4
+      activehorizon:
+        usage: >
+          number of blocks to allow for activity. Any identities without
+          endorsements or blocks in this number of blocks is droped. (and will
+          have to re-enrol).
+        short: a
+        default: 2000
+      intentphase:
+        usage: number of miliseconds for the rrr intent phase
+        default: 1500
+      confirmphase:
+        usage: number of milliseconds for the rrr confirm phase
+        default: 1500
+      roundlength:
+        usage: >
+          total roundlength in milliseconds. must be greater than intent + confirm (rember to
+          allow for block disemination, 2s  or more is fair)
+        default: 5000
 
     args:
       configdir:
@@ -287,9 +322,18 @@ tasks:
             delve_image: ${delve_image}
             quorum_src: ${quorum_src}
             rrr_src: ${rrr_src}
-            maxnodes: ${maxnodes}
             nodeallocs: ${nodeallocs}
             gendoc_wallet: ${genesis_wallet}
+            maxnodes: ${maxnodes}
+            numcandidates: ${numcandidates}
+            numendorsers: ${numendorsers}
+            committeequorum: ${committeequorum}
+            activehorizon: ${activehorizon}
+            intentphase: ${intentphase}
+            confirmphase: ${confirmphase}
+            roundlength: ${roundlength}
+            recommit: ${recommit}
+
           args:
             - ${configdir}
       - task:
@@ -335,10 +379,10 @@ tasks:
       set-environment: {
         READ_CONFIG: "\
           $(cd ${launchdir} && cd ${configdir} \
-          && python3 -c \"import json; \
-                          [print(f'export {k}=\"{v}\"') \
-                              for k, v in json.load(open('${config}')).items()]\")",
-        SHOW_CONFIG: "for v in ${CONFIGVARS}; do echo $v=${!v}; done"}
+          && python3 -c \"import json; import shlex;\
+                          [print(f'export BBENCH_{k.upper()}={v}') \
+                              for k, v in json.load(open('${config}')).items() if v]\")",
+        SHOW_CONFIG: "for v in ${CONFIGVARS}; do vv=BBENCH_${v^^}; echo ${vv}=${!vv}; done"}
 
   gethgendoc:
     include: tuskfiles/gethgendoc.yml

@@ -13,18 +13,24 @@ run:
   - command:
       exec: |
         set -e
+
+        # read the config file fields into BBENCH_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
-        source ${pyenv}/bin/activate
+        source ${BBENCH_PYENV}/bin/activate
+
         cat <<PYEND | python3
         import os, coincurve, sha3, secrets, pathlib
 
-        for i in range(int(os.environ['maxnodes'])):
+        maxnodes = int(os.environ['BBENCH_MAXNODES'])
+        nodesdir = os.environ["BBENCH_NODESDIR"]
 
-            dirname = f"{os.environ['nodesdir']}/node{i}"
+        for i in range(maxnodes):
+
+            dirname = f"{nodesdir}/node{i}"
 
             key = open(f"{dirname}/key", 'r').read()
             key = coincurve.PrivateKey.from_hex(key)

@@ -7,6 +7,7 @@ args:
 options:
 
   name:
+    default: ""
 
   nodesdir:
     default: nodes
@@ -48,7 +49,6 @@ run:
         mkdir -p ${nodesdir}/node0
         mkdir -p ${configdir}/bin
 
-
         # we don't allow this to be set on the cli, if you want another
         # env thats fine, just edit bench.json afterwords to point to yours
         # and make sure you install the requirements.txt
@@ -61,12 +61,10 @@ run:
         pip3 install -r ${TUSKDIR}/requirements.txt
 
         NAME="${name}"
-        [[ "${NAME}" == "" ]] && NAME="ibft${maxnodes}"
-
-        NODESDIR=$(pwd)/${nodesdir}
+        [ -z ${NAME} ] && NAME="ibft${maxnodes}"
 
         # TODO: use this idiom for all 'cfg commands
-        PYENVDIR=$(cd ${launchdir} && cd ${pyenv} && pwd)
+        PYENVDIR=$(cd ${pyenv} && pwd)
 
         # generate the config from the options
         cat <<END  > bench.json
@@ -74,7 +72,7 @@ run:
           "name": "${NAME}",
           "pyenv": "${PYENVDIR}",
           "maxnodes": "${maxnodes}",
-          "nodesdir": "${NODESDIR}",
+          "nodesdir": "$(pwd)/${nodesdir}",
           "quorum_src": "${quorum_src}",
           "istanbul_tools_src": "${istanbul_tools_src}",
           "geth_image": "${geth_image}",
@@ -82,7 +80,8 @@ run:
           "genesis": "${genesis}",
           "gendoc_wallet": "${gendoc_wallet}",
           "gendoc_balance": "${gendoc_balance}",
-          "nodeallocs": "${maxnodes}"
+          "nodeallocs": "${maxnodes}",
+          "timestamp_scale": "1"
         }
         END
 
@@ -90,6 +89,7 @@ run:
         echo "Wrote: $(pwd)/bench.json"
         exit 0
 
+        # This hasn't been needed yet
         cd ${launchdir} && cd ${istanbul_tools_src}
         make
 

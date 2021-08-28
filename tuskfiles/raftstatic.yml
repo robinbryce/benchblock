@@ -18,17 +18,19 @@ run:
   - command:
       exec: |
         set -e
+
+        # read the config file fields into BBENCH_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
         end=${last}
-        [ "${end}" == "0" ] && end=$((maxnodes -1))
+        [ "${end}" == "0" ] && end=$((BBENCH_MAXNODES -1))
         export end
         echo "raftstatic: end=$end"
 
-        source ${pyenv}/bin/activate
+        source ${BBENCH_PYENV}/bin/activate
 
         cat <<PYEND | python3
         import os, json, coincurve, sha3, secrets, pathlib
@@ -38,9 +40,12 @@ run:
         p2port="7200"
         raftport="50000"
 
-        for i in range(int(os.environ['end']) + 1):
+        nodesdir = os.environ["BBENCH_NODESDIR"]
+        maxnodes = int(os.environ['BBENCH_MAXNODES'])
 
-            dirname = f"{os.environ['nodesdir']}/node{i}"
+        for i in range(maxnodes):
+
+            dirname = f"{nodesdir}/node{i}"
 
             enode = open(f"{dirname}/enode", 'r').read()
 
@@ -49,8 +54,8 @@ run:
             )
 
         # now go round again and put a full copy in the right directory
-        for i in range(int(os.environ['end']) + 1):
-            datadir = f"{os.environ['nodesdir']}/node{i}/data"
+        for i in range(maxnodes):
+            datadir = f"{nodesdir}/node{i}/data"
             pathlib.Path(datadir).mkdir(parents=True, exist_ok=True)
             with open(pathlib.Path(datadir).joinpath("static-nodes.json"), "w") as f:
                 json.dump(static, f, indent=2, sort_keys=True)

@@ -14,21 +14,24 @@ run:
         set -e
 
         TUSKDIR=$(pwd)
+
+        # read the config file fields into BBENCH_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
         cat <<END > parameters.yml
-        dbfile: "${name}.db"
-        plot_prefix: "${name}"
+        dbfile: "${BBENCH_NAME}.db"
+        plot_prefix: "${BBENCH_NAME}"
         END
 
-        python3 -m venv ${pyenv}
-        source ${pyenv}/bin/activate
+        python3 -m venv ${BBENCH_PYENV}
+        source ${BBENCH_PYENV}/bin/activate
+
         pip3 install -e ${TUSKDIR}/jupyter-support
 
-        KERNEL=bbench-${name}
+        KERNEL=bbench-${BBENCH_NAME}
         echo "KERNEL: ${KERNEL}"
         # --sys-prefix uses the *virtual-env* sys-prefix, which is what we
         # want

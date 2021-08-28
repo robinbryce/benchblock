@@ -16,22 +16,26 @@ run:
   - command:
       exec: |
         set -e
+
+        # read the config file fields into BBENCH_ vars.
         CONFIGVARS="${configvars} nodeallocs gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
+        # Support  --extra as an override for gendoc_extra from the config
+        # file.
         EXTRADATA=""
-        [ -n "${gendoc_extra}" ] && EXTRADATA="${gendoc_extra}"
+        [ -n "${BBENCH_GENDOC_EXTRA}" ] && EXTRADATA="${BBENCH_GENDOC_EXTRA}"
         [ -n "${extra}" ] && EXTRADATA="${extra}"
         export EXTRADATA
 
-        source ${pyenv}/bin/activate
+        source ${BBENCH_PYENV}/bin/activate
         cat <<PYEND | python3
         import os, json, coincurve, sha3
         from pathlib import Path
 
-        nodesdir = os.environ['nodesdir']
+        nodesdir = os.environ['BBENCH_NODESDIR']
 
         def readnodeaddr(nodenum):
             keyfile = f"{nodesdir}/node{nodenum}/key"
@@ -42,14 +46,14 @@ run:
                 addr = sha3.keccak_256(pub).digest()[-20:]
                 return addr
 
-        templatefile = Path(os.environ["genesis"]).resolve()
+        templatefile = Path(os.environ["BBENCH_GENESIS"]).resolve()
 
         # if we have neither nodeallocs nor an explicit genesis wallet, make a
         # wallet for node0's key.
-        maxnodes = int(os.environ['maxnodes'])
-        nodeallocs = int(os.environ.get('nodeallocs', '0'))
-        gendoc_wallet = os.environ.get('gendoc_wallet', '')
-        gendoc_balance = os.environ.get("gendoc_balance", "1230000000000000000000000000")
+        maxnodes = int(os.environ['BBENCH_MAXNODES'])
+        nodeallocs = int(os.environ.get('BBENCH_NODEALLOCS', '0'))
+        gendoc_wallet = os.environ.get('BBENCH_GENDOC_WALLET', '')
+        gendoc_balance = os.environ.get("BBENCH_GENDOC_BALANCE", "1230000000000000000000000000")
 
         allocs = {}
         if not gendoc_wallet and nodeallocs == 0:
