@@ -43,6 +43,7 @@ x-node-env-defaults:
    --http.corsdomain '*' \
    --http.vhosts '*'"
   WS_OPTS: "--ws --wsport 8400 --wsorigins '*'"
+  GAS_OPTS: "${GAS_OPTS}"
   MINER_OPTS: "--mine --miner.threads 1 --miner.etherbase ${ETHERBASE}"
   LOG_OPTS: "--vmodule consensus/*=5,miner/*=7,eth/*=2,p2p/*=3 --verbosity 3"
   # --debug adds source and line no

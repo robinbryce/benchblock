@@ -211,8 +211,11 @@ tasks:
         default: "18200000"
 
       recommit:
-        usage: "sets the --miner.recommit option for the nodes."
-        default: "2s"
+        usage: >
+          sets the --miner.recommit option for the nodes. used for public nodes
+          to pull in higher priced transactions. every recommit has a
+          significant chance of failing the round
+        default: "200s"
 
     args:
       configdir:

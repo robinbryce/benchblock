@@ -32,7 +32,7 @@ options:
     default: 2000
   intentphase:
     usage: number of miliseconds for the rrr intent phase
-    default: 1500
+    default: 1000
   confirmphase:
     usage: number of milliseconds for the rrr confirm phase
     default: 1500
@@ -43,8 +43,10 @@ options:
     default: 5000
 
   recommit:
-    usage: "sets the --miner.recommit option for the nodes."
-    default: "2s"
+    usage: >
+      sets the --miner.recommit option for the nodes. currently set high
+      because it invalidates the current round intent if it fires mid round
+    default: "2000s"
 
   nodesdir:
     usage: "relative to configdir. each node gets a subdirectory here named node{N}"

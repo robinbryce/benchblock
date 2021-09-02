@@ -1,20 +1,26 @@
 # blockbench
 
 Tools to explore the performance characteristics of different etherum/quorum
-private network deployments. Read "bench" as in work/bench rather than
-bench/mark.
+private network deployments. Emphasis is given to fast creation and
+re-configuration of different shaped networks. Read "bench" as in work/bench
+rather than bench/mark.
 
-Current features
+Features
 
 * Single command to deploy a network based on ibft, raft or rrr[^1]
 * Loadtesting tool with output to chainhammer compatible db format
 * Single command performance graph generation & reports (markdown, jupytext, papermill)
-* VScode remote debug support for docker-compose hosted nodes running from volume mounted source checkout.
+* VScode debugging of nodes in compose based networks (as remote via delve)
+* Directly running geth/quorum nodes from sources (go run on volume mounted sources)
+* discovery enabled networks with bootnodes (rrr only for now)
 
 Please note the jupyter charting support owes much to the
 [chainhammer](https://github.com/drandreaskrueger/chainhammer/blob/master/README.md)
 project, which also supports a broader range of ledgers. Please do consider
 whether that project better suites your needs.
+
+There are a number of projects listed at [awesome-quorum](https://github.com/ConsenSys/awesome-quorum) which cover similar (and more)
+ground.
 
 [^1]: A pre-alpha implementation of this [paper](https://arxiv.org/pdf/1804.07391.pdf) for go-ethereum. Testing and development of which was a key motivation for this project.
 
@@ -49,6 +55,73 @@ env/bin/jupyter notebook --ip=127.0.0.1
 # Follow the instructions in the log to access the environment in your browser
 
 ```
+
+# Debug a node
+
+```sh
+cd ~/workspace/raft5
+```
+
+Open the docker-compose.yaml and find the stanza for node0
+
+```yaml
+node0:
+  <<: *node-defaults
+  working_dir: /nodes/node0
+  ports:
+    - "8300:8300"
+```
+
+Make it look like this
+
+```yaml
+node0:
+  <<: *node-debug
+  working_dir: /nodes/node0
+  ports:
+    - "8300:8300"
+    - "2345:2345"
+```
+
+Edit the .env file (if necessary) and ensure that 
+QUORUM_SRC refers to the location of your geth clone and DELVE_IMAGE has the
+name of an approprate delve image. See the example [Dockerfile](./compose/delve-debug/Dockerfile-delve). If you want to use the example, then
+
+```
+cd ~/workspace/blockbench/compose/delv-debug
+docker build . -f Dockerfile-delve -t geth-delve:latest
+```
+
+And set DELVE_IMAGE=`geth-delve:latest` in the `.env` file.
+
+In a vscode workspace which includes quorum create a debug launch
+configuration. The resulting launch.json should look like this:
+
+```json
+[
+    {
+        "name": "geth node docker remote",
+        "type": "go",
+        "request": "attach",
+        "mode": "remote",
+        "port": 2345,
+        "host": "127.0.0.1",
+        "remotePath": "/go/src/quorum",
+        "cwd": "~/workspace/quorum",
+        // "trace": "log"
+    }
+]
+```
+See this
+[guide](https://github.com/golang/vscode-go/blob/master/docs/debugging.md) for detailed help re debugging go with vscode.
+
+
+Start node0 on its own `docker-compose up node0`
+
+Once it starts listening start the debug target in vscode.
+
+Note: the cwd needs to be the quorum clone directory in order for source level break points to work.  If you placed
+the quorum clone according to the Setup section, the defaults should be ok.
 
 # Setup
 
