@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ./../../base/rrr/network
+- ./../nodes/node0
+- ./../nodes/node1
+- ./../nodes/node2
+- ./../nodes/node3
+
+configMapGenerator:
+  - name: ethnode-cfg
+    behavior: merge
+    envs:
+    - ./bootnodes.env
+    - ./consensus.env
+    #literals:
+    #  - >-
+    #    CONSENSUS_OPTS=
+    #    --rrr.nc 3 --rrr.ne 11 --rrr.q 6 --rrr.ta 2000
+    #    --rrr.intentphase 700 --rrr.confirmphase 1300 --rrr.roundlength 4000
+  - name: genesis
+    behavior: merge
+    files:
+    - ./genesis.json

@@ -1,0 +1,11 @@
+nameSuffix: "0"
+resources:
+  - ./../../../base/rrr/node
+
+patchesStrategicMerge:
+- statefulset-volumes.yaml
+
+secretGenerator:
+- name: ethnodekey-
+  files:
+    - key

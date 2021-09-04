@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ethnode
+  labels:
+    app: ethnode
+    app.kubernetes.io/name: ethnode
+    app.kubernetes.io/part-of: ethnet
+
+spec:
+  ports:
+  - name: tcp-peer
+    port: 7200
+  - name: tcp-rpc
+    port: 8300
+  - name: tcp-wsock
+    port: 8400
+  clusterIP: None
+  selector:
+    app: ethnode

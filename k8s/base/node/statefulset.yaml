@@ -1,0 +1,172 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ethnode
+  labels:
+    app.kubernetes.io/name: ethnode
+    app.kubernetes.io/part-of: ethnet
+spec:
+  selector:
+    matchLabels:
+      app: ethnode
+  serviceName: ethnode
+  podManagementPolicy: "Parallel"
+
+  replicas: 1
+  volumeClaimTemplates:
+  - metadata:
+      name: ethnode-pv
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 4Gi
+  template:
+    metadata:
+      labels:
+        app: ethnode
+        app.kubernetes.io/part-of: ethnet
+    spec:
+      terminationGracePeriodSeconds: 10
+      volumes:
+        - name: config
+          # target for https://github.com/kubernetes/community/blob/master/contributors/design-proposals/node/all-in-one-volume.md
+          # sources:
+
+      containers:
+      - name: geth-rrr
+        image: quorumengineering/quorum:21.4.1
+        imagePullPolicy: Always
+        volumeMounts:
+          - name: ethnode-pv
+            mountPath: /data
+          # mount for https://github.com/kubernetes/community/blob/master/contributors/design-proposals/node/all-in-one-volume.md
+          - name: config
+            mountPath: /config
+
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: NETWORKID
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: NETWORKID
+          - name: METRICS_OPTS
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: METRICS_OPTS
+          - name: CONSENSUS_OPTS
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: CONSENSUS_OPTS
+          - name: RPC_APIS
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: RPC_APIS
+          - name: SYNC_OPTS
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: SYNC_OPTS
+          - name: PRIVATE_CONFIG
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: PRIVATE_CONFIG
+          - name: P2P_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: P2P_PORT
+          - name: WS_OPTS
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: WS_OPTS
+          - name: RPC_OPTS
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: RPC_OPTS
+          - name: GAS_OPTS
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: GAS_OPTS
+          - name: MINER_OPTS
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: MINER_OPTS
+          - name: LOG_OPTS
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: LOG_OPTS
+        command:
+          - sh
+        args:
+          - -cx
+          - |
+            set -ex
+
+            NAT_OPTS="--nat=none"
+
+            # If a bootnode public key is provided discovery is enabled and we
+            # fill in the bootnodes downstream kustomizations are epxected to
+            # patch in the necessary env if required.
+            if [ -n "$BOOTNODE0_PUB" ]; then
+              DISCOVERY_OPTS="--netrestrict=${POD_IP}/16"
+              BOOTNODES=enode://${BOOTNODE0_PUB}@${BOOTNODE0_HOST}:${P2P_PORT}
+              if [ -n "$BOOTNODE0_PUB" ]; then
+                BOOTNODES=${BOOTNODES},enode://${BOOTNODE1_PUB}@${BOOTNODE1_HOST}:${P2P_PORT}
+              fi
+              DISCOVERY_OPTS="--netrestrict=${POD_IP}/16 --bootnodes=${BOOTNODES}"
+            fi
+
+            # this is the genesis account
+            ETHERBASE="b5983bf72a55b48d302638da5292f60f93597d96"
+
+            cd /data/node
+            PRIVATE_CONFIG=ignore geth \
+                --networkid ${NETWORKID} \
+                ${CONSENSUS_OPTS} \
+                ${GAS_OPTS} \
+                ${NAT_OPTS} ${DISCOVERY_OPTS} \
+                ${METRICS_OPTS} \
+                --port ${P2P_PORT} \
+                --nodekey /config/nodekey \
+                --datadir /data/node \
+                --gcmode archive  --syncmode full \
+                --nousb \
+                ${MINER_OPTS} --miner.etherbase ${ETHERBASE} \
+                ${RPC_OPTS} \
+                ${RPC_APIS} \
+                ${LOG_OPTS}
+
+      initContainers:
+      - name: chaininit
+        image: quorumengineering/quorum:21.4.1
+        imagePullPolicy: Always
+        volumeMounts:
+          - name: ethnode-pv
+            mountPath: /data
+          - name: config
+            mountPath: /config
+        command:
+          - sh
+        args:
+          - -cx
+          - |
+            set -e
+            [ -f /data/node/geth/LOCK ] && exit 0
+            echo "initialising node"
+            geth init \
+                --datadir /data/node \
+                  /config/genesis.json

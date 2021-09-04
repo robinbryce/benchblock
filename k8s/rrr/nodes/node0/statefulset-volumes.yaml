@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ethnode
+spec:
+  template:
+    spec:
+      volumes:
+        - name: config
+          projected:
+            sources:
+            - configMap:
+                name: genesis
+                items:
+                  - key: genesis.json
+                    path: genesis.json
+            - secret:
+                name: ethnodekey-0
+                items:
+                  - key: key
+                    path: nodekey

@@ -1,0 +1,47 @@
+configMapGenerator:
+- name: ethnode-cfg
+  literals:
+  - NETWORKID=53456
+  - NUM_BOOTNODES=
+  - BOOTNODE_PUB0=
+  - BOOTNODE0_HOST=
+  - BOOTNODE_PUB1=
+  - BOOTNODE1_HOST=
+  #- >-
+  #  BOOTNODE0_DNS=bootnode-0.bootnode.queth.svc.cluster.local
+  #- >-
+  #  BOOTNODE1_DNS=bootnode-1.bootnode.queth.svc.cluster.local
+  #- >-
+  - METRICS_OPTS=
+  #  --metrics --metrics.addr 0.0.0.0 --metrics.port 6060
+  #  --pprof --pprof.addr 0.0.0.0 --pprof.port 9545
+  #- >-
+  - CONSENSUS_OPTS=
+  #  CONSENSUS_OPTS=
+  #  --rrr.nc 3 --rrr.ne 11 --rrr.q 6 --rrr.ta 2000
+  #  --rrr.intentphase 700 --rrr.confirmphase 1300 --rrr.roundlength 4000
+  #- RPC_APIS=--http.api rrr,admin,eth,miner,net,txpool,personal,web3
+  - RPC_APIS=--rpcapi admin,eth,miner,net,txpool,personal,web3
+  - SYNC_OPTS=--gcmode archive --syncmode full
+  - PRIVATE_CONFIG=ignore
+  - P2P_PORT=7200
+  - WS_OPTS=--ws  --wsorigins '*' --wsport 8400
+  - >-
+    RPC_OPTS=
+    --allow-insecure-unlock
+    --http --http.addr 0.0.0.0
+    --http.corsdomain '*' --http.vhosts '*' --http.port 8300
+  - GAS_OPTS=
+  - >-
+    MINER_OPTS=
+    --mine --miner.threads 1
+    --miner.gastarget 368200000 --miner.gaslimit 368200000
+    --miner.recommit 5000s
+  # --miner.recommit is used by miners to pull in higher priced transactions
+  # that arrived after the current work started. This interferes with some
+  # consensus implementations so we make it very long by default. it is
+  # interesting to measure the effects of this parameter.
+  - LOG_OPTS=--vmodule consensus/*=2,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
+- name: genesis
+  files:
+  - genesis.json
