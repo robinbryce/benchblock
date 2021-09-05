@@ -1,0 +1,58 @@
+usage: |
+  Generate the network wide kustomizations for rrr
+
+options:
+  peers:
+    usage: "list connected peer ids for each node as well as count"
+    short: "p"
+    type: bool
+
+args:
+  configdir:
+    usage: >
+      The config root directory.
+
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+        TUSKDIR=$(pwd)
+
+        # read the config file fields into BBENCH_ vars.
+        CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+
+        cd ${launchdir} && cd ${configdir}
+
+        for i in $(seq 0 $((${BBENCH_MAXNODES} - 1)))
+        do
+
+        POD=rrr-ethnode${i}-0
+        [[ $i -lt ${BBENCH_NUMBOOTNODES} ]] && POD=rrr-ethnodeboot${i}-0
+        export POD
+
+        export ADMIN_JSON=$(kubectl \
+           -n ethnet exec ${POD} -- \
+            /usr/local/bin/geth \
+            attach /data/node/geth.ipc \
+             --exec "console.log(JSON.stringify(admin))")
+
+        cat <<PYEND | python3
+        import os
+        import json
+        pod = os.environ['POD']
+        s = os.environ['ADMIN_JSON'].rsplit(None, 1)[0]
+        j = json.loads(s)
+        peerips = [p["network"]["remoteAddress"].rsplit(":", 1)[0] for p in j["peers"]]
+        peerids = [p["id"][-40:] for p in j["peers"]]
+        if "${peers}" == "true":
+          print(f'{pod} {j["nodeInfo"]["id"][-40:]} {j["nodeInfo"]["ip"]} -> [{len(peerids)}] {", ".join(peerids)}')
+        else:
+          print(f'{pod} {j["nodeInfo"]["id"][-40:]} {j["nodeInfo"]["ip"]} -> [{len(peerids)}]')
+        PYEND
+        done

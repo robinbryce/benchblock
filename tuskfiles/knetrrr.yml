@@ -1,0 +1,153 @@
+usage: |
+  Generate the network wide kustomizations for rrr
+
+options:
+  networkid:
+    default: "53456"
+  numbootnodes:
+    default: 2
+    short: b
+    type: int
+  gastarget:
+    usage: "sets the --miner.gastarget option for the nodes"
+    default: "18200000"
+  gaslimit:
+    usage: "sets the --miner.gaslimit option for the nodes"
+    default: "18200000"
+  recommit:
+    usage: "sets the --miner.recommit option for the nodes."
+    default: "2s"
+
+args:
+  configdir:
+    usage: >
+      The config root directory.
+
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+        TUSKDIR=$(pwd)
+
+        # read the config file fields into BBENCH_ vars.
+        CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+
+        cd ${launchdir} && cd ${configdir}
+
+        NUM_BOOTNODES=${numbootnodes}
+        [ -n "${NUM_BOOTNODES}" ] | NUM_BOOTNODES=0
+
+        export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
+        export CONSENSUS_OPTS="\
+        --rrr.nc ${BBENCH_NUMCANDIDATES} \
+        --rrr.ne ${BBENCH_NUMENDORSERS} \
+        --rrr.q ${BBENCH_COMMITTEEQUORUM} \
+        --rrr.ta ${BBENCH_ACTIVEHORIZON} \
+        --rrr.intentphase ${BBENCH_INTENTPHASE} \
+        --rrr.confirmphase ${BBENCH_CONFIRMPHASE} \
+        --rrr.roundlength ${BBENCH_ROUNDLENGTH}"
+
+        cat <<END > rrr/network/network.env
+        CONSENSUS_OPTS=${CONSENSUS_OPTS}
+        NETWORKID=${networkid}
+        ETHERBASE=${ETHERBASE}
+        GETH_IMAGE= ${BBENCH_GETH_IMAGE}
+        GAS_OPTS=$GAS_OPTS
+        END
+        cat rrr/network/network.env
+        echo "Wrote rrr/network/network.env"
+
+        rm -f rrr/network/bootnodes.env
+        echo "NUM_BOOTNODES=${NUM_BOOTNODES}" >> rrr/network/bootnodes.env
+        for i in $(seq 0 $((${NUM_BOOTNODES} - 1))); do
+          echo "BOOTNODE_PUB${i}=$(cat ${BBENCH_NODESDIR}/node${i}/enode)" >> rrr/network/bootnodes.env
+          echo "BOOTNODE_HOST${i}=rrr-ethnodeboot${i}-0.rrr-ethnodeboot${i}.ethnet.svc.cluster.local" >> rrr/network/bootnodes.env
+        done
+        cat rrr/network/bootnodes.env
+        echo "Wrote ${NUM_BOOTNODES} bootnodes to rrr/network/bootnodes.env"
+
+        # kustomizations for the rrr base node
+        for i in $(seq 0 $((${NUM_BOOTNODES} - 1))); do
+          NODENUM=$i yq eval \
+            '.spec.template.spec.containers[].env[].name += env(NODENUM) |
+             .spec.template.spec.containers[].env[].valueFrom.configMapKeyRef.key += env(NODENUM)
+            ' \
+            ${TUSKDIR}/k8s/base/rrr/node/statefulset-env-bootnode.yaml \
+            > base/rrr/node/statefulset-env-bootnode${i}.yaml
+          cat base/rrr/node/statefulset-env-bootnode${i}.yaml
+          echo "Wrote: base/rrr/node/statefulset-env-bootnode${i}.yaml"
+          echo "- statefulset-env-bootnode${i}.yaml" >> base/rrr/node/kustomization-patches.yaml
+        done
+        if [ ${NUM_BOOTNODES} -gt 0 ]; then
+          yq eval-all --inplace 'select(fi==0) *+ {"patchesStrategicMerge": select(fi==1)}' \
+            base/rrr/node/kustomization.yaml base/rrr/node/kustomization-patches.yaml
+          cat base/rrr/node/kustomization.yaml
+          echo "Updated: base/rrr/node/kustomization.yaml"
+          rm -f base/rrr/node/kustomization-patches.yaml
+        fi
+
+        # kustomizations for the boot nodes
+        for i in $(seq 0 $((${NUM_BOOTNODES} - 1))); do
+          NODENUM=$i yq eval '.nameSuffix = env(NODENUM) | .resources[0] = "./../../../base/rrr/bootnode"' \
+            ${TUSKDIR}/k8s/rrr/nodes/node0/kustomization.yaml \
+            > rrr/nodes/node${i}/kustomization.yaml
+            cat rrr/nodes/node${i}/kustomization.yaml
+            echo "Wrote: rrr/nodes/node${i}/kustomization.yaml"
+        done
+
+        # kustomizations for the remaining nodes
+        start=${NUM_BOOTNODES}
+        end=$(($BBENCH_MAXNODES - 1))
+        for i in $(seq $start $end); do
+          NODENUM=$i yq eval '.nameSuffix = env(NODENUM)' \
+            ${TUSKDIR}/k8s/rrr/nodes/node0/kustomization.yaml \
+            > rrr/nodes/node${i}/kustomization.yaml
+            cat rrr/nodes/node${i}/kustomization.yaml
+            echo "Wrote: rrr/nodes/node${i}/kustomization.yaml"
+        done
+
+        # volumes for all the nodes. no transformation required
+        for i in $(seq 0 $((${BBENCH_MAXNODES} - 1))); do
+          cp ${TUSKDIR}/k8s/rrr/nodes/node0/statefulset-volumes.yaml rrr/nodes/node${i}/statefulset-volumes.yaml
+          cat rrr/nodes/node${i}/statefulset-volumes.yaml
+          echo "Wrote: rrr/nodes/node${i}/statefulset-volumes.yaml"
+        done
+
+        for i in $(seq 0 $((${BBENCH_MAXNODES} - 1))); do
+        echo "- ./../nodes/node${i}"
+        done | \
+        yq eval-all 'select(fi==0) *+ {"resources": select(fi==1)}' ${TUSKDIR}/k8s/rrr/network/kustomization.yaml - \
+        > rrr/network/kustomization.yaml
+        cat rrr/network/kustomization.yaml
+        echo "Wrote rrr/network/kustomization.yaml"
+
+        # just copy accross for now, support chaning the namespace later
+        cp ${TUSKDIR}/k8s/rrr/namespace.yaml rrr/
+        cat rrr/namespace.yaml
+        echo "Wrote rrr/namespace.yaml"
+        cp ${TUSKDIR}/k8s/rrr/kustomization.yaml rrr/
+        cat rrr/kustomization.yaml
+        echo "Wrote rrr/kustomization.yaml"
+
+        source ${BBENCH_PYENV}/bin/activate
+        cat <<PYEND | python3
+        import os, json
+        j = None
+        with open("bench.json") as f:
+            j = json.load(f)
+            # The sourcing trick we use doesn't play well with variables that
+            # have spaces
+            # j["consensus_opts"] = os.environ["CONSENSUS_OPTS"]
+            # j["gas_opts"] = os.environ["GAS_OPTS"]
+            j["networkid"] = "${networkid}"
+            j["numbootnodes"] = "${numbootnodes}"
+        if j is not None:
+            with open("bench.json", "w") as f:
+                json.dump(j, f, indent=2, sort_keys=True)
+        PYEND

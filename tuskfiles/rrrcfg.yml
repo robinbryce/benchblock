@@ -11,6 +11,7 @@ options:
 
   genesis:
     default: "genesis-in.json"
+    short: g
 
   numcandidates:
     short: c
@@ -90,6 +91,8 @@ run:
         NAME="${name}"
         [ -z ${NAME} ] && NAME="rrr${maxnodes}"
 
+        GETH_IMAGE="${geth_image}"
+        [ -n "${GETH_IMAGE}" ] && GETH_IMAGE="eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
 
         # generate the config from the options
         cat <<JEND  > bench.json
@@ -119,3 +122,9 @@ run:
 
         cat bench.json
         echo "Wrote: $(pwd)/bench.json"
+
+        # Copy the kustomization base now. So that knetrrr can be used to
+        # update the network configuration without clobbering any local changes
+        # to the bases
+        cp -r ${TUSKDIR}/k8s/base base
+

@@ -1,7 +1,8 @@
 ---
-usage: "rrr genesis - keeps existing keys and alpha contributions"
+usage: "rrrinit - run geth init in the rrr node directories"
 options:
   sudo:
+    usage: "some systems will require sudo to delete the node data directory"
     type: bool
 args:
   configdir:
@@ -28,9 +29,11 @@ run:
 
         cp ${TUSKDIR}/compose/rrr/genesis-in.json .
 
+        GENESIS_JSON=${CONFIGDIR}/genesis.json
+
         pushd ${launchdir} # restore launchdir before recursive invoke
           tusk -qf ${thistusk} rrrextra ${configdir}
-          tusk -qf ${thistusk} gethgendoc ${configdir} | tee ${CONFIGDIR}/genesis.json
+          tusk -qf ${thistusk} gethgendoc ${configdir} | tee ${GENESIS_JSON}
         popd
 
         # clear out all the data dirs first to avoid mixed state if we fail

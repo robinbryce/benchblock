@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ethnode
+spec:
+  template:
+    spec:
+      containers:
+      - name: geth-rrr
+        env:
+          - name: BOOTNODE_PUB
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: BOOTNODE_PUB
+          - name: BOOTNODE_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: BOOTNODE_HOST

@@ -59,7 +59,7 @@ run:
         )
 
         export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
-        export RRR_CONSENSUS_OPTS="\
+        export CONSENSUS_OPTS="\
         --rrr.nc ${BBENCH_NUMCANDIDATES} \
         --rrr.ne ${BBENCH_NUMENDORSERS} \
         --rrr.q ${BBENCH_COMMITTEEQUORUM} \
@@ -70,7 +70,7 @@ run:
 
         cat <<END > env.env
         COMPOSE_PROJECT_NAME=${BBENCH_NAME}
-        RRR_CONSENSUS_OPTS=${RRR_CONSENSUS_OPTS}
+        CONSENSUS_OPTS=${CONSENSUS_OPTS}
         NETWORKID=${networkid}
         NETRESTRICT=${netrestrict}
         ETHERBASE=${ETHERBASE}
@@ -103,7 +103,7 @@ run:
             j = json.load(f)
             # The sourcing trick we use doesn't play well with variables that
             # have spaces
-            # j["consensus_opts"] = os.environ["RRR_CONSENSUS_OPTS"]
+            # j["consensus_opts"] = os.environ["CONSENSUS_OPTS"]
             # j["gas_opts"] = os.environ["GAS_OPTS"]
             j["networkid"] = "${networkid}"
             j["netrestrict"] = "${netrestrict}"

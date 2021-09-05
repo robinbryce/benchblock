@@ -1,3 +1,20 @@
+# k8s
+bbench rrrcfg \
+    --maxnodes 7 -c 2 -e 5 -q 3 rrr7-k8s \
+    --genesis ~/jitsuin/rrr/blockbench/k8s/base/network/genesis-in.json \
+    --nodesdir rrr/nodes
+cd rrr7-k8s
+bbench gethkeys .
+bbench rrralpha .
+bbench rrrextra .
+mkdir rrr/network
+bbench gethgendoc . | tee rrr/network/genesis.json
+
+rrr-ethnodeboot0-0.rrr-ethnodeboot0.ethnet.svc.cluster.local
+rrr-ethnodeboot0-0.rrr-ethnodeboot0.ethnet.svc.cluster.local
+
+rrr-ethnodeboot1-0.rrr-ethnodeboot1.ethnet.svc.cluster.local
+rrr-ethnodeboot1-0.rrr-ethnodeboot1.ethnet.svc.cluster.local
 # blockbench
 
 Tools to explore the performance characteristics of different etherum/quorum

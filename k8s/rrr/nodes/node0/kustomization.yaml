@@ -1,6 +1,7 @@
 nameSuffix: "0"
 resources:
   - ./../../../base/rrr/node
+# - ./../../../base/rrr/bootnode
 
 patchesStrategicMerge:
 - statefulset-volumes.yaml

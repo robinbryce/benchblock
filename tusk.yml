@@ -348,7 +348,7 @@ tasks:
           args:
             - ${configdir}
       - task:
-          name: rrrgen
+          name: rrrinit
           args:
             - ${configdir}
       - task:
@@ -424,18 +424,60 @@ tasks:
   rrrcfg:
     include: tuskfiles/rrrcfg.yml
 
-  rrrgen:
-    include: tuskfiles/rrrgen.yml
-
-  # rrr support commands
-  rrrcompose:
-    include: tuskfiles/rrrcompose.yml
-
   rrralpha:
     include: tuskfiles/rrralpha.yml
 
   rrrextra:
     include: tuskfiles/rrrextra.yml
+
+  rrrinit:
+    include: tuskfiles/rrrinit.yml
+
+  rrrcompose:
+    include: tuskfiles/rrrcompose.yml
+
+  knetrrr:
+    include: tuskfiles/knetrrr.yml
+
+  knet:
+    include: tuskfiles/knet.yml
+
+  kex:
+    options:
+      node:
+        short: "n"
+        default: 0
+        type: int
+    args:
+      configdir:
+      exec:
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -ex
+            # read the config file fields into BBENCH_ vars.
+            CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+
+            cd ${launchdir} && cd ${configdir}
+
+            i=${node}
+            POD=rrr-ethnode${i}-0
+            [[ $i -lt ${BBENCH_NUMBOOTNODES} ]] && POD=rrr-ethnodeboot${i}-0
+            export POD
+
+            kubectl \
+              $([ -z '${exec}' ] && echo -n '-it') \
+              -n ethnet exec ${POD} -- \
+              /usr/local/bin/geth \
+              attach /data/node/geth.ipc \
+                $([ -n '${exec}' ] && echo -n --exec '${exec}')
+
 
   # jupyter reporting
   jpycfg:

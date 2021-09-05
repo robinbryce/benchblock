@@ -49,10 +49,10 @@ run:
         CONFIGDIR=$(pwd)
         RECOMMIT="${recommit}"
 
-        IBFT_CONSENSUS_OPTS=""
-        [[ "${requesttimeout}" != "" ]] && IBFT_CONSENSUS_OPTS="${IBFT_CONSENSUS_OPTS} --istanbul.requesttimeout ${requesttimeout}"
-        [[ "${requesttimeout}" != "" ]] && IBFT_CONSENSUS_OPTS="${IBFT_CONSENSUS_OPTS} --istanbul.blockperiod ${blockperiod}"
-        export IBFT_CONSENSUS_OPTS
+        CONSENSUS_OPTS=""
+        [[ "${requesttimeout}" != "" ]] && CONSENSUS_OPTS="${CONSENSUS_OPTS} --istanbul.requesttimeout ${requesttimeout}"
+        [[ "${requesttimeout}" != "" ]] && CONSENSUS_OPTS="${CONSENSUS_OPTS} --istanbul.blockperiod ${blockperiod}"
+        export CONSENSUS_OPTS
 
         export ETHERBASE=${BBENCH_GENDOC_WALLET}
 
@@ -72,7 +72,7 @@ run:
 
         cat <<END > .env
         COMPOSE_PROJECT_NAME=${BBENCH_NAME}
-        IBFT_CONSENSUS_OPTS=${IBFT_CONSENSUS_OPTS}
+        CONSENSUS_OPTS=${CONSENSUS_OPTS}
         NETWORKID=${networkid}
         NETRESTRICT=${netrestrict}
         ETHERBASE=${ETHERBASE}
@@ -93,7 +93,7 @@ run:
             j["compose_project"] = "${compose_project}"
             # The sourcing trick we use doesn't play well with variables that
             # have spaces
-            #j["consensus_opts"] = os.environ["IBFT_CONSENSUS_OPTS"]
+            #j["consensus_opts"] = os.environ["CONSENSUS_OPTS"]
             #j["gas_opts"] = os.environ["GAS_OPTS"]
             j["networkid"] = "${networkid}"
             j["netrestrict"] = "${netrestrict}"

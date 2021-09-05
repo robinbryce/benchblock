@@ -4,4 +4,8 @@ images:
 - name: quorumengineering/quorum:21.4.1
   newName: eu.gcr.io/fetlar-1/geth-rrr
   newTag: fetlar-latest
+patchesStrategicMerge:
+#- statefulset-env-bootnode0.yaml
+# ...
+#- statefulset-env-bootnode{N}.yaml
 

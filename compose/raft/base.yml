@@ -22,7 +22,7 @@ x-node-env-defaults:
   &node-env-defaults
   NETWORKID: "${NETWORKID}"
   PRIVATE_CONFIG: ignore
-  RAFT_OPTS: "${RAFT_CONSENSUS_OPTS}"
+  RAFT_OPTS: "${CONSENSUS_OPTS}"
   DISCOVERY_OPTS: "--nodiscover"
   P2P_PORT: 7200
   RPC_OPTS: "\

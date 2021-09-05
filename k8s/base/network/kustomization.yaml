@@ -4,9 +4,9 @@ configMapGenerator:
   - NETWORKID=53456
   - NUM_BOOTNODES=
   - BOOTNODE_PUB0=
-  - BOOTNODE0_HOST=
+  - BOOTNODE_HOST0=
   - BOOTNODE_PUB1=
-  - BOOTNODE1_HOST=
+  - BOOTNODE_HOST1=
   #- >-
   #  BOOTNODE0_DNS=bootnode-0.bootnode.queth.svc.cluster.local
   #- >-

@@ -15,7 +15,7 @@ spec:
                   - key: genesis.json
                     path: genesis.json
             - secret:
-                name: ethnodekey-0
+                name: ethnodekey-
                 items:
                   - key: key
                     path: nodekey

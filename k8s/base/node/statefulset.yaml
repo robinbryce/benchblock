@@ -118,16 +118,33 @@ spec:
 
             NAT_OPTS="--nat=none"
 
-            # If a bootnode public key is provided discovery is enabled and we
-            # fill in the bootnodes downstream kustomizations are epxected to
-            # patch in the necessary env if required.
-            if [ -n "$BOOTNODE0_PUB" ]; then
-              DISCOVERY_OPTS="--netrestrict=${POD_IP}/16"
-              BOOTNODES=enode://${BOOTNODE0_PUB}@${BOOTNODE0_HOST}:${P2P_PORT}
-              if [ -n "$BOOTNODE0_PUB" ]; then
-                BOOTNODES=${BOOTNODES},enode://${BOOTNODE1_PUB}@${BOOTNODE1_HOST}:${P2P_PORT}
+            # quorum resolves the bootnode dns names once on startup
+            if [ -n "$BOOTNODE_PUB0" ]; then
+              BOOTNODES=enode://${BOOTNODE_PUB0}@${BOOTNODE_HOST0}:${P2P_PORT}
+            fi
+
+            if [ -n "$BOOTNODE_PUB1" ]; then
+              [ -n "${BOOTNODES}" ] && BOOTNODES="${BOOTNODES},"
+              BOOTNODES="${BOOTNODES}enode://${BOOTNODE_PUB1}@${BOOTNODE_HOST1}:${P2P_PORT}"
+            fi
+
+            # if we expect bootnodes and are not one of them, hang around until
+            # one is available. k8s dns will fail until the node is ready
+            HOSTNAME=$(hostname -f)
+            if [ -n "$BOOTNODE_PUB0" ] && { [ "${HOSTNAME}" != "${BOOTNODE_HOST0}" ] && [ "${HOSTNAME}" != "${BOOTNODE_HOST1}" ]; }; then
+            while true; do
+              [ -n "${BOOTNODE_HOST0}" ] && nslookup -type=a ${BOOTNODE_HOST0} && break
+              [ -n "${BOOTNODE_HOST1}" ] && nslookup -type=a ${BOOTNODE_HOST1} && break
+              echo "waiting for a bootnode to be available ..."
+              sleep 1
+            done
+            fi
+            if [ -n "$BOOTNODE_PUB0" ]; then
+              if  { [ "${HOSTNAME}" = "${BOOTNODE_HOST0}" ] || [ "${HOSTNAME}" = "${BOOTNODE_HOST1}" ]; }; then
+                DISCOVERY_OPTS="--netrestrict=${POD_IP}/16"
+              else
+                DISCOVERY_OPTS="--netrestrict=${POD_IP}/16 --bootnodes=${BOOTNODES}"
               fi
-              DISCOVERY_OPTS="--netrestrict=${POD_IP}/16 --bootnodes=${BOOTNODES}"
             fi
 
             # this is the genesis account
