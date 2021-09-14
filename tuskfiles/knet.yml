@@ -1,5 +1,5 @@
 usage: |
-  Generate the network wide kustomizations for rrr
+  Use the geth node admin package to introspect the peer connections
 
 options:
   peers:

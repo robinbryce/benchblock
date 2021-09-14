@@ -1,5 +1,18 @@
 interpreter: bash -c
 name: blockbench
+usage: |
+  Use the `raft', `ibft' or `rrr` commands to fully configure a network for the
+  corresponding consenus model.  `gethkeys' and `gethgendoc' are used to
+  generate the node keys and genesis document for all consensus models (and to
+  force re-genesis). commands prefixed with `raft', `rrr', or `ibft' deal with
+  coresponding consens model network configuration details.
+
+  `jpcfg' readies a network configuration for collecting chainhammer compatible
+  block data and `jpyrender' processes the data collected by the load
+  generation tool [see ](./go/loadtool/main.go)
+
+  The other commands provide various conveniences
+
 options:
 
   launchdir:
@@ -133,7 +146,7 @@ tasks:
           args:
             - ${configdir}
       - task:
-          name: ibftcfg
+          name: ibftnew
           options:
             name: "${name}"
             geth_image: ${geth_image}
@@ -226,7 +239,7 @@ tasks:
           args:
             - ${configdir}
       - task:
-          name: raftcfg
+          name: raftnew
           options:
             name: "${name}"
             geth_image: ${geth_image}
@@ -309,6 +322,13 @@ tasks:
           allow for block disemination, 2s  or more is fair)
         default: 5000
 
+      k8s:
+        usage: >
+          Generate a set of kubernetes manifiests (kustomizations) instead of
+          the default docker-compose setup.
+        type: bool
+        short: k
+
     args:
       configdir:
         usage: Directory to put the network in
@@ -318,7 +338,7 @@ tasks:
           args:
             - ${configdir}
       - task:
-          name: rrrcfg
+          name: rrrnew
           options:
             name: ${name}
             geth_image: ${geth_image}
@@ -351,14 +371,19 @@ tasks:
           name: rrrinit
           args:
             - ${configdir}
-      - task:
-          name: rrrcompose
-          options:
-            gastarget: "${gastarget}"
-            gaslimit: "${gaslimit}"
-            recommit: "${recommit}"
-          args:
-            - ${configdir}
+      - command:
+          exec: |
+            set -ex
+            TUSKDIR=$(pwd)
+            CONFIGDIR=$(cd ${launchdir} && cd ${configdir} && pwd)
+            cd ${launchdir}
+            if ${k8s}; then
+              tusk -qf ${TUSKDIR}/tusk.yml rrrk8s $CONFIGDIR \
+                --gastarget=${gastarget} --gaslimit=${gaslimit} --recommit=${recommit}
+              exit 0
+            fi
+            tusk -qf ${TUSKDIR}/tusk.yml rrrcompose $CONFIGDIR \
+              --gastarget=${gastarget} --gaslimit=${gaslimit} --recommit=${recommit}
 
   configure:
     usage: >
@@ -397,8 +422,8 @@ tasks:
     include: tuskfiles/gethgen.yml
 
   # ibft consensus commands
-  ibftcfg:
-    include: tuskfiles/ibftcfg.yml
+  ibftnew:
+    include: tuskfiles/ibftnew.yml
 
   ibftextra:
     include: tuskfiles/ibftextra.yml
@@ -416,13 +441,13 @@ tasks:
   raftcompose:
     include: tuskfiles/raftcompose.yml
 
-  raftcfg:
-    include: tuskfiles/raftcfg.yml
+  raftnew:
+    include: tuskfiles/raftnew.yml
 
 
   # rrr consensus commands
-  rrrcfg:
-    include: tuskfiles/rrrcfg.yml
+  rrrnew:
+    include: tuskfiles/rrrnew.yml
 
   rrralpha:
     include: tuskfiles/rrralpha.yml
@@ -436,8 +461,8 @@ tasks:
   rrrcompose:
     include: tuskfiles/rrrcompose.yml
 
-  knetrrr:
-    include: tuskfiles/knetrrr.yml
+  rrrk8s:
+    include: tuskfiles/rrrk8s.yml
 
   knet:
     include: tuskfiles/knet.yml

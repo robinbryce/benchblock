@@ -30,7 +30,7 @@ run:
         - ${configdir}
   - command:
       exec: |
-        set -e
+        set -ex
         TUSKDIR=$(pwd)
 
         # read the config file fields into BBENCH_ vars.
@@ -53,12 +53,16 @@ run:
         --rrr.confirmphase ${BBENCH_CONFIRMPHASE} \
         --rrr.roundlength ${BBENCH_ROUNDLENGTH}"
 
+        mkdir -p rrr/network
+        cp genesis.json rrr/network
+
         cat <<END > rrr/network/network.env
         CONSENSUS_OPTS=${CONSENSUS_OPTS}
         NETWORKID=${networkid}
         ETHERBASE=${ETHERBASE}
         GETH_IMAGE= ${BBENCH_GETH_IMAGE}
         GAS_OPTS=$GAS_OPTS
+        LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
         END
         cat rrr/network/network.env
         echo "Wrote rrr/network/network.env"
@@ -67,7 +71,7 @@ run:
         echo "NUM_BOOTNODES=${NUM_BOOTNODES}" >> rrr/network/bootnodes.env
         for i in $(seq 0 $((${NUM_BOOTNODES} - 1))); do
           echo "BOOTNODE_PUB${i}=$(cat ${BBENCH_NODESDIR}/node${i}/enode)" >> rrr/network/bootnodes.env
-          echo "BOOTNODE_HOST${i}=rrr-ethnodeboot${i}-0.rrr-ethnodeboot${i}.ethnet.svc.cluster.local" >> rrr/network/bootnodes.env
+          echo "BOOTNODE_HOST${i}=ethnodeboot${i}-0.ethnodeboot${i}.${BBENCH_NAME}.svc.cluster.local" >> rrr/network/bootnodes.env
         done
         cat rrr/network/bootnodes.env
         echo "Wrote ${NUM_BOOTNODES} bootnodes to rrr/network/bootnodes.env"
@@ -127,13 +131,15 @@ run:
         cat rrr/network/kustomization.yaml
         echo "Wrote rrr/network/kustomization.yaml"
 
-        # just copy accross for now, support chaning the namespace later
+        # The namespace is the name - eg rrr7
+        yq eval ".namespace = \"$BBENCH_NAME\"" \
+          ${TUSKDIR}/k8s/rrr/kustomization.yaml | \
+          tee rrr/kustomization.yaml
+        echo "Wrote rrr/kustomization.yaml"
+
         cp ${TUSKDIR}/k8s/rrr/namespace.yaml rrr/
         cat rrr/namespace.yaml
         echo "Wrote rrr/namespace.yaml"
-        cp ${TUSKDIR}/k8s/rrr/kustomization.yaml rrr/
-        cat rrr/kustomization.yaml
-        echo "Wrote rrr/kustomization.yaml"
 
         source ${BBENCH_PYENV}/bin/activate
         cat <<PYEND | python3

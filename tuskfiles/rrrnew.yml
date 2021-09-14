@@ -51,7 +51,7 @@ options:
 
   nodesdir:
     usage: "relative to configdir. each node gets a subdirectory here named node{N}"
-    default: nodes
+    default: rrr/nodes
   rrr_src:
     default:
       command: echo "${launchdir}/go-rrr"
@@ -123,7 +123,7 @@ run:
         cat bench.json
         echo "Wrote: $(pwd)/bench.json"
 
-        # Copy the kustomization base now. So that knetrrr can be used to
+        # Copy the kustomization base now. So that rrr can be used to
         # update the network configuration without clobbering any local changes
         # to the bases
         cp -r ${TUSKDIR}/k8s/base base
