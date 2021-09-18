@@ -145,7 +145,7 @@ options:
     usage: >
       The list of config VARS supported by most tasks. Use --configshow
       for any command to get the definite list.
-    default: "name consensus nodesdir maxnodes image genesis quorum_src geth_image delve_image pyenv"
+    default: "name consensus pyenv nodesdir maxnodes genesis quorum_src geth_image delve_image pyenv gendoc_extra gendoc_wallet gendoc_balance"
 
 tasks:
 
@@ -181,13 +181,14 @@ tasks:
       configdir:
       consensus:
     run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
       - command:
           exec: |
             set -e
-
             TUSKDIR=$(pwd)
-
-            export TUSKDIR
 
             cat <<PYEND | python3
             import os, sys, json
@@ -266,6 +267,18 @@ tasks:
             print(f"Wrote: {os.getcwd()}/bench.json")
             PYEND
 
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance nodeallocs timestamp_scale recommit"
+            eval ${READ_CONFIG}
+
+            python3 -m venv ${BBENCH_PYENV}
+            source ${BBENCH_PYENV}/bin/activate
+            pip3 install -r ${TUSKDIR}/requirements.txt
+
+            [ -d ${TUSKDIR}/k8s/base ] && cp -r ${TUSKDIR}/k8s/base base
+            [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && cp -r ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ${BBENCH_CONSENSUS}
+
+            eval ${SHOW_CONFIG}
+
   ibft:
     usage: >
       Configure a new ibft network
@@ -323,10 +336,6 @@ tasks:
             print(f"Wrote: {os.getcwd()}/bench.json")
             PYEND
 
-      - task:
-          name: ibftnew
-          args:
-            - ${configdir}
       - task:
           name: gethkeys
           args:
@@ -414,10 +423,6 @@ tasks:
             print(f"Wrote: {os.getcwd()}/bench.json")
             PYEND
 
-      - task:
-          name: raftnew
-          args:
-            - ${configdir}
       - task:
           name: gethkeys
           args:
@@ -535,11 +540,6 @@ tasks:
             PYEND
 
       - task:
-          name: rrrnew
-          args:
-            - ${configdir}
-
-      - task:
           name: gethkeys
           args:
             - ${configdir}
@@ -602,9 +602,6 @@ tasks:
     include: tuskfiles/gethgen.yml
 
   # ibft consensus commands
-  ibftnew:
-    include: tuskfiles/ibftnew.yml
-
   ibftextra:
     include: tuskfiles/ibftextra.yml
 
@@ -621,14 +618,7 @@ tasks:
   raftcompose:
     include: tuskfiles/raftcompose.yml
 
-  raftnew:
-    include: tuskfiles/raftnew.yml
-
-
   # rrr consensus commands
-  rrrnew:
-    include: tuskfiles/rrrnew.yml
-
   rrralpha:
     include: tuskfiles/rrralpha.yml
 

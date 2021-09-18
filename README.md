@@ -1,20 +1,3 @@
-# k8s
-bbench rrrcfg \
-    --maxnodes 7 -c 2 -e 5 -q 3 rrr7-k8s \
-    --genesis ~/jitsuin/rrr/blockbench/k8s/base/network/genesis-in.json \
-    --nodesdir rrr/nodes
-cd rrr7-k8s
-bbench gethkeys .
-bbench rrralpha .
-bbench rrrextra .
-mkdir rrr/network
-bbench gethgendoc . | tee rrr/network/genesis.json
-
-rrr-ethnodeboot0-0.rrr-ethnodeboot0.ethnet.svc.cluster.local
-rrr-ethnodeboot0-0.rrr-ethnodeboot0.ethnet.svc.cluster.local
-
-rrr-ethnodeboot1-0.rrr-ethnodeboot1.ethnet.svc.cluster.local
-rrr-ethnodeboot1-0.rrr-ethnodeboot1.ethnet.svc.cluster.local
 # blockbench
 
 Tools to explore the performance characteristics of different etherum/quorum
@@ -47,7 +30,8 @@ Having completed [Setup](#Setup), these are the steps to deploy and load test a 
 
 ```bash
 cd ~/workspace
-bbench raft -n 5 raft5
+bbench new -n 5 raft5 raft
+bbench raft raft5
 cd raft5
 docker-compose up -d
 docker-compose logs -f node1
@@ -176,3 +160,38 @@ alias bbench='tusk -qf ~/workspace/blockbench/tusk.yml'
 Please see [go-tusk](https://github.com/rliebz/tusk#readme), [yq](https://github.com/mikefarah/yq/blob/master/README.md) for up to installation details and information for other platforms.
 
 The [go-quorum](https://github.com/ConsenSys/quorum.git) clone clone is needed to take advantage of  compose remote debug  configuration [^2], but otherwise can be ommitted
+
+# Smoke test all supported consensus methods
+
+* Create the base profile for each like this:
+
+    for cc in raft ibft rrr; do bbench new ${cc}default ${cc}; done
+
+* Finalise the specific consensus details:
+
+   for cc in raft ibft rrr; do bbench ${cc} ${cc}default; done
+
+Then cd into each of raftdefault, ibftdefault and rrrdefault in turn and do `docker-compose up`
+
+Ctrl-C (and possibly docker-compose down) to clean up between each
+
+
+
+# k8s
+bbench rrrcfg \
+    --maxnodes 7 -c 2 -e 5 -q 3 rrr7-k8s \
+    --genesis ~/jitsuin/rrr/blockbench/k8s/base/network/genesis-in.json \
+    --nodesdir rrr/nodes
+cd rrr7-k8s
+bbench gethkeys .
+bbench rrralpha .
+bbench rrrextra .
+mkdir rrr/network
+bbench gethgendoc . | tee rrr/network/genesis.json
+
+rrr-ethnodeboot0-0.rrr-ethnodeboot0.ethnet.svc.cluster.local
+rrr-ethnodeboot0-0.rrr-ethnodeboot0.ethnet.svc.cluster.local
+
+rrr-ethnodeboot1-0.rrr-ethnodeboot1.ethnet.svc.cluster.local
+rrr-ethnodeboot1-0.rrr-ethnodeboot1.ethnet.svc.cluster.local
+
