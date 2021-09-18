@@ -145,7 +145,7 @@ options:
     usage: >
       The list of config VARS supported by most tasks. Use --configshow
       for any command to get the definite list.
-    default: "name consensus pyenv nodesdir maxnodes genesis quorum_src geth_image delve_image pyenv gendoc_extra gendoc_wallet gendoc_balance"
+    default: "name consensus k8s pyenv nodesdir maxnodes genesis quorum_src geth_image delve_image pyenv gendoc_extra gendoc_wallet gendoc_balance"
 
 tasks:
 
@@ -274,8 +274,10 @@ tasks:
             source ${BBENCH_PYENV}/bin/activate
             pip3 install -r ${TUSKDIR}/requirements.txt
 
+            cd ${launchdir} && cd ${configdir}
+
             [ -d ${TUSKDIR}/k8s/base ] && cp -r ${TUSKDIR}/k8s/base base
-            [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && cp -r ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ${BBENCH_CONSENSUS}
+            [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && cp -r ${TUSKDIR}/k8s/${BBENCH_CONSENSUS}/* ${BBENCH_CONSENSUS}
 
             eval ${SHOW_CONFIG}
 
@@ -497,7 +499,7 @@ tasks:
             TUSKDIR=$(pwd)
 
             # read the config file fields into BBENCH_ vars.
-            CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
+            CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
@@ -512,11 +514,7 @@ tasks:
             bench_json = json.load(open("bench.json", "r"))
 
             for k, v in dict(
-              k8s="${k8s}",
-              maxnodes="${maxnodes}",
-              quorum_src="${quorum_src}",
               rrr_src="${rrr_src}",
-              geth_image="${geth_image}",
               rrrctl_image="${rrrctl_image}",
               delve_image="${delve_image}",
               genesis="${genesis}",
@@ -555,14 +553,14 @@ tasks:
           exec: |
             set -ex
             TUSKDIR=$(pwd)
-            CONFIGDIR=$(cd ${launchdir} && cd ${configdir} && pwd)
+            CONFIGVARS="${configvars}"
+            eval ${READ_CONFIG}
+
+            CMD=rrrcompose
+            ${BBENCH_K8S} && CMD=rrrk8s
+
             cd ${launchdir}
-            if ${k8s}; then
-              tusk -qf ${TUSKDIR}/tusk.yml rrrk8s $CONFIGDIR \
-                --gastarget=${gastarget} --gaslimit=${gaslimit} --recommit=${recommit}
-              exit 0
-            fi
-            tusk -qf ${TUSKDIR}/tusk.yml rrrcompose $CONFIGDIR \
+            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir} \
               --gastarget=${gastarget} --gaslimit=${gaslimit} --recommit=${recommit}
 
   configure:

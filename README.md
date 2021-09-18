@@ -177,21 +177,8 @@ Ctrl-C (and possibly docker-compose down) to clean up between each
 
 
 
-# k8s
-bbench rrrcfg \
-    --maxnodes 7 -c 2 -e 5 -q 3 rrr7-k8s \
-    --genesis ~/jitsuin/rrr/blockbench/k8s/base/network/genesis-in.json \
-    --nodesdir rrr/nodes
-cd rrr7-k8s
-bbench gethkeys .
-bbench rrralpha .
-bbench rrrextra .
-mkdir rrr/network
-bbench gethgendoc . | tee rrr/network/genesis.json
+# k8s (rrr only so far)
 
-rrr-ethnodeboot0-0.rrr-ethnodeboot0.ethnet.svc.cluster.local
-rrr-ethnodeboot0-0.rrr-ethnodeboot0.ethnet.svc.cluster.local
-
-rrr-ethnodeboot1-0.rrr-ethnodeboot1.ethnet.svc.cluster.local
-rrr-ethnodeboot1-0.rrr-ethnodeboot1.ethnet.svc.cluster.local
-
+bbench new -k rrr30k rrr
+bbench rrr rrr30k
+kustomize build rrr30k/rrr | kubectl apply -f -

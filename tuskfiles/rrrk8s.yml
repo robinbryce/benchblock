@@ -30,7 +30,7 @@ run:
         - ${configdir}
   - command:
       exec: |
-        set -ex
+        set -e
         TUSKDIR=$(pwd)
 
         # read the config file fields into BBENCH_ vars.
@@ -54,7 +54,7 @@ run:
         --rrr.roundlength ${BBENCH_ROUNDLENGTH}"
 
         mkdir -p rrr/network
-        cp genesis.json rrr/network
+        cp ${BBENCH_NODESDIR}/genesis.json rrr/network
 
         cat <<END > rrr/network/network.env
         CONSENSUS_OPTS=${CONSENSUS_OPTS}
