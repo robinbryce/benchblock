@@ -29,7 +29,7 @@ options:
   maxnodes:
     usage: >
       The number of nodes for the network. For PoA networks, it is the number of *validating* nodes.
-    default: 5
+    default: ""
     short: "n"
 
   nodesdir:
@@ -145,7 +145,7 @@ options:
     usage: >
       The list of config VARS supported by most tasks. Use --configshow
       for any command to get the definite list.
-    default: "name nodesdir maxnodes image genesis quorum_src geth_image delve_image pyenv"
+    default: "name consensus nodesdir maxnodes image genesis quorum_src geth_image delve_image pyenv"
 
 tasks:
 
@@ -168,15 +168,108 @@ tasks:
             docker exec -it ${project}_node${node}_1 \
               geth attach /nodes/node${node}/data/geth.ipc
 
+
+  new:
+    usage: >
+      Configure a new network configdir from a stock profile
+    options:
+      profile:
+        short: "p"
+        usage: provide the default configuration values
+
+    args:
+      configdir:
+      consensus:
+    run:
+      - command:
+          exec: |
+            set -e
+
+            TUSKDIR=$(pwd)
+
+            export TUSKDIR
+
+            cat <<PYEND | python3
+            import os, sys, json
+            from pathlib import Path
+
+            consensus="${consensus}"
+
+            name = "${name}" or consensus + "${maxnodes}"
+
+            tuskdir = Path(os.getcwd()).resolve()
+
+            configdir = "${configdir}"
+            configdir = Path("${launchdir}").joinpath(configdir).resolve()
+            configdir.mkdir(parents=True, exist_ok=True)
+            os.chdir(configdir)
+
+            # nodesdir defaults to configdir/<consensus>/nodes
+            nodesdir = "${nodesdir}"
+            if nodesdir:
+              nodesdir = Path("${launchdir}").joinpath(nodesdir).resolve()
+            else:
+              nodesdir = configdir.joinpath(consensus, "nodes").resolve()
+
+            nodesdir.mkdir(parents=True, exist_ok=True)
+
+            # pyenvdir defaults to configdir/env
+            pyenvdir = "${pyenv}"
+            if pyenvdir:
+              pyenvdir = Path("${launchdir}").joinpath(pyenvdir).resolve()
+            else:
+              pyenvdir = configdir.joinpath("env").resolve()
+
+            # The configuration defaults come from the appropriate blockbench
+            # profile for the consensus and deployment method
+            deploymode="k8s"
+            if "${k8s}" != "true":
+              deploymode="compose"
+
+            profile = "${profile}"
+            if not profile:
+              profile=tuskdir.joinpath("configs", f"{consensus}-{deploymode}-default.json").resolve()
+            else:
+              profile=Path("${launchdir}").joinpath(profile).resolve()
+
+            if not profile.exists():
+              print(f"profile {profile} does not exist")
+              sys.exit(1)
+
+            bench_json = json.load(open(profile))
+
+            # these are commong to most/all consensus methods
+            opts = dict(
+              name=name,
+              consensus=consensus,
+              pyenv=str(pyenvdir),
+              k8s="${k8s}",
+              maxnodes="${maxnodes}",
+              nodesdir=str(nodesdir),
+              quorum_src="${quorum_src}",
+              geth_image="${geth_image}",
+              delve_image="${delve_image}",
+              genesis="${genesis}",
+              gendoc_wallet="${gendoc_wallet}",
+              nodeallocs="${nodeallocs}",
+              gendoc_balance="${gendoc_balance}",
+              timestamp_scale="1",
+              recommit="${recommit}"
+            )
+            for k, v in opts.items():
+              if v:
+                bench_json[k] = v
+            with open("bench.json", "w") as f:
+                json.dump(bench_json, f, indent=2, sort_keys=True)
+
+            print(json.dumps(bench_json, indent=2, sort_keys=True))
+            print(f"Wrote: {os.getcwd()}/bench.json")
+            PYEND
+
   ibft:
     usage: >
       Configure a new ibft network
     options:
-
-      name:
-        usage: >
-          The name for the configuration defaults to "ibft{maxnodes}"
-        default: ""
 
       blockperiod:
         usage: ibft blockperiod (rate of block production) in seconds
@@ -190,48 +283,45 @@ tasks:
           name: configure
           args:
             - ${configdir}
-
       - command:
           exec: |
             set -e
             TUSKDIR=$(pwd)
-            cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
 
-            ${k8s} && echo "not supported yet" && exit 1
+            # read the config file fields into BBENCH_ vars.
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
-            NAME="${name}"
-            [ -z ${NAME} ] && NAME="ibft${maxnodes}"
+            [ "${BBENCH_CONSENSUS}" != "ibft" ] && echo "Configured for ${BBENCH_CONSENSUS} not ibft" && exit 1
 
-            NODESDIR="$(pwd)/ibft/nodes"
-            [ -n "${nodesdir}" ] && NODESDIR=$(cd ${launchdir} && mkdir -p ${nodesdir} && cd ${nodesdir} && pwd)
-            mkdir -p ${NODESDIR}
+            cd ${launchdir} && cd ${configdir}
 
-            PYENV="$(pwd)/env"
-            [ -n "${pyenv}" ] && PYENV=$(cd ${launchdir} && mkdir -p ${pyenv} && cd ${pyenv} && pwd)
+            cat <<PYEND | python3
+            import os, sys, json
+            from pathlib import Path
 
-            # generate the config from the options
-            cat <<JEND  > bench.json
-            {
-              "name": "${NAME}",
-              "consensus": "ibft",
-              "k8s": "${k8s}",
-              "pyenv": "${PYENV}",
-              "maxnodes": "${maxnodes}",
-              "nodesdir": "${NODESDIR}",
-              "quorum_src": "${quorum_src}",
-              "geth_image": "${geth_image}",
-              "delve_image": "${delve_image}",
-              "genesis": "${genesis}",
-              "gendoc_wallet": "${gendoc_wallet}",
-              "nodeallocs": "${nodeallocs}",
-              "gendoc_balance": "${gendoc_balance}",
-              "timestamp_scale": "1000000000",
-              "recommit": "${recommit}",
-              "blockperiod": "${blockperiod}"
-            }
-            JEND
-            cat bench.json
-            echo "Wrote: $(pwd)/bench.json"
+            bench_json = json.load(open("bench.json", "r"))
+
+            for k, v in dict(
+              k8s="${k8s}",
+              maxnodes="${maxnodes}",
+              quorum_src="${quorum_src}",
+              geth_image="${geth_image}",
+              delve_image="${delve_image}",
+              genesis="${genesis}",
+              gendoc_wallet="${gendoc_wallet}",
+              nodeallocs="${nodeallocs}",
+              gendoc_balance="${gendoc_balance}",
+              recommit="${recommit}",
+              blockperiod="${blockperiod}").items():
+              if v:
+                bench_json[k] = v
+            with open("bench.json", "w") as f:
+                json.dump(bench_json, f, indent=2, sort_keys=True)
+            print(json.dumps(bench_json, indent=2, sort_keys=True))
+            print(f"Wrote: {os.getcwd()}/bench.json")
+            PYEND
 
       - task:
           name: ibftnew
@@ -286,46 +376,43 @@ tasks:
       - command:
           exec: |
             set -e
-
-            CONS
             TUSKDIR=$(pwd)
-            cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
 
-            ${k8s} && echo "not supported yet" && exit 1
+            # read the config file fields into BBENCH_ vars.
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
-            NAME="${name}"
-            [ -z ${NAME} ] && NAME="raft${maxnodes}"
+            [ "${BBENCH_CONSENSUS}" != "raft" ] && echo "Configured for ${BBENCH_CONSENSUS} not raft" && exit 1
 
-            NODESDIR="$(pwd)/raft/nodes"
-            [ -n "${nodesdir}" ] && NODESDIR=$(cd ${launchdir} && mkdir -p ${nodesdir} && cd ${nodesdir} && pwd)
-            mkdir -p ${NODESDIR}
+            cd ${launchdir} && cd ${configdir}
 
-            PYENV="$(pwd)/env"
-            [ -n "${pyenv}" ] && PYENV=$(cd ${launchdir} && mkdir -p ${pyenv} && cd ${pyenv} && pwd)
+            cat <<PYEND | python3
+            import os, sys, json
+            from pathlib import Path
 
-            # generate the config from the options
-            cat <<JEND  > bench.json
-            {
-              "name": "${NAME}",
-              "consensus": "raft",
-              "k8s": "${k8s}",
-              "pyenv": "${PYENV}",
-              "maxnodes": "${maxnodes}",
-              "nodesdir": "${NODESDIR}",
-              "quorum_src": "${quorum_src}",
-              "geth_image": "${geth_image}",
-              "delve_image": "${delve_image}",
-              "genesis": "${genesis}",
-              "gendoc_wallet": "${gendoc_wallet}",
-              "nodeallocs": "${nodeallocs}",
-              "gendoc_balance": "${gendoc_balance}",
-              "timestamp_scale": "1000000000",
-              "recommit": "${recommit}",
-              "raft_blocktime": "${raft_blocktime}"
-            }
-            JEND
-            cat bench.json
-            echo "Wrote: $(pwd)/bench.json"
+            bench_json = json.load(open("bench.json", "r"))
+
+            for k, v in dict(
+              k8s="${k8s}",
+              maxnodes="${maxnodes}",
+              quorum_src="${quorum_src}",
+              geth_image="${geth_image}",
+              delve_image="${delve_image}",
+              genesis="${genesis}",
+              gendoc_wallet="${gendoc_wallet}",
+              nodeallocs="${nodeallocs}",
+              gendoc_balance="${gendoc_balance}",
+              recommit="${recommit}",
+              raft_blocktime="${raft_blocktime}"
+              ).items():
+              if v:
+                bench_json[k] = v
+            with open("bench.json", "w") as f:
+                json.dump(bench_json, f, indent=2, sort_keys=True)
+            print(json.dumps(bench_json, indent=2, sort_keys=True))
+            print(f"Wrote: {os.getcwd()}/bench.json")
+            PYEND
 
       - task:
           name: raftnew
@@ -364,36 +451,35 @@ tasks:
       numcandidates:
         short: c
         usage: "set the number of canidate leaders per round"
-        default: 2
+        default: ""
       numendorsers:
         short: e
         usage: "set the size of the endorser committee"
-        default: 7
+        default: ""
       committeequorum:
         short: q
-        default: 4
+        default: ""
       activehorizon:
         usage: >
           number of blocks to allow for activity. Any identities without
           endorsements or blocks in this number of blocks is droped. (and will
           have to re-enrol).
         short: a
-        default: 2000
+        default: ""
       intentphase:
         usage: number of miliseconds for the rrr intent phase
-        default: 1500
+        default: ""
       confirmphase:
         usage: number of milliseconds for the rrr confirm phase
-        default: 1500
+        default: ""
       roundlength:
         usage: >
           total roundlength in milliseconds. must be greater than intent + confirm (rember to
           allow for block disemination, 2s  or more is fair)
-        default: 5000
+        default: ""
 
     args:
       configdir:
-        usage: Directory to put the network in
     run:
       - task:
           name: configure
@@ -402,50 +488,51 @@ tasks:
       - command:
           exec: |
             set -e
+
             TUSKDIR=$(pwd)
-            cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
 
-            NAME="${name}"
-            [ -z ${NAME} ] && NAME="raft${maxnodes}"
+            # read the config file fields into BBENCH_ vars.
+            CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
-            NODESDIR="$(pwd)/rrr/nodes"
-            [ -n "${nodesdir}" ] && NODESDIR=$(cd ${launchdir} && mkdir -p ${nodesdir} && cd ${nodesdir} && pwd)
-            mkdir -p ${NODESDIR}
+            [ "${BBENCH_CONSENSUS}" != "rrr" ] && echo "Configured for ${BBENCH_CONSENSUS} not rrr" && exit 1
 
-            PYENV="$(pwd)/env"
-            [ -n "${pyenv}" ] && PYENV=$(cd ${launchdir} && mkdir -p ${pyenv} && cd ${pyenv} && pwd)
+            cd ${launchdir} && cd ${configdir}
 
-            # generate the config from the options
-            cat <<JEND  > bench.json
-            {
-              "name": "${NAME}",
-              "consensus": "rrr",
-              "pyenv": "${PYENV}",
-              "k8s": "${k8s}",
-              "maxnodes": "${maxnodes}",
-              "nodesdir": "${NODESDIR}",
-              "quorum_src": "${quorum_src}",
-              "rrr_src": "${rrr_src}",
-              "geth_image": "${geth_image}",
-              "rrrctl_image": "${rrrctl_image}",
-              "delve_image": "${delve_image}",
-              "genesis": "${genesis}",
-              "gendoc_wallet": "${gendoc_wallet}",
-              "nodeallocs": "${nodeallocs}",
-              "gendoc_balance": "${gendoc_balance}",
-              "timestamp_scale": "1",
-              "recommit": "${recommit}",
-              "numcandidates": "${numcandidates}",
-              "numendorsers": "${numendorsers}",
-              "committeequorum": "${committeequorum}",
-              "activehorizon": "${activehorizon}",
-              "intentphase": "${intentphase}",
-              "confirmphase": "${confirmphase}",
-              "roundlength": "${roundlength}"
-            }
-            JEND
-            cat bench.json
-            echo "Wrote: $(pwd)/bench.json"
+            cat <<PYEND | python3
+            import os, sys, json
+            from pathlib import Path
+
+            bench_json = json.load(open("bench.json", "r"))
+
+            for k, v in dict(
+              k8s="${k8s}",
+              maxnodes="${maxnodes}",
+              quorum_src="${quorum_src}",
+              rrr_src="${rrr_src}",
+              geth_image="${geth_image}",
+              rrrctl_image="${rrrctl_image}",
+              delve_image="${delve_image}",
+              genesis="${genesis}",
+              gendoc_wallet="${gendoc_wallet}",
+              nodeallocs="${nodeallocs}",
+              gendoc_balance="${gendoc_balance}",
+              recommit="${recommit}",
+              numcandidates="${numcandidates}",
+              numendorsers="${numendorsers}",
+              committeequorum="${committeequorum}",
+              activehorizon="${activehorizon}",
+              intentphase="${intentphase}",
+              confirmphase="${confirmphase}",
+              roundlength="${roundlength}").items():
+              if v:
+                bench_json[k] = v
+            with open("bench.json", "w") as f:
+                json.dump(bench_json, f, indent=2, sort_keys=True)
+            print(json.dumps(bench_json, indent=2, sort_keys=True))
+            print(f"Wrote: {os.getcwd()}/bench.json")
+            PYEND
 
       - task:
           name: rrrnew
