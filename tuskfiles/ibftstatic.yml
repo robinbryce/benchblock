@@ -49,7 +49,7 @@ run:
               f"enode://{enode}@node{i}:{p2port}?discport=0"
             )
 
-        with open("static-nodes.json", "w") as f:
+        with open(f"{nodesdir}/static-nodes.json", "w") as f:
             json.dump(static, f, indent=2, sort_keys=True)
             f.flush()
             print(f"Wrote: {nodesdir}/static-nodes.json")

@@ -52,10 +52,10 @@ run:
               init ${BBENCH_NODESDIR}/genesis.json
         done
 
-        if [ -f static-nodes.json ]; then
+        if [ -f ${BBENCH_NODESDIR}/static-nodes.json ]; then
           for i in $(seq 0 ${end})
           do
-            mkdir -p nodes/node${i}/data/
-            cp -v static-nodes.json nodes/node${i}/data/
+            mkdir -p ${BBENCH_NODESDIR}/node${i}/data/
+            cp -v ${BBENCH_NODESDIR}/static-nodes.json ${BBENCH_NODESDIR}/node${i}/data/
           done
         fi
