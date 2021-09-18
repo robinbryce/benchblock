@@ -2,67 +2,7 @@
 usage: "inititialise for rrr consensus network"
 args:
   configdir:
-    usage: >
-      The config root directory.
-options:
-
-  name:
-    default: ""
-
-  genesis:
-    default: "genesis-in.json"
-    short: g
-
-  numcandidates:
-    short: c
-    usage: "set the number of canidate leaders per round"
-    default: 2
-  numendorsers:
-    short: e
-    usage: "set the size of the endorser committee"
-    default: 7
-  committeequorum:
-    short: q
-    default: 4
-  activehorizon:
-    usage: >
-      number of blocks to allow for activity. Any identities without
-      endorsements or blocks in this number of blocks is droped. (and will
-      have to re-enrol).
-    short: a
-    default: 2000
-  intentphase:
-    usage: number of miliseconds for the rrr intent phase
-    default: 1000
-  confirmphase:
-    usage: number of milliseconds for the rrr confirm phase
-    default: 1500
-  roundlength:
-    usage: >
-      total roundlength in milliseconds. must be greater than intent + confirm (rember to
-      allow for block disemination, 2s  or more is fair)
-    default: 5000
-
-  recommit:
-    usage: >
-      sets the --miner.recommit option for the nodes. currently set high
-      because it invalidates the current round intent if it fires mid round
-    default: "2000s"
-
-  nodesdir:
-    usage: "relative to configdir. each node gets a subdirectory here named node{N}"
-    default: rrr/nodes
-  rrr_src:
-    default:
-      command: echo "${launchdir}/go-rrr"
-  # these declarations duplicate the global options in the parent tusk. because
-  # otherwise they can't be supplied to  - task: subcommands
-  geth_image:
-  delve_image:
-  quorum_src:
-  maxnodes:
-  gendoc_wallet:
-  nodeallocs:
+    usage: The config root directory.
 
 run:
   - command:
@@ -71,60 +11,20 @@ run:
 
         TUSKDIR=$(pwd)
 
-        cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
-        mkdir -p ${nodesdir}/node0
-
-
-        # we don't allow this to be set on the cli, if you want another
-        # env thats fine, just edit bench.json afterwords to point to yours
-        # and make sure you install the requirements.txt
-        pyenv="env"
+        # read the config file fields into BBENCH_ vars.
+        CONFIGVARS="${configvars} roundlength intentphase confirmphase numcandidates numendorsers committeequorum activehorizon rrr_src"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
 
         echo "Initialising in: $(pwd)"
 
-        python3 -m venv ${pyenv}
-        source ${pyenv}/bin/activate
+        python3 -m venv ${BBENCH_PYENV}
+        source ${BBENCH_PYENV}/bin/activate
         pip3 install -r ${TUSKDIR}/requirements.txt
 
-        PYENVDIR=$(cd ${pyenv} && pwd)
-
-        NAME="${name}"
-        [ -z ${NAME} ] && NAME="rrr${maxnodes}"
-
-        GETH_IMAGE="${geth_image}"
-        [ -n "${GETH_IMAGE}" ] && GETH_IMAGE="eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
-
-        # generate the config from the options
-        cat <<JEND  > bench.json
-        {
-          "name": "${NAME}",
-          "pyenv": "${PYENVDIR}",
-          "maxnodes": "${maxnodes}",
-          "nodesdir": "$(pwd)/${nodesdir}",
-          "quorum_src": "${quorum_src}",
-          "geth_image": "${geth_image}",
-          "delve_image": "${delve_image}",
-          "rrr_src": "${rrr_src}",
-          "genesis": "${genesis}",
-          "gendoc_wallet": "${gendoc_wallet}",
-          "gendoc_balance": "${gendoc_balance}",
-          "timestamp_scale": "1",
-          "nodeallocs": "${nodeallocs}",
-          "numcandidates": "${numcandidates}",
-          "numendorsers": "${numendorsers}",
-          "committeequorum": "${committeequorum}",
-          "activehorizon": "${activehorizon}",
-          "intentphase": "${intentphase}",
-          "confirmphase": "${confirmphase}",
-          "roundlength": "${roundlength}"
-        }
-        JEND
-
-        cat bench.json
-        echo "Wrote: $(pwd)/bench.json"
-
-        # Copy the kustomization base now. So that rrr can be used to
-        # update the network configuration without clobbering any local changes
-        # to the bases
+        # Copy the kustomization base now, and do so regardless of whether -k
+        # is set, So that subsequent commands can be used to update the network
+        # configuration without clobbering any local changes to the bases
         cp -r ${TUSKDIR}/k8s/base base
 

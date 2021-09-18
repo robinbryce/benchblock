@@ -4,79 +4,28 @@ args:
   configdir:
     usage: >
       The config root directory.
-options:
-
-  name:
-    default: ""
-
-  nodesdir:
-    usage: "relative to configdir. each node gets a subdirectory here named node{N}"
-    default: nodes
-
-  genesis:
-    default: "genesis-in.json"
-
-  raft_blocktime:
-    usage: |
-      the --raftblocktime cosensus parameter for starting geth (ms)
-    default: 50
-
-  recommit:
-    usage: "sets the --miner.recommit option for the nodes."
-    default: ""
-
-  # these declarations duplicate the global options in the parent tusk. because
-  # otherwise they can't be supplied to  - task: subcommands
-  geth_image:
-  delve_image:
-  quorum_src:
-  maxnodes:
-  gendoc_wallet:
-  nodeallocs:
-
 run:
   - command:
       exec: |
         set -e
-
         TUSKDIR=$(pwd)
 
-        cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
-        mkdir -p ${nodesdir}/node0
-
-        # we don't allow this to be set on the cli, if you want another
-        # env thats fine, just edit bench.json afterwords to point to yours
-        # and make sure you install the requirements.txt
-        pyenv="env"
+        # read the config file fields into BBENCH_ vars.
+        CONFIGVARS="${configvars}"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
 
         echo "Initialising in: $(pwd)"
 
-        python3 -m venv ${pyenv}
-        source ${pyenv}/bin/activate
+        python3 -m venv ${BBENCH_PYENV}
+        source ${BBENCH_PYENV}/bin/activate
         pip3 install -r ${TUSKDIR}/requirements.txt
 
-        NAME="${name}"
-        [ -z ${NAME} ] && NAME="raft${maxnodes}"
-
-        PYENVDIR=$(cd ${pyenv} && pwd)
-        # generate the config from the options
-        cat <<JEND  > bench.json
-        {
-          "name": "${NAME}",
-          "pyenv": "${PYENVDIR}",
-          "maxnodes": "${maxnodes}",
-          "nodesdir": "$(pwd)/${nodesdir}",
-          "quorum_src": "${quorum_src}",
-          "geth_image": "${geth_image}",
-          "delve_image": "${delve_image}",
-          "genesis": "${genesis}",
-          "gendoc_wallet": "${gendoc_wallet}",
-          "nodeallocs": "${nodeallocs}",
-          "gendoc_balance": "${gendoc_balance}",
-          "raft_blocktime": "${raft_blocktime}",
-          "timestamp_scale": "1000000000"
-        }
-        JEND
+        # Copy the kustomization base now, and do so regardless of whether -k
+        # is set, So that subsequent commands can be used to update the network
+        # configuration without clobbering any local changes to the bases
+        cp -r ${TUSKDIR}/k8s/base base
 
         cat bench.json
         echo "Wrote: $(pwd)/bench.json"

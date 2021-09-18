@@ -1,11 +1,17 @@
 interpreter: bash -c
 name: blockbench
 usage: |
+
   Use the `raft', `ibft' or `rrr` commands to fully configure a network for the
   corresponding consenus model.  `gethkeys' and `gethgendoc' are used to
   generate the node keys and genesis document for all consensus models (and to
   force re-genesis). commands prefixed with `raft', `rrr', or `ibft' deal with
   coresponding consens model network configuration details.
+
+  To gain more control, and more efficiently change the network configuration,
+  individual subcommand can be used directly. Before using a <consensus>new
+  command the configuration directory and file must be created. This is done
+  for you if using the main commands.
 
   `jpcfg' readies a network configuration for collecting chainhammer compatible
   block data and `jpyrender' processes the data collected by the load
@@ -14,6 +20,97 @@ usage: |
   The other commands provide various conveniences
 
 options:
+  # network configuration options relevant for all
+  name:
+    usage: >
+      The network name, defaults to <consensus><maxnodes>
+    default: ""
+
+  maxnodes:
+    usage: >
+      The number of nodes for the network. For PoA networks, it is the number of *validating* nodes.
+    default: 5
+    short: "n"
+
+  nodesdir:
+    usage: >
+      each node gets a subdirectory here named node{N}. relative paths are relative to the callers cwd.
+      defaults to <consensus>/nodes
+    default: ""
+
+  geth_image:
+    usage: the docker image to use for geth-rrr
+    default: robustroundrobin/geth:main
+
+  delve_image:
+    usage: the docker image to use for running geth-rrr in for remote debug
+    default: robustroundrobin/delve:main
+
+  genesis:
+    default: genesis-in.json
+    short: "g"
+
+  recommit:
+    usage: >
+      sets the --miner.recommit option for the nodes. currently set high
+      because it invalidates the current round intent if it fires mid round
+    default: "2000s"
+
+  gastarget:
+    usage: sets the --miner.gastarget option for the nodes
+    default: "18200000"
+
+  gaslimit:
+    usage: sets the --miner.gaslimit option for the nodes
+    default: "18200000"
+
+  recommit:
+    usage: sets the --miner.recommit option for the nodes.
+    default: ""
+
+  gendoc_wallet:
+    usage: >
+      This wallet address will be included in the gensis document allocs.
+      Its balance is set by gendoc_balance. This is a convenience that
+      enables the same wallet key to be re-used accross multiple
+      configurations.
+    default: ""
+
+  gendoc_balance:
+    default: "1000000000000000000000000000"
+
+  nodeallocs:
+    usage: >
+      How many of the node keys to create alloc accounts for. The ballance
+      is set to gendoc_balance for all.
+    default: 0
+
+  pyenv:
+    usage: >
+      Override the directory to create the python virtualenv in. By default
+      there is an env per network. This option can be used to share the env.
+      By default it will be called env and created in the configdir
+    default: ""
+
+  # image and source options
+
+  rrrctl_image:
+    usage: the docker iamge to use for running rrrctl (needed to produce rrr extraData)
+    default: robustroundrobin/rrrctl:main
+
+  # source options. only used for compose networks and then only if interactively debuging
+  # the node
+  quorum_src:
+    usage: >
+        the host directory to be mounted as /go/src/quorum. must contain quorum clone.
+        only required if you need to interactively debug the node.
+    default:
+      command: echo "${launchdir}/quorum"
+  rrr_src:
+    default:
+      command: echo "${launchdir}/go-rrr"
+
+  # configuration options
 
   launchdir:
     # treat this as private
@@ -22,11 +119,13 @@ options:
     environment: PWD
 
   config:
+    private: true
     usage: >
       Base filename of the config file to use in configdir. Enables alternate
       configs for the same network.
     default:
       bench.json
+
   configshow:
     usage: "Report which, if any, supported configdir config file VAR's"
     type: bool
@@ -44,60 +143,6 @@ options:
       The list of config VARS supported by most tasks. Use --configshow
       for any command to get the definite list.
     default: "name nodesdir maxnodes image genesis quorum_src geth_image delve_image pyenv"
-
-  gethimage:
-    usage: >
-      Image name to use for geth. (prioritised over bench.json)
-
-  maxnodes:
-    usage: >
-      The number of nodes for the network. For PoA networks, it is the number of *validating* nodes.
-    default: 5
-    short: "n"
-
-  geth_image:
-    usage: "the docker image to use for geth-rrr"
-    default: "eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
-
-  delve_image:
-    usage: "the docker image to use for running geth-rrr in for remote debug"
-    default: "eu.gcr.io/fetlar-1/rrr-delve:fetlar-latest"
-
-  quorum_src:
-    usage: >
-        the host directory to be mounted as /go/src/quorum. must contain quorum clone.
-        only required if you need to interactively debug the node.
-    default:
-      command: echo "${launchdir}/quorum"
-
-  gastarget:
-    usage: "sets the --miner.gastarget option for the nodes"
-    default: "18200000"
-
-  gaslimit:
-    usage: "sets the --miner.gaslimit option for the nodes"
-    default: "18200000"
-
-  recommit:
-    usage: "sets the --miner.recommit option for the nodes."
-    default: ""
-
-  genesis_wallet:
-    usage: >
-      This wallet address will be included in the gensis document allocs.
-      Its balance is set by gendoc_balance. This is a convenience that
-      enables the same wallet key to be re-used accross multiple
-      configurations.
-    default: ""
-
-  gendoc_balance:
-    default: "1000000000000000000000000000"
-
-  nodeallocs:
-    usage: >
-      How many of the node keys to create alloc accounts for. The ballance
-      is set to gendoc_balance for all.
-    default: 0
 
 tasks:
 
@@ -190,45 +235,11 @@ tasks:
   raft:
     usage: >
       Configure a new raft network
+
     options:
-      name:
-        usage: >
-          The name for the configuration defaults to "raft{maxnodes}"
-        default: ""
-
-      maxnodes:
-        default: 5
-        short: "n"
-
-      geth_image:
-        usage: "the docker image to use for geth-rrr"
-        default: "eu.gcr.io/fetlar-1/geth-rrr:fetlar-latest"
-
-      delve_image:
-        usage: "the docker image to use for running geth-rrr in for remote debug"
-        default: "eu.gcr.io/fetlar-1/rrr-delve:fetlar-latest"
-
-      quorum_src:
-        usage: |
-            the host directory to be mounted as /go/src/quorum. must contain quorum clone.
-            only required if you need to interactively debug the node.
-        default:
-          command: echo "${launchdir}/quorum"
-
-      gastarget:
-        usage: "sets the --miner.gastarget option for the nodes"
-        default: "18200000"
-
-      gaslimit:
-        usage: "sets the --miner.gaslimit option for the nodes"
-        default: "18200000"
-
-      recommit:
-        usage: >
-          sets the --miner.recommit option for the nodes. used for public nodes
-          to pull in higher priced transactions. every recommit has a
-          significant chance of failing the round
-        default: "200s"
+      raft_blocktime:
+        usage: the --raftblocktime cosensus parameter for starting geth (ms)
+        default: 50
 
     args:
       configdir:
@@ -238,16 +249,46 @@ tasks:
           name: configure
           args:
             - ${configdir}
+
+      - command:
+          exec: |
+            set -e
+            TUSKDIR=$(pwd)
+            cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
+
+            NAME="${name}"
+            [ -z ${NAME} ] && NAME="raft${maxnodes}"
+
+            NODESDIR="$(pwd)/raft/nodes"
+            [ -n "${nodesdir}" ] && NODESDIR=$(cd ${launchdir} && mkdir -p ${nodesdir} && cd ${nodesdir} && pwd)
+            mkdir -p ${NODESDIR}
+
+            PYENV="$(pwd)/env"
+            [ -n "${pyenv}" ] && PYENV=$(cd ${launchdir} && mkdir -p ${pyenv} && cd ${pyenv} && pwd)
+
+            # generate the config from the options
+            cat <<JEND  > bench.json
+            {
+              "name": "${NAME}",
+              "pyenv": "${PYENV}",
+              "maxnodes": "${maxnodes}",
+              "nodesdir": "${NODESDIR}",
+              "quorum_src": "${quorum_src}",
+              "geth_image": "${geth_image}",
+              "delve_image": "${delve_image}",
+              "genesis": "${genesis}",
+              "gendoc_wallet": "${gendoc_wallet}",
+              "nodeallocs": "${nodeallocs}",
+              "gendoc_balance": "${gendoc_balance}",
+              "raft_blocktime": "${raft_blocktime}",
+              "timestamp_scale": "1000000000"
+            }
+            JEND
+            cat bench.json
+            echo "Wrote: $(pwd)/bench.json"
+
       - task:
           name: raftnew
-          options:
-            name: "${name}"
-            geth_image: ${geth_image}
-            delve_image: ${delve_image}
-            quorum_src: ${quorum_src}
-            maxnodes: ${maxnodes}
-            gendoc_wallet: ${genesis_wallet}
-            nodeallocs: ${nodeallocs}
           args:
             - ${configdir}
       - task:

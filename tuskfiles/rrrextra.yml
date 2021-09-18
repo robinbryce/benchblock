@@ -20,27 +20,22 @@ run:
         set -e
 
         # read the config file fields into BBENCH_ vars.
-        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance rrrctl_image"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
-
-        # we cd to run the rrr tool, so these need to be absoloute
-        nodesdir=$(cd ${BBENCH_NODESDIR} && pwd)
-        node0dir=${BBENCH_NODESDIR}/node0
 
         SHOWIDS=""
         ${showids} && SHOWIDS="--showids"
 
         ALPHAS=""
         for n in $(seq 0 $(($BBENCH_MAXNODES - 1))); do
-          ALPHAS="$ALPHAS ${nodesdir}/node${n}/alpha.json"
+          ALPHAS="$ALPHAS ${BBENCH_NODESDIR}/node${n}/alpha.json"
         done
 
-        pushd ${BBENCH_RRR_SRC}/tools
-          export EXTRADATA=$(go run cmd/rrrctl/main.go genextra \
-              ${SHOWIDS} --datadir ${node0dir} $ALPHAS)
-        popd
+        export EXTRADATA=$(docker run --rm -v ${BBENCH_NODESDIR}:${BBENCH_NODESDIR} \
+              ${BBENCH_RRRCTL_IMAGE} genextra \
+              ${SHOWIDS} --datadir ${BBENCH_NODESDIR}/node0 $ALPHAS)
 
         cat <<PYEND | python3
         import os, sys, json

@@ -29,13 +29,18 @@ run:
 
         cp ${TUSKDIR}/compose/rrr/genesis-in.json .
 
-        GENESIS_JSON=${CONFIGDIR}/genesis.json
+        GENESIS_JSON=${BBENCH_NODESDIR}/genesis.json
 
         pushd ${launchdir} # restore launchdir before recursive invoke
           tusk -qf ${thistusk} rrrextra ${configdir}
           tusk -qf ${thistusk} gethgendoc ${configdir} | tee ${GENESIS_JSON}
         popd
 
+        echo "Wrote: ${GENESIS_JSON}"
+        if ${BBENCH_K8S}; then
+          echo "configured for k8s (geth init happens on deploy)"
+          exit 0
+        fi
         # clear out all the data dirs first to avoid mixed state if we fail
         # half way through
         ${sudo} && dosudo="sudo" || dosudo=""
@@ -47,10 +52,10 @@ run:
 
         genesis_doc=$(pwd)/genesis.json
         for i in $(seq 0 ${end}); do
-          geth="docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) ${geth_image} --nousb"
+          geth="docker run --rm -u $(id -u):$(id -g) -v ${BBENCH_NODESDIR}:${BBENCH_NODESDIR} ${geth_image} --nousb"
           ${geth} \
               --datadir=${BBENCH_NODESDIR}/node${i}/data  \
               --nodekey ${BBENCH_NODESDIR}/node${i}/key \
-              init $(pwd)/genesis.json
+              init ${BBENCH_NODESDIR}/genesis.json
         done
 

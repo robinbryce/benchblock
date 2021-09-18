@@ -9,13 +9,17 @@ options:
     # 3rd digit
     default: 172.19.1.10/24
   gastarget:
-    usage: "sets the --miner.gastarget option for the nodes"
+    usage: sets the --miner.gastarget option for the nodes
     default: "18200000"
   gaslimit:
-    usage: "sets the --miner.gaslimit option for the nodes"
+    usage: sets the --miner.gaslimit option for the nodes
     default: "18200000"
   recommit:
-    usage: "sets the --miner.recommit option for the nodes"
+    usage: >
+      sets the miner re-commit rate (used to bring in new higher priced
+      transactions at regular intervals). defaults high as it can interfere
+      with the results as a recommit discards in progress work
+    default: 2000s
 
 args:
   configdir:
@@ -28,7 +32,7 @@ run:
         - ${configdir}
   - command:
       exec: |
-        set -ex
+        set -e
 
         TUSKDIR=$(pwd)
 

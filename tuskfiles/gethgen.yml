@@ -17,7 +17,7 @@ run:
         - ${configdir}
   - command:
       exec: |
-        set -ex
+        set -e
 
         TUSKDIR=$(pwd)
 
@@ -34,7 +34,7 @@ run:
         # config file before invoking this command. gethgendoc will read it
         # from there
         pushd ${launchdir} # restore launchdir before recursive invoke
-          tusk -qf ${thistusk} gethgendoc ${configdir} | tee ${CONFIGDIR}/genesis.json
+          tusk -qf ${thistusk} gethgendoc ${configdir} | tee ${BBENCH_NODESDIR}/genesis.json
         popd
 
         # clear out all the data dirs first to avoid mixed state if we fail
@@ -48,11 +48,11 @@ run:
 
         genesis_doc=$(pwd)/genesis.json
         for i in $(seq 0 ${end}); do
-          geth="docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) ${BBENCH_GETH_IMAGE} --nousb"
+          geth="docker run --rm -u $(id -u):$(id -g) -v ${BBENCH_NODESDIR}:${BBENCH_NODESDIR} ${BBENCH_GETH_IMAGE} --nousb"
           ${geth} \
-              --datadir=$(pwd)/nodes/node${i}/data  \
-              --nodekey $(pwd)/nodes/node${i}/key \
-              init $(pwd)/genesis.json
+              --datadir=${BBENCH_NODESDIR}/node${i}/data  \
+              --nodekey ${BBENCH_NODESDIR}/node${i}/key \
+              init ${BBENCH_NODESDIR}/genesis.json
         done
 
         if [ -f static-nodes.json ]; then
