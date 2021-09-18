@@ -1,0 +1,136 @@
+usage: |
+  Generate the network wide kustomizations for rrr
+
+options:
+  networkid:
+    default: "53456"
+  numbootnodes:
+    default: 2
+    short: b
+    type: int
+  gastarget:
+    usage: "sets the --miner.gastarget option for the nodes"
+    default: "18200000"
+  gaslimit:
+    usage: "sets the --miner.gaslimit option for the nodes"
+    default: "18200000"
+  recommit:
+    usage: "sets the --miner.recommit option for the nodes."
+    default: "2s"
+
+args:
+  configdir:
+    usage: >
+      The config root directory.
+
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+        TUSKDIR=$(pwd)
+
+        # read the config file fields into BBENCH_ vars.
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+
+        cd ${launchdir} && cd ${configdir}
+
+        NUM_BOOTNODES=${numbootnodes}
+        [ -n "${NUM_BOOTNODES}" ] | NUM_BOOTNODES=0
+
+        export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
+        export CONSENSUS_OPTS="\
+        --istanbul.blockperiod ${BBENCH_BLOCKPERIOD}
+        "
+
+        mkdir -p ibft/network
+        cp ${BBENCH_NODESDIR}/genesis.json ibft/network
+        cp ${BBENCH_NODESDIR}/static-nodes.json ibft/network
+
+
+
+        # this assumes static-nodes.json is generated for compose with the hosts listed in
+        # ascending order node0, node1 ...
+        # > ethnode8-0.ethnode8.rrr.svc.cluster.local
+        cat <<PYEND | python3
+        import os, json
+        from urllib.parse import urlparse, urlunparse
+        nodes = []
+        for i, u in enumerate(json.load(open(f"{os.environ['BBENCH_NODESDIR']}/static-nodes.json"))):
+          u = urlparse(u)
+          if u.hostname != f"node{i}":
+            print(f"ERROR: static nodes declared in unexpected order or just plain wrong")
+            sys.exit(1)
+          u = urlunparse((u.scheme, f"{u.username}@ethnode{i}-0.ethnode{i}.ibft.svc.cluster.local:{u.port}", '', '', u.query, ''))
+          nodes.append(u)
+        json.dump(nodes, open("ibft/network/static-nodes.json", "w"), sort_keys=True, indent=True)
+        PYEND
+
+        cat <<END > ibft/network/network.env
+        CONSENSUS_OPTS=${CONSENSUS_OPTS}
+        NETWORKID=${networkid}
+        ETHERBASE=${ETHERBASE}
+        GETH_IMAGE= ${BBENCH_GETH_IMAGE}
+        GAS_OPTS=$GAS_OPTS
+        LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
+        END
+        cat ibft/network/network.env
+        echo "Wrote ibft/network/network.env"
+
+        # kustomizations for the nodes
+        start=0
+        end=$(($BBENCH_MAXNODES - 1))
+        for i in $(seq $start $end); do
+          NODENUM=$i yq eval '.nameSuffix = env(NODENUM)' \
+            ${TUSKDIR}/k8s/ibft/nodes/node0/kustomization.yaml \
+            > ibft/nodes/node${i}/kustomization.yaml
+            cat ibft/nodes/node${i}/kustomization.yaml
+            echo "Wrote: ibft/nodes/node${i}/kustomization.yaml"
+        done
+
+        # volumes for all the nodes. no transformation required
+        for i in $(seq 0 $((${BBENCH_MAXNODES} - 1))); do
+          cp ${TUSKDIR}/k8s/ibft/nodes/node0/statefulset-volumes.yaml ibft/nodes/node${i}/statefulset-volumes.yaml
+          cat ibft/nodes/node${i}/statefulset-volumes.yaml
+          echo "Wrote: ibft/nodes/node${i}/statefulset-volumes.yaml"
+        done
+
+        for i in $(seq 0 $((${BBENCH_MAXNODES} - 1))); do
+        echo "- ./../nodes/node${i}"
+        done | \
+        yq eval-all 'select(fi==0) *+ {"resources": select(fi==1)}' ${TUSKDIR}/k8s/ibft/network/kustomization.yaml - \
+        > ibft/network/kustomization.yaml
+        cat ibft/network/kustomization.yaml
+        echo "Wrote ibft/network/kustomization.yaml"
+
+        # The namespace is the name - eg ibft7
+        yq eval ".namespace = \"$BBENCH_NAME\"" \
+          ${TUSKDIR}/k8s/ibft/kustomization.yaml | \
+          tee ibft/kustomization.yaml
+        echo "Wrote ibft/kustomization.yaml"
+
+        cp ${TUSKDIR}/k8s/ibft/namespace.yaml ibft/
+        cat ibft/namespace.yaml
+        echo "Wrote ibft/namespace.yaml"
+
+        source ${BBENCH_PYENV}/bin/activate
+        cat <<PYEND | python3
+        import os, json
+        j = None
+        with open("bench.json") as f:
+            j = json.load(f)
+            # The sourcing trick we use doesn't play well with variables that
+            # have spaces
+            # j["consensus_opts"] = os.environ["CONSENSUS_OPTS"]
+            # j["gas_opts"] = os.environ["GAS_OPTS"]
+            j["networkid"] = "${networkid}"
+            j["numbootnodes"] = "0"
+        if j is not None:
+            with open("bench.json", "w") as f:
+                json.dump(j, f, indent=2, sort_keys=True)
+        PYEND

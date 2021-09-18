@@ -319,7 +319,6 @@ tasks:
             bench_json = json.load(open("bench.json", "r"))
 
             for k, v in dict(
-              k8s="${k8s}",
               maxnodes="${maxnodes}",
               quorum_src="${quorum_src}",
               geth_image="${geth_image}",
@@ -355,16 +354,19 @@ tasks:
           args:
             - ${configdir}
 
-      - task:
-          name: ibftcompose
-          options:
-            gastarget: "${gastarget}"
-            gaslimit: "${gaslimit}"
-            recommit: "${recommit}"
-            requesttimeout: "${requesttimeout}"
-            blockperiod: "${blockperiod}"
-          args:
-            - ${configdir}
+      - command:
+          exec: |
+            set -ex
+            TUSKDIR=$(pwd)
+            CONFIGVARS="${configvars}"
+            eval ${READ_CONFIG}
+
+            CMD=ibftcompose
+            ${BBENCH_K8S} && CMD=ibftk8s
+
+            cd ${launchdir}
+            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir} \
+              --gastarget=${gastarget} --gaslimit=${gaslimit} --recommit=${recommit}
 
   raft:
     usage: >
@@ -608,6 +610,9 @@ tasks:
 
   ibftcompose:
     include: tuskfiles/ibftcompose.yml
+
+  ibftk8s:
+    include: tuskfiles/ibftk8s.yml
 
   # raft consensus commands
   raftstatic:

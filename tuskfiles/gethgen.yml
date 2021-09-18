@@ -34,6 +34,11 @@ run:
           tusk -qf ${thistusk} gethgendoc ${configdir} | tee ${BBENCH_NODESDIR}/genesis.json
         popd
 
+        if ${BBENCH_K8S}; then
+          echo "configured for k8s (geth init happens on deploy)"
+          exit 0
+        fi
+
         # clear out all the data dirs first to avoid mixed state if we fail
         # half way through
         ${sudo} && dosudo="sudo" || dosudo=""

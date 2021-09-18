@@ -1,0 +1,18 @@
+# yq is used to add references to the resources for each node
+#- ./../nodes/node0
+#- ./../nodes/node{N}
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ./../../base/ibft/network
+configMapGenerator:
+  - name: ethnode-cfg
+    behavior: merge
+    envs:
+    - ./network.env
+    files:
+    - ./static-nodes.json
+  - name: genesis
+    behavior: merge
+    files:
+    - ./genesis.json
