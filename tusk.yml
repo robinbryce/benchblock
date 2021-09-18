@@ -178,12 +178,9 @@ tasks:
           The name for the configuration defaults to "ibft{maxnodes}"
         default: ""
 
-      istanbul_tools_src:
-        usage: |
-          TODO: Don't think we need this
-          git clone of https://github.com/ConsenSys/istanbul-tools.git
-        default:
-          command: echo "${launchdir}/istanbul-tools"
+      blockperiod:
+        usage: ibft blockperiod (rate of block production) in seconds
+        default: "1"
 
     args:
       configdir:
@@ -193,16 +190,51 @@ tasks:
           name: configure
           args:
             - ${configdir}
+
+      - command:
+          exec: |
+            set -e
+            TUSKDIR=$(pwd)
+            cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
+
+            ${k8s} && echo "not supported yet" && exit 1
+
+            NAME="${name}"
+            [ -z ${NAME} ] && NAME="ibft${maxnodes}"
+
+            NODESDIR="$(pwd)/ibft/nodes"
+            [ -n "${nodesdir}" ] && NODESDIR=$(cd ${launchdir} && mkdir -p ${nodesdir} && cd ${nodesdir} && pwd)
+            mkdir -p ${NODESDIR}
+
+            PYENV="$(pwd)/env"
+            [ -n "${pyenv}" ] && PYENV=$(cd ${launchdir} && mkdir -p ${pyenv} && cd ${pyenv} && pwd)
+
+            # generate the config from the options
+            cat <<JEND  > bench.json
+            {
+              "name": "${NAME}",
+              "consensus": "ibft",
+              "k8s": "${k8s}",
+              "pyenv": "${PYENV}",
+              "maxnodes": "${maxnodes}",
+              "nodesdir": "${NODESDIR}",
+              "quorum_src": "${quorum_src}",
+              "geth_image": "${geth_image}",
+              "delve_image": "${delve_image}",
+              "genesis": "${genesis}",
+              "gendoc_wallet": "${gendoc_wallet}",
+              "nodeallocs": "${nodeallocs}",
+              "gendoc_balance": "${gendoc_balance}",
+              "timestamp_scale": "1000000000",
+              "recommit": "${recommit}",
+              "blockperiod": "${blockperiod}"
+            }
+            JEND
+            cat bench.json
+            echo "Wrote: $(pwd)/bench.json"
+
       - task:
           name: ibftnew
-          options:
-            name: "${name}"
-            geth_image: ${geth_image}
-            delve_image: ${delve_image}
-            maxnodes: ${maxnodes}
-            gendoc_wallet: ${genesis_wallet}
-            quorum_src: ${quorum_src}
-            istanbul_tools_src: ${istanbul_tools_src}
           args:
             - ${configdir}
       - task:
@@ -219,8 +251,6 @@ tasks:
             - ${configdir}
       - task:
           name: gethgen
-          options:
-            consensus: ibft
           args:
             - ${configdir}
 
@@ -256,6 +286,8 @@ tasks:
       - command:
           exec: |
             set -e
+
+            CONS
             TUSKDIR=$(pwd)
             cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
 
@@ -275,6 +307,7 @@ tasks:
             cat <<JEND  > bench.json
             {
               "name": "${NAME}",
+              "consensus": "raft",
               "k8s": "${k8s}",
               "pyenv": "${PYENV}",
               "maxnodes": "${maxnodes}",
@@ -304,8 +337,6 @@ tasks:
             - ${configdir}
       - task:
           name: gethgen
-          options:
-            consensus: raft
           args:
             - ${configdir}
       - task:
@@ -388,6 +419,7 @@ tasks:
             cat <<JEND  > bench.json
             {
               "name": "${NAME}",
+              "consensus": "rrr",
               "pyenv": "${PYENV}",
               "k8s": "${k8s}",
               "maxnodes": "${maxnodes}",

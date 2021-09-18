@@ -4,95 +4,36 @@ args:
   configdir:
     usage: >
       The config root directory.
-options:
-
-  name:
-    default: ""
-
-  nodesdir:
-    default: nodes
-
-  genesis:
-    default: "genesis-in.json"
-
-  istanbul_tools_src:
-    usage: |
-      git clone of https://github.com/ConsenSys/istanbul-tools.git
-    default:
-      command: echo "${launchdir}/istanbul-tools"
-
-  # these declarations duplicate the global options in the parent tusk. because
-  # otherwise they can't be supplied to tusk sub command invocation. Eg, for
-  # calling task like
-  # -run:
-  #   - task:
-  #       name: ibftcfg
-  #       options:
-  #         only options that are declared here can be based in this stanza
-  geth_image:
-  delve_image:
-  quorum_src:
-  maxnodes:
-  gendoc_wallet:
-  nodeallocs:
-
 run:
   - command:
       exec: |
         set -e
-
         TUSKDIR=$(pwd)
 
-        cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
-        CONFIGDIR=$(pwd)
-
-        mkdir -p ${nodesdir}/node0
-        mkdir -p ${configdir}/bin
-
-        # we don't allow this to be set on the cli, if you want another
-        # env thats fine, just edit bench.json afterwords to point to yours
-        # and make sure you install the requirements.txt
-        pyenv="env"
+        # read the config file fields into BBENCH_ vars.
+        CONFIGVARS="${configvars}"
+        eval ${READ_CONFIG}
+        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+        cd ${launchdir} && cd ${configdir}
 
         echo "Initialising in: $(pwd)"
 
-        python3 -m venv ${pyenv}
-        source ${pyenv}/bin/activate
+        python3 -m venv ${BBENCH_PYENV}
+        source ${BBENCH_PYENV}/bin/activate
         pip3 install -r ${TUSKDIR}/requirements.txt
 
-        NAME="${name}"
-        [ -z ${NAME} ] && NAME="ibft${maxnodes}"
-
-        # TODO: use this idiom for all 'cfg commands
-        PYENVDIR=$(cd ${pyenv} && pwd)
-
-        # generate the config from the options
-        cat <<END  > bench.json
-        {
-          "name": "${NAME}",
-          "pyenv": "${PYENVDIR}",
-          "maxnodes": "${maxnodes}",
-          "nodesdir": "$(pwd)/${nodesdir}",
-          "quorum_src": "${quorum_src}",
-          "istanbul_tools_src": "${istanbul_tools_src}",
-          "geth_image": "${geth_image}",
-          "delve_image": "${delve_image}",
-          "genesis": "${genesis}",
-          "gendoc_wallet": "${gendoc_wallet}",
-          "gendoc_balance": "${gendoc_balance}",
-          "nodeallocs": "${maxnodes}",
-          "timestamp_scale": "1"
-        }
-        END
+        # Copy the kustomization base now, and do so regardless of whether -k
+        # is set, So that subsequent commands can be used to update the network
+        # configuration without clobbering any local changes to the bases
+        cp -r ${TUSKDIR}/k8s/base base
 
         cat bench.json
         echo "Wrote: $(pwd)/bench.json"
         exit 0
 
         # This hasn't been needed yet
-        cd ${launchdir} && cd ${istanbul_tools_src}
+        cd ${launchdir} && cd ${BBENCH_ISTANBUL_TOOLS_SRC}
         make
 
         cp build/bin/istanbul ${CONFIGDIR}/bin/
         cd ${CONFIGDIR}
-

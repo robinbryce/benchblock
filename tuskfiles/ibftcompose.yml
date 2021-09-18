@@ -16,11 +16,9 @@ options:
     default: "18200000"
   recommit:
     usage: "sets the --miner.recommit option for the nodes"
-
   requesttimeout:
     usage: "geth --istanbul.requesttimeout option (milliseconds)"
     default: "10000"
-
   blockperiod:
     usage: "geth --istanbul.blockperiod option (seconds)"
     default: "1"

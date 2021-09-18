@@ -3,17 +3,8 @@ usage: "rrr genesis - keeps existing keys and alpha contributions"
 options:
   sudo:
     type: bool
-  genesisfor:
-    default: raft
   extradata:
     default: ""
-
-  mixhash:
-    usage: >
-      for ibft set this to 0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365
-    default: ""
-  chainid:
-    default: "12345678"
 
 args:
   configdir:
@@ -42,10 +33,10 @@ run:
 
         CONFIGDIR=$(pwd)
 
-        cp ${TUSKDIR}/compose/${genesisfor}/genesis-in.json .
+        cp ${TUSKDIR}/compose/${BBENCH_CONSENSUS}/genesis-in.json .
 
         pushd ${launchdir} # restore launchdir before recursive invoke
-          tusk -qf ${thistusk} gethgendoc ${configdir} --extra "$EXTRADATA" | tee ${CONFIGDIR}/genesis.json
+          tusk -qf ${thistusk} gethgendoc ${configdir} --extra "$EXTRADATA" | tee ${BBENCH_NODESDIR}/genesis.json
         popd
 
         # clear out all the data dirs first to avoid mixed state if we fail
@@ -61,11 +52,10 @@ run:
           rm -rf ${BBENCH_NODESDIR}/node$i/data
         done
 
-        genesis_doc=$(pwd)/genesis.json
         for i in $(seq 0 ${end}); do
-          geth="docker run --rm -u $(id -u):$(id -g) -v $(pwd):$(pwd) ${BBENCH_GETH_IMAGE} --nousb"
+          geth="docker run --rm -u $(id -u):$(id -g) -v ${BBENCH_NODESDIR}:${BBENCH_NODESDIR} ${BBENCH_GETH_IMAGE} --nousb"
           ${geth} \
-              --datadir=$(pwd)/nodes/node${i}/data  \
-              --nodekey $(pwd)/nodes/node${i}/key \
-              init $(pwd)/genesis.json
+              --datadir=${BBENCH_NODESDIR}/node${i}/data  \
+              --nodekey=${BBENCH_NODESDIR}/node${i}/key \
+              init ${BBENCH_NODESDIR}/genesis.json
         done

@@ -3,9 +3,6 @@ usage: "geth genral purpose genesis - keeps existing keys and so on"
 options:
   sudo:
     type: bool
-  consensus:
-    default: raft
-
 args:
   configdir:
     usage: >
@@ -28,7 +25,7 @@ run:
 
         CONFIGDIR=$(pwd)
 
-        cp ${TUSKDIR}/compose/${consensus}/genesis-in.json .
+        cp ${TUSKDIR}/compose/${BBENCH_CONSENSUS}/genesis-in.json .
 
         # To include extra data in genesis, save it in "gendoc_extra" in the
         # config file before invoking this command. gethgendoc will read it
