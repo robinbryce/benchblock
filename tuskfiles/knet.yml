@@ -32,12 +32,12 @@ run:
         for i in $(seq 0 $((${BBENCH_MAXNODES} - 1)))
         do
 
-        POD=rrr-ethnode${i}-0
-        [[ $i -lt ${BBENCH_NUMBOOTNODES} ]] && POD=rrr-ethnodeboot${i}-0
+        POD=ethnode${i}-0
+        [[ $i -lt ${BBENCH_NUMBOOTNODES} ]] && POD=ethnodeboot${i}-0
         export POD
 
         export ADMIN_JSON=$(kubectl \
-           -n ethnet exec ${POD} -- \
+           -n ${BBENCH_NAME} exec ${POD} -- \
             /usr/local/bin/geth \
             attach /data/node/geth.ipc \
              --exec "console.log(JSON.stringify(admin))")
