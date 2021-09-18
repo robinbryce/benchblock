@@ -14,7 +14,7 @@ options:
     default: "18200000"
   recommit:
     usage: "sets the --miner.recommit option for the nodes."
-    default: "2s"
+    default: "2000s"
 
 args:
   configdir:

@@ -46,6 +46,13 @@ options:
     usage: the docker image to use for running geth-rrr in for remote debug
     default: robustroundrobin/delve:main
 
+  k8s:
+    usage: >
+      Generate a set of kubernetes manifiests (kustomizations) instead of
+      the default docker-compose setup.
+    type: bool
+    short: k
+
   genesis:
     default: genesis-in.json
     short: "g"
@@ -63,10 +70,6 @@ options:
   gaslimit:
     usage: sets the --miner.gaslimit option for the nodes
     default: "18200000"
-
-  recommit:
-    usage: sets the --miner.recommit option for the nodes.
-    default: ""
 
   gendoc_wallet:
     usage: >
@@ -256,6 +259,8 @@ tasks:
             TUSKDIR=$(pwd)
             cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
 
+            ${k8s} && echo "not supported yet" && exit 1
+
             NAME="${name}"
             [ -z ${NAME} ] && NAME="raft${maxnodes}"
 
@@ -270,6 +275,7 @@ tasks:
             cat <<JEND  > bench.json
             {
               "name": "${NAME}",
+              "k8s": "${k8s}",
               "pyenv": "${PYENV}",
               "maxnodes": "${maxnodes}",
               "nodesdir": "${NODESDIR}",
@@ -280,8 +286,9 @@ tasks:
               "gendoc_wallet": "${gendoc_wallet}",
               "nodeallocs": "${nodeallocs}",
               "gendoc_balance": "${gendoc_balance}",
-              "raft_blocktime": "${raft_blocktime}",
-              "timestamp_scale": "1000000000"
+              "timestamp_scale": "1000000000",
+              "recommit": "${recommit}",
+              "raft_blocktime": "${raft_blocktime}"
             }
             JEND
             cat bench.json
@@ -320,19 +327,9 @@ tasks:
       # This task also ilustrates the full sequence of steps to prepare an rrr
       # compose setup
     options:
-      name:
-        usage: >
-          The name for the configuration defaults to "rrr{maxnodes}"
-        default: ""
       rrr_src:
         default:
           command: echo "${launchdir}/go-rrr"
-      maxnodes:
-        usage: >
-          The number of nodes for the network. For PoA networks, it is the number of *validating* nodes.
-        default: 12
-        short: "n"
-
       numcandidates:
         short: c
         usage: "set the number of canidate leaders per round"
@@ -363,13 +360,6 @@ tasks:
           allow for block disemination, 2s  or more is fair)
         default: 5000
 
-      k8s:
-        usage: >
-          Generate a set of kubernetes manifiests (kustomizations) instead of
-          the default docker-compose setup.
-        type: bool
-        short: k
-
     args:
       configdir:
         usage: Directory to put the network in
@@ -378,28 +368,58 @@ tasks:
           name: configure
           args:
             - ${configdir}
+      - command:
+          exec: |
+            set -e
+            TUSKDIR=$(pwd)
+            cd ${launchdir} && mkdir -p ${configdir} && cd ${configdir}
+
+            NAME="${name}"
+            [ -z ${NAME} ] && NAME="raft${maxnodes}"
+
+            NODESDIR="$(pwd)/rrr/nodes"
+            [ -n "${nodesdir}" ] && NODESDIR=$(cd ${launchdir} && mkdir -p ${nodesdir} && cd ${nodesdir} && pwd)
+            mkdir -p ${NODESDIR}
+
+            PYENV="$(pwd)/env"
+            [ -n "${pyenv}" ] && PYENV=$(cd ${launchdir} && mkdir -p ${pyenv} && cd ${pyenv} && pwd)
+
+            # generate the config from the options
+            cat <<JEND  > bench.json
+            {
+              "name": "${NAME}",
+              "pyenv": "${PYENV}",
+              "k8s": "${k8s}",
+              "maxnodes": "${maxnodes}",
+              "nodesdir": "${NODESDIR}",
+              "quorum_src": "${quorum_src}",
+              "rrr_src": "${rrr_src}",
+              "geth_image": "${geth_image}",
+              "rrrctl_image": "${rrrctl_image}",
+              "delve_image": "${delve_image}",
+              "genesis": "${genesis}",
+              "gendoc_wallet": "${gendoc_wallet}",
+              "nodeallocs": "${nodeallocs}",
+              "gendoc_balance": "${gendoc_balance}",
+              "timestamp_scale": "1",
+              "recommit": "${recommit}",
+              "numcandidates": "${numcandidates}",
+              "numendorsers": "${numendorsers}",
+              "committeequorum": "${committeequorum}",
+              "activehorizon": "${activehorizon}",
+              "intentphase": "${intentphase}",
+              "confirmphase": "${confirmphase}",
+              "roundlength": "${roundlength}"
+            }
+            JEND
+            cat bench.json
+            echo "Wrote: $(pwd)/bench.json"
+
       - task:
           name: rrrnew
-          options:
-            name: ${name}
-            geth_image: ${geth_image}
-            delve_image: ${delve_image}
-            quorum_src: ${quorum_src}
-            rrr_src: ${rrr_src}
-            nodeallocs: ${nodeallocs}
-            gendoc_wallet: ${genesis_wallet}
-            maxnodes: ${maxnodes}
-            numcandidates: ${numcandidates}
-            numendorsers: ${numendorsers}
-            committeequorum: ${committeequorum}
-            activehorizon: ${activehorizon}
-            intentphase: ${intentphase}
-            confirmphase: ${confirmphase}
-            roundlength: ${roundlength}
-            recommit: ${recommit}
-
           args:
             - ${configdir}
+
       - task:
           name: gethkeys
           args:
