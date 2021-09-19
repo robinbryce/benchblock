@@ -193,11 +193,9 @@ The [go-quorum](https://github.com/ConsenSys/quorum.git) clone clone is needed t
 
 # Smoke test all supported consensus methods
 
-* Create the base profile for each like this: `for cc in raft ibft rrr; do bbench new ${cc}default ${cc}; done`
+`for cc in raft ibft rrr; do bbench new ${cc}default ${cc}; done` Then cd into
+each of raftdefault, ibftdefault and rrrdefault in turn and do `docker-compose
+up`
 
-* Finalise the specific consensus details: `for cc in raft ibft rrr; do bbench ${cc} ${cc}default; done`
-
-Then cd into each of raftdefault, ibftdefault and rrrdefault in turn and do `docker-compose up`
-
-Ctrl-C (and possibly docker-compose down) to clean up between each
+Ctrl-C (and possibly docker-compose down) to clean up between each run
 
