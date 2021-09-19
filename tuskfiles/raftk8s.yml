@@ -45,14 +45,12 @@ run:
 
         export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
         export CONSENSUS_OPTS="\
-        --istanbul.blockperiod ${BBENCH_BLOCKPERIOD}
+        --raft --raftport 50000 --raftdnsenable --raftblocktime ${BBENCH_RAFT_BLOCKTIME}
         "
 
-        mkdir -p ibft/network
-        cp ${BBENCH_NODESDIR}/genesis.json ibft/network
-        cp ${BBENCH_NODESDIR}/static-nodes.json ibft/network
-
-
+        mkdir -p raft/network
+        cp ${BBENCH_NODESDIR}/genesis.json raft/network
+        cp ${BBENCH_NODESDIR}/static-nodes.json raft/network
 
         # this assumes static-nodes.json is generated for compose with the hosts listed in
         # ascending order node0, node1 ...
@@ -66,12 +64,12 @@ run:
           if u.hostname != f"node{i}":
             print(f"ERROR: static nodes declared in unexpected order or just plain wrong")
             sys.exit(1)
-          u = urlunparse((u.scheme, f"{u.username}@ethnode{i}-0.ethnode{i}.ibft.svc.cluster.local:{u.port}", '', '', u.query, ''))
+          u = urlunparse((u.scheme, f"{u.username}@ethnode{i}-0.ethnode{i}.raft.svc.cluster.local:{u.port}", '', '', u.query, ''))
           nodes.append(u)
-        json.dump(nodes, open("ibft/network/static-nodes.json", "w"), sort_keys=True, indent=True)
+        json.dump(nodes, open("raft/network/static-nodes.json", "w"), sort_keys=True, indent=True)
         PYEND
 
-        cat <<END > ibft/network/network.env
+        cat <<END > raft/network/network.env
         CONSENSUS_OPTS=${CONSENSUS_OPTS}
         NETWORKID=${networkid}
         DISCOVERY_OPTS=--nodiscover
@@ -80,44 +78,44 @@ run:
         GAS_OPTS=$GAS_OPTS
         LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
         END
-        cat ibft/network/network.env
-        echo "Wrote ibft/network/network.env"
+        cat raft/network/network.env
+        echo "Wrote raft/network/network.env"
 
         # kustomizations for the nodes
         start=0
         end=$(($BBENCH_MAXNODES - 1))
         for i in $(seq $start $end); do
           NODENUM=$i yq eval '.nameSuffix = env(NODENUM)' \
-            ${TUSKDIR}/k8s/ibft/nodes/node0/kustomization.yaml \
-            > ibft/nodes/node${i}/kustomization.yaml
-            cat ibft/nodes/node${i}/kustomization.yaml
-            echo "Wrote: ibft/nodes/node${i}/kustomization.yaml"
+            ${TUSKDIR}/k8s/raft/nodes/node0/kustomization.yaml \
+            > raft/nodes/node${i}/kustomization.yaml
+            cat raft/nodes/node${i}/kustomization.yaml
+            echo "Wrote: raft/nodes/node${i}/kustomization.yaml"
         done
 
         # volumes for all the nodes. no transformation required
         for i in $(seq 0 $((${BBENCH_MAXNODES} - 1))); do
-          cp ${TUSKDIR}/k8s/ibft/nodes/node0/statefulset-volumes.yaml ibft/nodes/node${i}/statefulset-volumes.yaml
-          cat ibft/nodes/node${i}/statefulset-volumes.yaml
-          echo "Wrote: ibft/nodes/node${i}/statefulset-volumes.yaml"
+          cp ${TUSKDIR}/k8s/raft/nodes/node0/statefulset-volumes.yaml raft/nodes/node${i}/statefulset-volumes.yaml
+          cat raft/nodes/node${i}/statefulset-volumes.yaml
+          echo "Wrote: raft/nodes/node${i}/statefulset-volumes.yaml"
         done
 
         for i in $(seq 0 $((${BBENCH_MAXNODES} - 1))); do
         echo "- ./../nodes/node${i}"
         done | \
-        yq eval-all 'select(fi==0) *+ {"resources": select(fi==1)}' ${TUSKDIR}/k8s/ibft/network/kustomization.yaml - \
-        > ibft/network/kustomization.yaml
-        cat ibft/network/kustomization.yaml
-        echo "Wrote ibft/network/kustomization.yaml"
+        yq eval-all 'select(fi==0) *+ {"resources": select(fi==1)}' ${TUSKDIR}/k8s/raft/network/kustomization.yaml - \
+        > raft/network/kustomization.yaml
+        cat raft/network/kustomization.yaml
+        echo "Wrote raft/network/kustomization.yaml"
 
-        # The namespace is the name - eg ibft7
+        # The namespace is the name - eg raft7
         yq eval ".namespace = \"$BBENCH_NAME\"" \
-          ${TUSKDIR}/k8s/ibft/kustomization.yaml | \
-          tee ibft/kustomization.yaml
-        echo "Wrote ibft/kustomization.yaml"
+          ${TUSKDIR}/k8s/raft/kustomization.yaml | \
+          tee raft/kustomization.yaml
+        echo "Wrote raft/kustomization.yaml"
 
-        cp ${TUSKDIR}/k8s/ibft/namespace.yaml ibft/
-        cat ibft/namespace.yaml
-        echo "Wrote ibft/namespace.yaml"
+        cp ${TUSKDIR}/k8s/raft/namespace.yaml raft/
+        cat raft/namespace.yaml
+        echo "Wrote raft/namespace.yaml"
 
         source ${BBENCH_PYENV}/bin/activate
         cat <<PYEND | python3
@@ -135,3 +133,4 @@ run:
             with open("bench.json", "w") as f:
                 json.dump(j, f, indent=2, sort_keys=True)
         PYEND
+

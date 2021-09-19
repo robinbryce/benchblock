@@ -64,6 +64,11 @@ spec:
               configMapKeyRef:
                 name: ethnode-cfg
                 key: CONSENSUS_OPTS
+          - name: DISCOVERY_OPTS
+            valueFrom:
+              configMapKeyRef:
+                name: ethnode-cfg
+                key: DISCOVERY_OPTS
           - name: RPC_APIS
             valueFrom:
               configMapKeyRef:
@@ -150,7 +155,7 @@ spec:
             # this is the genesis account
             ETHERBASE="b5983bf72a55b48d302638da5292f60f93597d96"
 
-            [ -f /config/static-nodes.json ] && cp -v /config/static-nodes.json /data/node/
+            [ -f /config/static-nodes.json ] && cp -v /config/static-nodes.json /data/node/ && cat /data/node/static-nodes.json
 
             cd /data/node
             PRIVATE_CONFIG=ignore geth \

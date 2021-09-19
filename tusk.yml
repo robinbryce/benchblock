@@ -276,8 +276,8 @@ tasks:
 
             cd ${launchdir} && cd ${configdir}
 
-            [ -d ${TUSKDIR}/k8s/base ] && cp -r ${TUSKDIR}/k8s/base base
-            [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && cp -r ${TUSKDIR}/k8s/${BBENCH_CONSENSUS}/* ${BBENCH_CONSENSUS}
+            [ -d ${TUSKDIR}/k8s/base ] && mkdir base && cp -r ${TUSKDIR}/k8s/base/* base
+            [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && mkdir ${BBENCH_CONSENSUS} && cp -r ${TUSKDIR}/k8s/${BBENCH_CONSENSUS}/* ${BBENCH_CONSENSUS}
 
             eval ${SHOW_CONFIG}
 
@@ -407,7 +407,6 @@ tasks:
             bench_json = json.load(open("bench.json", "r"))
 
             for k, v in dict(
-              k8s="${k8s}",
               maxnodes="${maxnodes}",
               quorum_src="${quorum_src}",
               geth_image="${geth_image}",
@@ -432,21 +431,26 @@ tasks:
           args:
             - ${configdir}
       - task:
-          name: gethgen
-          args:
-            - ${configdir}
-      - task:
           name: raftstatic
           args:
             - ${configdir}
       - task:
-          name: raftcompose
-          options:
-            gastarget: "${gastarget}"
-            gaslimit: "${gaslimit}"
-            recommit: "${recommit}"
-          args:
-            - ${configdir}
+         name: gethgen
+         args:
+           - ${configdir}
+      - command:
+          exec: |
+            set -ex
+            TUSKDIR=$(pwd)
+            CONFIGVARS="${configvars}"
+            eval ${READ_CONFIG}
+
+            CMD=raftcompose
+            ${BBENCH_K8S} && CMD=raftk8s
+
+            cd ${launchdir}
+            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir} \
+              --gastarget=${gastarget} --gaslimit=${gaslimit} --recommit=${recommit}
 
   rrr:
     usage: >
@@ -600,6 +604,10 @@ tasks:
 
   gethgen:
     include: tuskfiles/gethgen.yml
+
+  # raft consensus commands
+  raftk8s:
+    include: tuskfiles/raftk8s.yml
 
   # ibft consensus commands
   ibftextra:

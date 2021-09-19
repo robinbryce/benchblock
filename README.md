@@ -7,7 +7,7 @@ rather than bench/mark.
 
 Features
 
-* Single command to deploy a network based on ibft, raft or rrr[^1]
+* Selection of canned configurations for setting up ibft, raft or rrr[^1].
 * Loadtesting tool with output to chainhammer compatible db format
 * Single command performance graph generation & reports (markdown, jupytext, papermill)
 * VScode debugging of nodes in compose based networks (as remote via delve)
@@ -163,22 +163,35 @@ The [go-quorum](https://github.com/ConsenSys/quorum.git) clone clone is needed t
 
 # Smoke test all supported consensus methods
 
-* Create the base profile for each like this:
+* Create the base profile for each like this: `for cc in raft ibft rrr; do bbench new ${cc}default ${cc}; done`
 
-    for cc in raft ibft rrr; do bbench new ${cc}default ${cc}; done
-
-* Finalise the specific consensus details:
-
-   for cc in raft ibft rrr; do bbench ${cc} ${cc}default; done
+* Finalise the specific consensus details: `for cc in raft ibft rrr; do bbench ${cc} ${cc}default; done`
 
 Then cd into each of raftdefault, ibftdefault and rrrdefault in turn and do `docker-compose up`
 
 Ctrl-C (and possibly docker-compose down) to clean up between each
 
 
+# k8s - raft
 
-# k8s (rrr only so far)
+```sh
+bbench new -k raftk8 raft
+bbench raft raftk8 
+kustomize build raftk8/raft | kubectl apply -f -
+```
 
+# k8s - ibft
+
+```sh
+bbench new -k ibftk8 ibft
+bbench ibft ibftk8 
+kustomize build ibftk8/ibft | kubectl apply -f -
+```
+
+
+# k8s - rrr
+```sh
 bbench new -k rrr30k rrr
 bbench rrr rrr30k
 kustomize build rrr30k/rrr | kubectl apply -f -
+```

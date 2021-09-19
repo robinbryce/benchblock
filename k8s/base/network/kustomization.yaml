@@ -21,6 +21,7 @@ configMapGenerator:
   #  --rrr.nc 3 --rrr.ne 11 --rrr.q 6 --rrr.ta 2000
   #  --rrr.intentphase 700 --rrr.confirmphase 1300 --rrr.roundlength 4000
   #- RPC_APIS=--http.api rrr,admin,eth,miner,net,txpool,personal,web3
+  - DISCOVERY_OPTS=--nodiscover
   - RPC_APIS=--rpcapi admin,eth,miner,net,txpool,personal,web3
   - SYNC_OPTS=--gcmode archive --syncmode full
   - PRIVATE_CONFIG=ignore

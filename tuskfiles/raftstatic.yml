@@ -5,6 +5,7 @@ options:
     usage: >
       Set to the last node index to include (0 means all which is the default)
     default: "0"
+
 args:
   configdir:
     usage: >
@@ -41,25 +42,16 @@ run:
         raftport="50000"
 
         nodesdir = os.environ["BBENCH_NODESDIR"]
-        maxnodes = int(os.environ['BBENCH_MAXNODES'])
 
-        for i in range(maxnodes):
+        for i in range(int(os.environ['end']) + 1):
 
             dirname = f"{nodesdir}/node{i}"
-
             enode = open(f"{dirname}/enode", 'r').read()
-
             static.append(
               f"enode://{enode}@node{i}:{p2port}?discport=0&raftport={raftport}"
             )
-
-        # now go round again and put a full copy in the right directory
-        for i in range(maxnodes):
-            datadir = f"{nodesdir}/node{i}/data"
-            pathlib.Path(datadir).mkdir(parents=True, exist_ok=True)
-            with open(pathlib.Path(datadir).joinpath("static-nodes.json"), "w") as f:
-                json.dump(static, f, indent=2, sort_keys=True)
-                f.flush()
-                print(f"Wrote: {datadir}/static-nodes.json")
-                print(json.loads(open(f"{datadir}/static-nodes.json").read()))
+        with open(f"{nodesdir}/static-nodes.json", "w") as f:
+            json.dump(static, f, indent=2, sort_keys=True)
+            f.flush()
+            print(f"Wrote: {nodesdir}/static-nodes.json")
         PYEND

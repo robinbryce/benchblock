@@ -29,7 +29,6 @@ run:
         [ "${end}" == "0" ] && end=$((BBENCH_MAXNODES -1))
         export end
 
-
         source ${BBENCH_PYENV}/bin/activate
 
         cat <<PYEND | python3

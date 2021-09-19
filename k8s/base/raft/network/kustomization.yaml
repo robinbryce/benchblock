@@ -1,0 +1,9 @@
+resources:
+  - ./../../network
+configMapGenerator:
+  - name: ethnode-cfg
+    behavior: merge
+    literals:
+      - >-
+        RPC_APIS=
+        --http.api raft,admin,eth,miner,net,txpool,personal,web3
