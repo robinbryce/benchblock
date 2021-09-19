@@ -2,6 +2,6 @@ resources:
   - ./../node
 images:
 - name: quorumengineering/quorum:21.4.1
-  newName: eu.gcr.io/fetlar-1/geth-rrr
-  newTag: fetlar-latest
+  newName: robustroundrobin/geth
+  newTag: "0.1"
 nameSuffix: boot

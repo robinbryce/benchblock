@@ -176,6 +176,9 @@ tasks:
       profile:
         short: "p"
         usage: provide the default configuration values
+      init-only:
+        type: bool
+        short: "i"
 
     args:
       configdir:
@@ -231,14 +234,17 @@ tasks:
             if not profile:
               profile=tuskdir.joinpath("configs", f"{consensus}-{deploymode}-default.json").resolve()
             else:
-              profile=Path("${launchdir}").joinpath(profile).resolve()
+              # try first as whole file relative to launch dir
+              p=Path("${launchdir}").joinpath(profile).resolve()
+              if not p.is_file():
+                p=tuskdir.joinpath("configs", f"{consensus}-{deploymode}-{profile}.json").resolve()
+              profile = p
 
             if not profile.exists():
               print(f"profile {profile} does not exist")
               sys.exit(1)
 
             bench_json = json.load(open(profile))
-
             # these are commong to most/all consensus methods
             opts = dict(
               name=name,
@@ -257,6 +263,9 @@ tasks:
               timestamp_scale="1",
               recommit="${recommit}"
             )
+            if consensus == "raft":
+              opts["timestamp_scale"] = "1000000000"
+
             for k, v in opts.items():
               if v:
                 bench_json[k] = v
@@ -276,10 +285,19 @@ tasks:
 
             cd ${launchdir} && cd ${configdir}
 
-            [ -d ${TUSKDIR}/k8s/base ] && mkdir base && cp -r ${TUSKDIR}/k8s/base/* base
-            [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && mkdir ${BBENCH_CONSENSUS} && cp -r ${TUSKDIR}/k8s/${BBENCH_CONSENSUS}/* ${BBENCH_CONSENSUS}
+            [ -d ${TUSKDIR}/k8s/base ] && mkdir -p base && cp -r ${TUSKDIR}/k8s/base/* base
+            [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && mkdir -p ${BBENCH_CONSENSUS} && cp -r ${TUSKDIR}/k8s/${BBENCH_CONSENSUS}/* ${BBENCH_CONSENSUS}
 
             eval ${SHOW_CONFIG}
+
+      - when:
+          equal: {init-only: false}
+        command:
+          exec: |
+            set -ex
+            TUSKDIR=$(pwd)
+            cd ${launchdir}
+            tusk -qf ${TUSKDIR}/tusk.yml ${consensus} ${configdir}
 
   ibft:
     usage: >

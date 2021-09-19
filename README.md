@@ -7,12 +7,15 @@ rather than bench/mark.
 
 Features
 
-* Selection of canned configurations for setting up ibft, raft or rrr[^1].
+* Single command to create kustomize manifests for ibft, raft or rrr[^1] network.
+* Single command to create docker-compose setup for ibft, raft or rrr[^1] network.
 * Loadtesting tool with output to chainhammer compatible db format
-* Single command performance graph generation & reports (markdown, jupytext, papermill)
+* Single command performance graph generation & reports (markdown, jupytext,
+  papermill). See this [raft-example](examples/raft5-compose-standard-plots.html)
+* Selection of canned configurations for setting up ibft, raft or rrr[^1].
 * VScode debugging of nodes in compose based networks (as remote via delve)
 * Directly running geth/quorum nodes from sources (go run on volume mounted sources)
-* discovery enabled networks with bootnodes (rrr only for now)
+* Discovery enabled networks with bootnodes (rrr only for now, ibft and raft use static-nodes.json)
 
 Please note the jupyter charting support owes much to the
 [chainhammer](https://github.com/drandreaskrueger/chainhammer/blob/master/README.md)
@@ -29,10 +32,12 @@ ground.
 Having completed [Setup](#Setup), these are the steps to deploy and load test a raft 5 node network
 
 ```bash
+
 cd ~/workspace
+
 bbench new -n 5 raft5 raft
-bbench raft raft5
 cd raft5
+
 docker-compose up -d
 docker-compose logs -f node1
 # watch the log for a bit to see that raft a peercount=4 in the logs
@@ -46,16 +51,40 @@ bbench jpycfg .
 bbench jpyrender .
 ```
 
+Then open standard-plots.html (it is self contained)
+
 # Jupyter
 
 ```sh
 # assumes `Quick example` (above)
 cd ~/workspace/raft5
 env/bin/jupyter notebook --ip=127.0.0.1
-
-# Follow the instructions in the log to access the environment in your browser
-
 ```
+
+Follow the instructions in the log to access the environment in your browser
+
+# k8s - raft
+
+```sh
+bbench new -k raftk8 raft
+kustomize build raftk8/raft | kubectl apply -f -
+```
+
+# k8s - ibft
+
+```sh
+bbench new -k ibftk8 ibft
+kustomize build ibftk8/ibft | kubectl apply -f -
+```
+
+
+# k8s - rrr
+```sh
+bbench new -k -p small rrrk8 rrr
+kustomize build rrr30k/rrr | kubectl apply -f -
+```
+
+
 
 # Debug a node
 
@@ -171,27 +200,3 @@ Then cd into each of raftdefault, ibftdefault and rrrdefault in turn and do `doc
 
 Ctrl-C (and possibly docker-compose down) to clean up between each
 
-
-# k8s - raft
-
-```sh
-bbench new -k raftk8 raft
-bbench raft raftk8 
-kustomize build raftk8/raft | kubectl apply -f -
-```
-
-# k8s - ibft
-
-```sh
-bbench new -k ibftk8 ibft
-bbench ibft ibftk8 
-kustomize build ibftk8/ibft | kubectl apply -f -
-```
-
-
-# k8s - rrr
-```sh
-bbench new -k rrr30k rrr
-bbench rrr rrr30k
-kustomize build rrr30k/rrr | kubectl apply -f -
-```
