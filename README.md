@@ -11,7 +11,12 @@ Features
 * Single command to create docker-compose setup for ibft, raft or rrr[^1] network.
 * Loadtesting tool with output to chainhammer compatible db format
 * Single command performance graph generation & reports (markdown, jupytext,
-  papermill). See this ![raft-example](examples/raft5-compose-plot-combined.png)
+  papermill). See this
+  ![raft-example](examples/raft5-compose-plot-combined.png)
+
+  Note that the axis labels are only visible in the light github theme.
+  Download any of the html files in the examples directory to see the full
+  report (they are self contained)
 * Selection of canned configurations for setting up ibft, raft or rrr[^1].
 * VScode debugging of nodes in compose based networks (as remote via delve)
 * Directly running geth/quorum nodes from sources (go run on volume mounted sources)
