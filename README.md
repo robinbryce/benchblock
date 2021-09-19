@@ -10,27 +10,23 @@ Features
 * Single command to create kustomize manifests for ibft, raft or rrr[^1] network.
 * Single command to create docker-compose setup for ibft, raft or rrr[^1] network.
 * Loadtesting tool with output to chainhammer compatible db format
-* Single command performance graph generation & reports (markdown, jupytext,
-  papermill). See this
+* Single command graph generation & reports (markdown, jupytext,
+  papermill).
   ![raft-example](examples/raft5-compose-plot-combined.png)
 
-  Note that the axis labels are only visible in the light github theme.
-  Download any of the html files in the examples directory to see the full
-  report (they are self contained)
+  Axis labels are only visible in the github *light* theme.
 * Selection of canned configurations for setting up ibft, raft or rrr[^1].
 * VScode debugging of nodes in compose based networks (as remote via delve)
 * Directly running geth/quorum nodes from sources (go run on volume mounted sources)
 * Discovery enabled networks with bootnodes (rrr only for now, ibft and raft use static-nodes.json)
 
-Please note the jupyter charting support owes much to the
+The jupyter charting support owes much to the
 [chainhammer](https://github.com/drandreaskrueger/chainhammer/blob/master/README.md)
-project, which also supports a broader range of ledgers. Please do consider
-whether that project better suites your needs.
+project, which also supports a broader range of ledgers.
 
-There are a number of projects listed at [awesome-quorum](https://github.com/ConsenSys/awesome-quorum) which cover similar (and more)
-ground.
-
-[^1]: A pre-alpha implementation of this [paper](https://arxiv.org/pdf/1804.07391.pdf) for go-ethereum. Testing and development of which was a key motivation for this project.
+[^1]: A pre-alpha implementation of this
+  [paper](https://arxiv.org/pdf/1804.07391.pdf) for go-ethereum. Testing and
+  development of which was a key motivation for this project.
 
 # Quick example
 
