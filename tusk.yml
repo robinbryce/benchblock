@@ -2,16 +2,19 @@ interpreter: bash -c
 name: blockbench
 usage: |
 
-  Use the `raft', `ibft' or `rrr` commands to fully configure a network for the
-  corresponding consenus model.  `gethkeys' and `gethgendoc' are used to
+  Use the `new' command to create a full configuration for a supported
+  consensus scheme. `new -i' can be combined with the individual consensus
+  commands for more control.
+
+ `gethkeys' and `gethgendoc' are used to
   generate the node keys and genesis document for all consensus models (and to
   force re-genesis). commands prefixed with `raft', `rrr', or `ibft' deal with
-  coresponding consens model network configuration details.
+  coresponding consensus schemes.
 
-  To gain more control, and more efficiently change the network configuration,
-  individual subcommand can be used directly. Before using a <consensus>new
-  command the configuration directory and file must be created. This is done
-  for you if using the main commands.
+  The various sub commands can be useful if you want to regenerate keys, reset
+  a chain or perorm other maintenance on a configuration without reseting it
+  completely. Review the definition of the main conesnsus commands `raft',
+  `ibft' and 'rrr' to see the individual commands that effect each.
 
   `jpcfg' readies a network configuration for collecting chainhammer compatible
   block data and `jpyrender' processes the data collected by the load
