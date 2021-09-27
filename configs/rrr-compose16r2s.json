@@ -1,0 +1,25 @@
+{
+  "name": "rrr",
+  "maxnodes": "16",
+  "k8s": "false",
+  "delve_image": "robustroundrobin/delve:main",
+  "rrrctl_image": "robustroundrobin/rrrctl:main",
+  "geth_image": "robustroundrobin/geth:main",
+
+  "networkid": "53456",
+  "netrestrict": "172.19.0.10/24",
+
+  "gendoc_balance": "1000000000000000000000000000",
+  "genesis": "genesis-in.json",
+  "nodeallocs": "0",
+  "timestamp_scale": "1",
+
+  "numcandidates": "2",
+  "numendorsers": "9",
+  "committeequorum": "5",
+
+  "activehorizon": "320",
+  "roundlength": "2000",
+  "intentphase": "300",
+  "confirmphase": "700"
+}

@@ -383,7 +383,11 @@ func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 	// Otherwise we hit the same node with multiple clients
 
 	for i := 0; i < lo.cfg.Threads; i++ {
-		qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort+(i%lo.cfg.Threads))
+
+		qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort)
+		if !cfg.SingleNode {
+			qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort+(i%lo.cfg.Threads))
+		}
 		var tuEndpoint string
 		if tu != nil {
 			tu.Host = fmt.Sprintf("%s:%d", tuHostname, baseTesseraPort+(i%lo.cfg.Threads))

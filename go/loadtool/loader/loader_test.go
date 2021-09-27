@@ -44,7 +44,7 @@ func (s *QuorumSuite) SetupSuite() {
 // test contract.
 func (s *QuorumSuite) TestOneTransact() {
 
-	s.cmd.SetArgs([]string{"--one"})
+	s.cmd.SetArgs([]string{"--one", "--singlenode", "-t", "1"})
 	s.cmd.Execute()
 }
 

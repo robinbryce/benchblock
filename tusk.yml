@@ -6,7 +6,7 @@ usage: |
   consensus scheme. `new -i' can be combined with the individual consensus
   commands for more control.
 
- `gethkeys' and `gethgendoc' are used to
+  `gethkeys' and `gethgendoc' are used to
   generate the node keys and genesis document for all consensus models (and to
   force re-genesis). commands prefixed with `raft', `rrr', or `ibft' deal with
   coresponding consensus schemes.

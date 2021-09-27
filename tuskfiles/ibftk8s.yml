@@ -52,21 +52,23 @@ run:
         cp ${BBENCH_NODESDIR}/genesis.json ibft/network
         cp ${BBENCH_NODESDIR}/static-nodes.json ibft/network
 
-
+        nodesdir = os.environ['BBENCH_NODESDIR']
 
         # this assumes static-nodes.json is generated for compose with the hosts listed in
         # ascending order node0, node1 ...
-        # > ethnode8-0.ethnode8.rrr.svc.cluster.local
+        # > ethnode8-0.ethnode8.{BBENCH_NAME}.svc.cluster.local
         cat <<PYEND | python3
         import os, json
         from urllib.parse import urlparse, urlunparse
         nodes = []
-        for i, u in enumerate(json.load(open(f"{os.environ['BBENCH_NODESDIR']}/static-nodes.json"))):
+        nodesdir = os.environ['BBENCH_NODESDIR']
+        namespace = os.environ['BBENCH_NAME']
+        for i, u in enumerate(json.load(open(f"{nodesdir}/static-nodes.json"))):
           u = urlparse(u)
           if u.hostname != f"node{i}":
             print(f"ERROR: static nodes declared in unexpected order or just plain wrong")
             sys.exit(1)
-          u = urlunparse((u.scheme, f"{u.username}@ethnode{i}-0.ethnode{i}.ibft.svc.cluster.local:{u.port}", '', '', u.query, ''))
+          u = urlunparse((u.scheme, f"{u.username}@ethnode{i}-0.ethnode{i}.{namespace}.svc.cluster.local:{u.port}", '', '', u.query, ''))
           nodes.append(u)
         json.dump(nodes, open("ibft/network/static-nodes.json", "w"), sort_keys=True, indent=True)
         PYEND
