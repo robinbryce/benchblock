@@ -48,10 +48,21 @@ run:
           ${dosudo} rm -rf ${BBENCH_NODESDIR}/node$i/data
         done
 
+        GETH_CMD="docker run --rm -u $(id -u):$(id -g) -v ${BBENCH_NODESDIR}:${BBENCH_NODESDIR} ${BBENCH_GETH_IMAGE} --nousb"
+        case "${BBENCH_CONSENSUS}" in
+          rrr)
+            [ -n "${BBENCH_GETH_RRR_BIN}" ] && GETH_CMD="${BBENCH_GETH_RRR_BIN} --nousb"
+            ls -la ${BBENCH_GETH_RRR_BIN}
+            ;;
+          *)
+            [ -n "${BBENCH_GETH_BIN}" ] && GETH_CMD="${BBENCH_GETH_BIN} --nousb"
+            ls -la ${BBENCH_GETH_BIN}
+            ;;
+        esac
+
         genesis_doc=$(pwd)/genesis.json
         for i in $(seq 0 ${end}); do
-          geth="docker run --rm -u $(id -u):$(id -g) -v ${BBENCH_NODESDIR}:${BBENCH_NODESDIR} ${BBENCH_GETH_IMAGE} --nousb"
-          ${geth} \
+          /usr/local/bin/geth \
               --datadir=${BBENCH_NODESDIR}/node${i}/data  \
               --nodekey ${BBENCH_NODESDIR}/node${i}/key \
               init ${BBENCH_NODESDIR}/genesis.json

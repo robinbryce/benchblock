@@ -52,8 +52,6 @@ run:
         cp ${BBENCH_NODESDIR}/genesis.json ibft/network
         cp ${BBENCH_NODESDIR}/static-nodes.json ibft/network
 
-        nodesdir = os.environ['BBENCH_NODESDIR']
-
         # this assumes static-nodes.json is generated for compose with the hosts listed in
         # ascending order node0, node1 ...
         # > ethnode8-0.ethnode8.{BBENCH_NAME}.svc.cluster.local

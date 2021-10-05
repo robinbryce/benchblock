@@ -1,0 +1,7 @@
+.git
+.hooks
+.vscode
+**/.eggs
+**/.egg-info
+__pycache__
+**/__pycache__

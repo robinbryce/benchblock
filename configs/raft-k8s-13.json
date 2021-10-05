@@ -1,6 +1,5 @@
 {
-  "name": "raft",
-  "maxnodes": "9",
+  "maxnodes": "13",
   "k8s": "true",
   "delve_image": "robustroundrobin/delve:main",
   "geth_image": "robustroundrobin/geth:main",

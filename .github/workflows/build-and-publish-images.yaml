@@ -1,0 +1,43 @@
+name: Build and publish bbench image
+on: [push]
+jobs:
+  build-and-publish-images:
+    name: Build and publish bbench image
+    runs-on: ubuntu-latest
+    steps:
+
+      -
+        name: Login to dockerhub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v1
+        with:
+          username: robinbryce
+          password: ${{ secrets.ROBINBRYCE_DOCKERHUB_PUSH }}
+      -
+        name: Extract tags, labels for image
+        id: geth-meta
+        uses: docker/metadata-action@v3
+        with:
+          images: robinbryce/bbench
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      -
+        name: Build and push geth
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.geth-meta.outputs.tags }}
+          labels: ${{ steps.geth-meta.outputs.labels }}
+
+      -
+        name: Build and push bbench
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.rrrctl-meta.outputs.tags }}
+          labels: ${{ steps.rrrctl-meta.outputs.labels }}

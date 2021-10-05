@@ -104,6 +104,8 @@ func ProcessConfig(cmd *cobra.Command, cfgFile string) error {
 			cmd.Flags().Set(f.Name, fmt.Sprintf("%v", val))
 		}
 	})
+
+	// XXX: TODO Check nodes and threads are sane
 	return nil
 }
 

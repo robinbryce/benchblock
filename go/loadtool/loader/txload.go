@@ -45,6 +45,12 @@ type Config struct {
 	// SingleNode is set, then those connections are all to the same node.
 	// Otherwise each client connection connects to a different node.
 	Threads int `mapstructure:"THREADS"`
+
+	// By default we assume the number of nodes = the number of threads. To
+	// create multiple clients per node set Nodes to the node count and set
+	// Threads to Nodes * DesiredClients
+	Nodes int `mapstructure:"NODES"`
+
 	// How many accounts to use on each thread. defaults to 5
 	ThreadAccounts int `mapstructure:"THREADACCOUNTS"`
 
@@ -85,7 +91,7 @@ type Config struct {
 
 var defaultCfg = Config{
 	TPS:             220,
-	Threads:         10,
+	Threads:         11,
 	ThreadAccounts:  5,
 	NumTransactions: 5000,
 	GasLimit:        60000,
@@ -138,6 +144,7 @@ type AccountSet struct {
 func SetViperDefaults(v *viper.Viper) {
 	v.SetDefault("TPS", defaultCfg.TPS)
 	v.SetDefault("THREADS", defaultCfg.Threads)
+	v.SetDefault("NODES", defaultCfg.Nodes)
 	v.SetDefault("THREADACCOUNTS", defaultCfg.ThreadAccounts)
 	v.SetDefault("TRANSACTIONS", defaultCfg.NumTransactions)
 	v.SetDefault("GASLIMIT", defaultCfg.GasLimit)
@@ -174,12 +181,16 @@ func AddOptions(cmd *cobra.Command, cfg *Config) {
 		&cfg.Threads, "threads", "t", defaultCfg.Threads,
 		"create this many client conections and run each in its own thread")
 	f.IntVarP(
+		&cfg.Nodes, "nodes", "n", defaultCfg.Threads,
+		"by default threads is assumed to be 1 or the node count. To get n clients per node, set nodes to the node count and threads to nodes * n")
+
+	f.IntVarP(
 		&cfg.ThreadAccounts, "threadaccounts", "a", defaultCfg.ThreadAccounts, `
 each thread will issue transactions in batches of this size. a unique account is
 created for each batch entry. #accounts total = t * a`,
 	)
 	f.IntVarP(
-		&cfg.NumTransactions, "transactions", "n", defaultCfg.NumTransactions, `
+		&cfg.NumTransactions, "transactions", "x", defaultCfg.NumTransactions, `
 the total number of transactions to issue. note that this is rounded to be an
 even multiple of t * a. a minimum of t * a transactions will be issued
 regardless`,
@@ -382,15 +393,20 @@ func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 	// tessEndpoint := fmt.Sprintf("http://localhost:90%02d", 8+i)
 	// Otherwise we hit the same node with multiple clients
 
+	nodes := lo.cfg.Nodes
+	if nodes == 0 {
+		nodes = lo.cfg.Threads
+	}
+
 	for i := 0; i < lo.cfg.Threads; i++ {
 
 		qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort)
 		if !cfg.SingleNode {
-			qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort+(i%lo.cfg.Threads))
+			qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort+(i%nodes))
 		}
 		var tuEndpoint string
 		if tu != nil {
-			tu.Host = fmt.Sprintf("%s:%d", tuHostname, baseTesseraPort+(i%lo.cfg.Threads))
+			tu.Host = fmt.Sprintf("%s:%d", tuHostname, baseTesseraPort+(i%nodes))
 			tuEndpoint = tu.String()
 		}
 

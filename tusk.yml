@@ -42,7 +42,9 @@ options:
     default: ""
 
   geth_image:
-    usage: the docker image to use for geth-rrr
+    usage: >
+      the docker image to use for geth-rrr. compose files and k8s manifests
+      reference this.
     default: robustroundrobin/geth:main
 
   delve_image:
@@ -152,6 +154,121 @@ options:
 
 tasks:
 
+  kapply:
+    usage: "Runs kustomize build | kubectl apply -f - for the configured consensus"
+    options:
+      context:
+        usage: "kubectl explicit context to use rather than current"
+        short: "c"
+        default: ""
+    args:
+      configdir:
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+            CONFIGVARS="${configvars} k8s_context"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            # priority to the command line. if neither the command line nor the
+            # k8s_context config vars is set, use the current context
+            CONTEXT=${context}
+            [ -z "${CONTEXT}" ] && CONTEXT=${BBENCH_K8S_CONTEXT}
+            kustomize build ${BBENCH_CONSENSUS} | kubectl ${CONTEXT:+ --context ${CONTEXT}} apply -f -
+
+  kdelete:
+    usage: "Runs kustomize build | kubectl delete -f - for the configured consensus"
+    options:
+      context:
+        usage: "kubectl explicit context to use rather than current"
+        short: "c"
+        default: ""
+    args:
+      configdir:
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+            CONFIGVARS="${configvars} k8s_context"
+            eval ${READ_CONFIG}
+            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
+            cd ${launchdir} && cd ${configdir}
+
+            # priority to the command line. if neither the command line nor the
+            # k8s_context config vars is set, use the current context
+            CONTEXT=${context}
+            [ -z "${CONTEXT}" ] && CONTEXT=${BBENCH_K8S_CONTEXT}
+
+            kustomize build ${BBENCH_CONSENSUS} | kubectl ${CONTEXT:+ --context ${CONTEXT}} delete -f -
+
+  pf:
+    usage: "port formward to all k8s nodes. run in seperate terminal. ctrl-c to kill the forwardings"
+
+    options:
+      bootnodes:
+        type: int
+        short:  "b"
+        default: 0
+      start:
+        usage: "first pod index"
+        short: "s"
+        type: int
+        default: 0
+      context:
+        default: ""
+        short: "c"
+    args:
+      namespace:
+      end:
+    run:
+      - command:
+          exec: |
+            set -e
+
+            CONTEXT=${context}
+
+            COMMANDS=""
+
+            START=${start}
+            END=${end}
+
+            if [ "${bootnodes}" != 0 ]; then
+
+              END=$((${START} + ${bootnodes}))
+
+              for i in $(seq ${START} $((${END} - 1))); do
+                PORT=$(printf '83%02d' ${i})
+                CMD="(kubectl ${CONTEXT:+--context ${CONTEXT}} port-forward -n ${namespace} ethnodeboot${i}-0 ${PORT}:8300)"
+                COMMANDS="${COMMANDS} $CMD &"
+              done
+
+              START=$((${START} + ${bootnodes}))
+              END=${end}
+            fi
+
+            for i in $(seq ${START} $((${END} - 1))); do
+              PORT=$(printf '83%02d' ${i})
+              CMD="(kubectl ${CONTEXT:+--context ${CONTEXT}} port-forward -n ${namespace} ethnode${i}-0 ${PORT}:8300)"
+              COMMANDS="${COMMANDS} $CMD &"
+            done
+
+            i=${end}
+            PORT=$(printf '83%02d' ${i})
+            CMD="kubectl ${CONTEXT:+--context ${CONTEXT}} port-forward -n ${namespace} ethnode${i}-0 ${PORT}:8300"
+            COMMANDS="$COMMANDS $CMD"
+            echo $COMMANDS
+            (trap 'kill 0' SIGINT; eval $COMMANDS)
+
   attach:
     usage: "geth attach using docker exec go run"
     options:
@@ -171,7 +288,6 @@ tasks:
             docker exec -it ${project}_node${node}_1 \
               geth attach /nodes/node${node}/data/geth.ipc
 
-
   new:
     usage: >
       Configure a new network configdir from a stock profile
@@ -182,6 +298,10 @@ tasks:
       init-only:
         type: bool
         short: "i"
+      context:
+        usage: "kubernetes (kubectl) config context to use. Ignored unless the profile enables k8s manifiests"
+        short: "c"
+        default: ""
 
     args:
       configdir:
@@ -195,14 +315,13 @@ tasks:
           exec: |
             set -e
             TUSKDIR=$(pwd)
+            echo "launchdir: ${launchdir}"
 
             cat <<PYEND | python3
             import os, sys, json
             from pathlib import Path
 
             consensus="${consensus}"
-
-            name = "${name}" or consensus + "${maxnodes}"
 
             tuskdir = Path(os.getcwd()).resolve()
 
@@ -248,13 +367,17 @@ tasks:
               sys.exit(1)
 
             bench_json = json.load(open(profile))
+            maxnodes = "${maxnodes}" or bench_json.get("maxnodes")
+            name = "${name}" or consensus + maxnodes
+
             # these are commong to most/all consensus methods
             opts = dict(
               name=name,
               consensus=consensus,
+              k8s_context="${context}",
               pyenv=str(pyenvdir),
               k8s="${k8s}",
-              maxnodes="${maxnodes}",
+              maxnodes=maxnodes,
               nodesdir=str(nodesdir),
               quorum_src="${quorum_src}",
               geth_image="${geth_image}",
@@ -396,7 +519,7 @@ tasks:
     options:
       raft_blocktime:
         usage: the --raftblocktime cosensus parameter for starting geth (ms)
-        default: 50
+        default: ""
 
     args:
       configdir:
@@ -413,11 +536,18 @@ tasks:
             TUSKDIR=$(pwd)
 
             # read the config file fields into BBENCH_ vars.
-            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod"
+            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod raft_blocktime"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
             [ "${BBENCH_CONSENSUS}" != "raft" ] && echo "Configured for ${BBENCH_CONSENSUS} not raft" && exit 1
+
+            # prioritize commandline setting for raft blocktime. if its not
+            # already set (by the profile or by hand) force it to 50 (the
+            # quorum default)
+            RAFT_BLOCKTIME="${raft_blocktime}"
+            [ -z "${RAFT_BLOCKTIME}" ] && RAFT_BLOCKTIME=${BBENCH_RAFT_BLOCKTIME}
+            [ -z "${RAFT_BLOCKTIME}" ] && RAFT_BLOCKTIME=50
 
             cd ${launchdir} && cd ${configdir}
 
@@ -437,7 +567,7 @@ tasks:
               nodeallocs="${nodeallocs}",
               gendoc_balance="${gendoc_balance}",
               recommit="${recommit}",
-              raft_blocktime="${raft_blocktime}"
+              raft_blocktime="${RAFT_BLOCKTIME}"
               ).items():
               if v:
                 bench_json[k] = v
