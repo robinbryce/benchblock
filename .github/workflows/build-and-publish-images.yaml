@@ -14,6 +14,12 @@ jobs:
           username: robinbryce
           password: ${{ secrets.ROBINBRYCE_DOCKERHUB_PUSH }}
       -
+        name: checkout main
+        uses: actions/checkout@v2
+        with:
+          path: main
+
+      -
         name: Extract tags, labels for image
         id: geth-meta
         uses: docker/metadata-action@v3
@@ -28,7 +34,7 @@ jobs:
         name: Build and push geth
         uses: docker/build-push-action@v2
         with:
-          context: .
+          context: main
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.geth-meta.outputs.tags }}
           labels: ${{ steps.geth-meta.outputs.labels }}
