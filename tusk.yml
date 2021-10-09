@@ -288,6 +288,9 @@ tasks:
             docker exec -it ${project}_node${node}_1 \
               geth attach /nodes/node${node}/data/geth.ipc
 
+  loadtest:
+    include: tuskfiles/loadtool.yml
+
   new:
     usage: >
       Configure a new network configdir from a stock profile

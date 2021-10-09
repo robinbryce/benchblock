@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/robinbryce/blockbench/loadtool/loader"
@@ -45,7 +46,7 @@ ethereum networks`,
 		},
 
 		Run: func(cmd *cobra.Command, args []string) {
-
+			cfg.ConfigFileDir = filepath.Dir(cfgFile)
 			a, err := loader.NewAdder(context.Background(), &cfg)
 			cobra.CheckErr(err)
 			if cfg.RunOne {

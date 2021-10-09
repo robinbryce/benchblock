@@ -61,6 +61,14 @@ jobs:
 
       - id: publish-kustomized-network
         uses: actions/upload-artifact@v2
+        # XXX: WARNING: This publishes the secrets in the manifest. The only
+        # secrets in that manifest are the private node keys. They are not
+        # useful to anyone without access to the target cluster. They are also
+        # ephemeral, new keys are rolled for each run. But for as long as the
+        # network is up, the node private keys are in the wind.  If this really
+        # is problematic for loadtesting scenarios we will just apply directly
+        # and not publish the artifact. We only publish it because it is
+        # convenient for manual cleanup and triaging errors.
         with:
           name: kustomized-deployment
           path: kustomized-${{ inputs.consensus }}${{ inputs.numnodes }}.yaml

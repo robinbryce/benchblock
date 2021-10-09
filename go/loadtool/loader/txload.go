@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,7 +40,8 @@ var (
 
 // Config configures load for the runners
 type Config struct {
-	TPS int `mapstructure:"TPS"`
+	ConfigFileDir string
+	TPS           int `mapstructure:"TPS"`
 
 	// Each thread issues transactions to its own client connection. If
 	// SingleNode is set, then those connections are all to the same node.
@@ -78,6 +80,13 @@ type Config struct {
 
 	EthEndpoint     string `mapstructure:"ETH"`
 	TesseraEndpoint string `mapstructure:"TESERA"`
+	// If staticnodes is provided, Nodes hosts are read from the file. Its
+	// assumed to be the same format as static-nodes.json. Only the hostname
+	// (or IP) field of the url is significant. The port is set seperately
+	// (baseport) and must be the same for all nodes.
+	StaticNodes     string `mapstructure:"STATICNODES"`
+	BasePort        int    `mapstructure:"BASEPORT"`
+	BaseTesseraPort int    `mapstructure:"BASETESSERAPORT"`
 
 	ClientTimeout   time.Duration `mapstructure:"CLIENT_TIMEOUT"`
 	ExpectedLatency time.Duration `mapstructure:"EXPECTED_LATENCY"`
@@ -100,7 +109,10 @@ var defaultCfg = Config{
 	SingleNode:      false,
 	CheckReceipts:   false,
 	Retries:         10,
-	EthEndpoint:     "http://127.0.0.1:8300/",
+	EthEndpoint:     "",
+	StaticNodes:     "",
+	BasePort:        0,
+	BaseTesseraPort: 0,
 	TesseraEndpoint: "",
 	ClientTimeout:   60 * time.Second,
 	ExpectedLatency: 10 * time.Second,
@@ -159,6 +171,9 @@ func SetViperDefaults(v *viper.Viper) {
 
 	v.SetDefault("ETH", defaultCfg.EthEndpoint)
 	v.SetDefault("TESSERA", defaultCfg.TesseraEndpoint)
+	v.SetDefault("STATICNODES", defaultCfg.StaticNodes)
+	v.SetDefault("BASEPORT", defaultCfg.BasePort)
+	v.SetDefault("BASETESSERAPORT", defaultCfg.BaseTesseraPort)
 
 	v.SetDefault("CLIENT_TIMEOUT", defaultCfg.ClientTimeout)
 	v.SetDefault("EXPECTED_LATENCY", 3*time.Second)
@@ -224,6 +239,19 @@ to the port (unless --singlenode is set)`)
 if privatefor is set, this must be the tessera endpoint to which the private
 payload can be submitted. each thread derives a client url by adding its index
 to the port (unless --singlenode is set)`)
+
+	f.StringVar(
+		&cfg.StaticNodes, "staticnodes", defaultCfg.StaticNodes, `
+	An alternative to --eth. If provided, node hosts are read from the file.
+	Its assumed to be the same format as static-nodes.json. Only the hostname
+	(or IP) field of the url is significant. The port is set seperately
+	(baseport) and must be the same for all nodes.`)
+	f.IntVar(
+		&cfg.BasePort, "baseport", defaultCfg.BasePort,
+		`The first port if --eth is used. If using --staticnodes all nodes be on this port`)
+	f.IntVar(
+		&cfg.BaseTesseraPort, "basetesseraport", defaultCfg.BaseTesseraPort,
+		`The first port if --eth is used. If using --staticnodes all nodes be on this port`)
 	f.DurationVar(
 		&cfg.ClientTimeout, "client-timeout", defaultCfg.ClientTimeout,
 		"every eth request sets this timeout")
@@ -313,57 +341,186 @@ func NewAccountSet(ctx context.Context, ethC *ethclient.Client, cfg *Config, n i
 	return a, nil
 }
 
-func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
+func (a *Adder) clientsFromEthEndpoint(ctx context.Context) error {
 
-	var err error
-
-	lo := Adder{cfg: cfg}
-	if delta := lo.cfg.TruncateTargetTransactions(); delta != 0 {
-		fmt.Printf(
-			"adjusted target number of transactions from %d to %d\n",
-			lo.cfg.NumTransactions+delta, lo.cfg.NumTransactions)
+	if a.cfg.EthEndpoint == "" {
+		return fmt.Errorf("ethendpoint is empty")
 	}
 
-	// Are we collecting results for analysis?
-	if lo.cfg.DBSource != "" {
-		if lo.db, err = NewBlockDB(lo.cfg.DBSource, true /*share*/); err != nil {
-			return Adder{}, err
-		}
+	nodes := a.cfg.Nodes
+	if nodes == 0 {
+		nodes = a.cfg.Threads
 	}
 
-	lo.limiter = time.NewTicker(time.Second / time.Duration(lo.cfg.TPS))
+	a.accounts = make([]AccountSet, a.cfg.Threads)
+	a.ethC = make([]*Client, a.cfg.Threads)
+	a.ethCUrl = make([]string, a.cfg.Threads)
 
-	lo.collectLimiter = time.NewTicker(lo.cfg.CollectRate)
-
-	qu, err := url.Parse(lo.cfg.EthEndpoint)
+	qu, err := url.Parse(a.cfg.EthEndpoint)
 	if err != nil {
-		return Adder{}, err
+		return err
 	}
+
 	quHostname := qu.Hostname()
-	baseQuorumPort, err := strconv.Atoi(qu.Port())
-	if err != nil {
-		return Adder{}, err
+	baseQuorumPort := a.cfg.BasePort
+	if baseQuorumPort == 0 {
+		baseQuorumPort, err = strconv.Atoi(qu.Port())
+		if err != nil {
+			return err
+		}
 	}
 
 	var tu *url.URL
 	var tuHostname string
 	var baseTesseraPort int
-	if lo.cfg.TesseraEndpoint != "" {
-		tu, err = url.Parse(lo.cfg.TesseraEndpoint)
+	if a.cfg.TesseraEndpoint != "" {
+		tu, err = url.Parse(a.cfg.TesseraEndpoint)
 		if err != nil {
-			return Adder{}, err
+			return err
 		}
 
 		tuHostname = tu.Hostname()
 		baseTesseraPort, err = strconv.Atoi(tu.Port())
 		if err != nil {
+			return err
+		}
+	}
+
+	for i := 0; i < a.cfg.Threads; i++ {
+
+		qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort)
+		if !a.cfg.SingleNode {
+			qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort+(i%(nodes-1)))
+		}
+		var tuEndpoint string
+		if tu != nil {
+			tu.Host = fmt.Sprintf("%s:%d", tuHostname, baseTesseraPort+(i%(nodes-1)))
+			tuEndpoint = tu.String()
+		}
+
+		a.ethC[i], err = NewClient(qu.String(), tuEndpoint, a.cfg.ClientTimeout)
+		if err != nil {
+			return err
+		}
+		a.ethCUrl[i] = qu.String()
+
+		fmt.Printf("building account set for client[%d]: %s\n", i, qu.String())
+
+		a.accounts[i], err = NewAccountSet(ctx, a.ethC[i].Client, a.cfg, a.cfg.ThreadAccounts)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *Adder) clientsFromStaticNodes(ctx context.Context) error {
+	if a.cfg.StaticNodes == "" {
+		return fmt.Errorf("staticnodes is empty")
+	}
+
+	fileName := filepath.Join(a.cfg.ConfigFileDir, a.cfg.StaticNodes)
+	var staticNodes []string
+	if err := common.LoadJSON(fileName, &staticNodes); err != nil {
+		return fmt.Errorf("loading file `%s': %v", fileName, err)
+	}
+
+	nodes := a.cfg.Nodes
+	if nodes == 0 {
+		nodes = a.cfg.Threads
+	}
+
+	if nodes >= len(staticNodes) {
+		return fmt.Errorf(
+			"to few nodes in %s. need %d, have %d", a.cfg.StaticNodes, nodes, len(staticNodes))
+	}
+
+	a.accounts = make([]AccountSet, a.cfg.Threads)
+	a.ethC = make([]*Client, a.cfg.Threads)
+	a.ethCUrl = make([]string, a.cfg.Threads)
+
+	quorumPort := a.cfg.BasePort
+	if quorumPort == 0 {
+		quorumPort = 8545
+	}
+	tesseraPort := a.cfg.BaseTesseraPort
+	if tesseraPort == 0 {
+		tesseraPort = 50000
+	}
+
+	var err error
+	qurls := make([]url.URL, len(staticNodes))
+	turls := make([]url.URL, len(staticNodes))
+	for i := 0; i < len(staticNodes); i++ {
+		qu, err := url.Parse(staticNodes[i])
+		if err != nil {
+			return err
+		}
+
+		// Ignore the port in the file. If its an actual static-nodes.json it
+		// will be the p2p port
+		parts := strings.Split(qu.Host, ":")
+		parts[len(parts)-1] = strconv.Itoa(quorumPort)
+		qurls[i].Scheme = "http"
+		qurls[i].Host = strings.Join(parts, ":")
+
+		parts[len(parts)-1] = strconv.Itoa(tesseraPort)
+		turls[i].Scheme = "http"
+		turls[i].Host = strings.Join(parts, ":")
+	}
+
+	for i := 0; i < a.cfg.Threads; i++ {
+
+		qu, tu := qurls[0], turls[0]
+		if !a.cfg.SingleNode {
+			qu = qurls[i%(nodes-1)]
+			tu = turls[i%(nodes-1)]
+		}
+
+		quEndpoint := qu.String()
+		tuEndpoint := ""
+		if a.cfg.BaseTesseraPort != 0 {
+			// TODO: Better handling of tessera
+			tuEndpoint = tu.String()
+		}
+
+		a.ethC[i], err = NewClient(quEndpoint, tuEndpoint, a.cfg.ClientTimeout)
+		if err != nil {
+			return err
+		}
+		a.ethCUrl[i] = quEndpoint
+
+		fmt.Printf("building account set for client[%d]: %s\n", i, quEndpoint)
+
+		a.accounts[i], err = NewAccountSet(ctx, a.ethC[i].Client, a.cfg, a.cfg.ThreadAccounts)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
+
+	var err error
+
+	a := Adder{cfg: cfg}
+	if delta := a.cfg.TruncateTargetTransactions(); delta != 0 {
+		fmt.Printf(
+			"adjusted target number of transactions from %d to %d\n",
+			a.cfg.NumTransactions+delta, a.cfg.NumTransactions)
+	}
+
+	// Are we collecting results for analysis?
+	if a.cfg.DBSource != "" {
+		if a.db, err = NewBlockDB(a.cfg.DBSource, true /*share*/); err != nil {
 			return Adder{}, err
 		}
 	}
 
-	lo.accounts = make([]AccountSet, lo.cfg.Threads)
-	lo.ethC = make([]*Client, lo.cfg.Threads)
-	lo.ethCUrl = make([]string, lo.cfg.Threads)
+	a.limiter = time.NewTicker(time.Second / time.Duration(a.cfg.TPS))
+
+	a.collectLimiter = time.NewTicker(a.cfg.CollectRate)
 
 	var tx *types.Transaction
 
@@ -373,8 +530,8 @@ func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 		return Adder{}, err
 	}
 
-	if lo.cfg.DeployKey != "" {
-		deployKey, err = crypto.HexToECDSA(lo.cfg.DeployKey)
+	if a.cfg.DeployKey != "" {
+		deployKey, err = crypto.HexToECDSA(a.cfg.DeployKey)
 		if err != nil {
 			return Adder{}, err
 		}
@@ -388,58 +545,31 @@ func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 		}
 	}
 
-	// if we have multiple exposed nodes we can do this
-	// ethEndpoint := fmt.Sprintf("http://localhost:220%02d", i)
-	// tessEndpoint := fmt.Sprintf("http://localhost:90%02d", 8+i)
-	// Otherwise we hit the same node with multiple clients
-
-	nodes := lo.cfg.Nodes
-	if nodes == 0 {
-		nodes = lo.cfg.Threads
-	}
-
-	for i := 0; i < lo.cfg.Threads; i++ {
-
-		qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort)
-		if !cfg.SingleNode {
-			qu.Host = fmt.Sprintf("%s:%d", quHostname, baseQuorumPort+(i%nodes))
-		}
-		var tuEndpoint string
-		if tu != nil {
-			tu.Host = fmt.Sprintf("%s:%d", tuHostname, baseTesseraPort+(i%nodes))
-			tuEndpoint = tu.String()
-		}
-
-		lo.ethC[i], err = NewClient(qu.String(), tuEndpoint, lo.cfg.ClientTimeout)
-		if err != nil {
-			return Adder{}, err
-		}
-		lo.ethCUrl[i] = qu.String()
-
-		fmt.Printf("building account set for client[%d]: %s\n", i, qu.String())
-
-		lo.accounts[i], err = NewAccountSet(ctx, lo.ethC[i].Client, lo.cfg, lo.cfg.ThreadAccounts)
-		if err != nil {
-			return Adder{}, err
-		}
+	switch {
+	case a.cfg.EthEndpoint != "":
+		a.clientsFromEthEndpoint(ctx)
+	case a.cfg.StaticNodes != "":
+		a.clientsFromStaticNodes(ctx)
+	default:
+		return Adder{}, fmt.Errorf("you must provide either --ethendpoint or --staticnodes")
 	}
 
 	deployAuth := bind.NewKeyedTransactor(deployKey)
 
-	deployAuth.GasLimit = uint64(lo.cfg.DeployGasLimit)
+	deployAuth.GasLimit = uint64(a.cfg.DeployGasLimit)
 	deployAuth.GasPrice = big0
-	lo.address, tx, lo.getSetAdd, err = bind.DeployContract(
-		deployAuth, parsed, common.FromHex(GetSetAddBin), lo.ethC[0])
+	a.address, tx, a.getSetAdd, err = bind.DeployContract(
+		deployAuth, parsed, common.FromHex(GetSetAddBin), a.ethC[0])
 	if err != nil {
 		return Adder{}, err
 	}
-	if ok := CheckReceipt(lo.ethC[0].Client, tx, lo.cfg.Retries, lo.cfg.ExpectedLatency); !ok {
+	if ok := CheckReceipt(a.ethC[0].Client, tx, a.cfg.Retries, a.cfg.ExpectedLatency); !ok {
 		return Adder{}, fmt.Errorf("failed to deploy contract")
 	}
 
 	// num-tx / num-threads
 
-	return lo, nil
+	return a, nil
 }
 
 func (a *Adder) Run() {
