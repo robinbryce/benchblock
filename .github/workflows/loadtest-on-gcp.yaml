@@ -38,6 +38,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      - id: create-network-manifests
+        container: robinbryce/bbench:main
+        args:
+          - new
+          - --k8s
+          - --maxnodes ${{ inputs.numnodes }}
+          - --profile ${{ inputs.numnodes }}
+          - networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+          - ${{ inputs.consensus }}
+
+      - id: pre-deploy
+        run: |
+          tree networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+
       - id: get-credentials
         uses: google-github-actions/get-gke-credentials@main
         with:
