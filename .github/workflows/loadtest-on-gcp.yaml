@@ -41,13 +41,13 @@ jobs:
       - id: create-network-manifests
         uses: docker://robinbryce/bbench:main
         with:
-          args:
-            - new
-            - --k8s
-            - --maxnodes ${{ inputs.numnodes }}
-            - --profile ${{ inputs.numnodes }}
-            - networks/${{ inputs.consensus }}${{ inputs.numnodes }}
-            - ${{ inputs.consensus }}
+          args: >
+            new
+            --k8s
+            --maxnodes ${{ inputs.numnodes }}
+            --profile ${{ inputs.numnodes }}
+            networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+            ${{ inputs.consensus }}
 
       - id: pre-deploy
         run: |
