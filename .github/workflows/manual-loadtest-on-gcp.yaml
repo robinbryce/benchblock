@@ -28,7 +28,7 @@ on:
         default: ""
 jobs:
   run-loadtest-on-gcp:
-    uses: robinbryce/blockbench/.github/workflows/load-test-on-gcp.yaml@v1
+    uses: robinbryce/blockbench/.github/workflows/load-test-on-gcp.yaml@main
     with:
       project_id: ${{ input.project_id }}
       location: ${{ input.location }}
