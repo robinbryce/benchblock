@@ -30,10 +30,10 @@ jobs:
   run-loadtest-on-gcp:
     uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: ${{ input.project_id }}
-      location: ${{ input.location }}
-      cluster_name: ${{ input.cluster_name }}
-      consensus: ${{ input.consensus }}
-      profile: ${{ input.profile }}
+      project_id: ${{ inputs.project_id }}
+      location: ${{ inputs.location }}
+      cluster_name: ${{ inputs.cluster_name }}
+      consensus: ${{ inputs.consensus }}
+      profile: ${{ inputs.profile }}
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
