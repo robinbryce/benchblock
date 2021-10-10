@@ -651,7 +651,9 @@ func (a *Adder) Run() {
 		go a.collector(a.ethC[0], &wg, fmt.Sprintf("client-%d", 0), 0)
 	}
 	wg.Wait()
-	fmt.Printf("sent: %d, mined: %d\n", a.pbTxIssued.Current(), a.pbTxIssued.Current())
+	if a.pbTxIssued != nil && a.pbTxMined != nil {
+		fmt.Printf("sent: %d, mined: %d\n", a.pbTxIssued.Current(), a.pbTxIssued.Current())
+	}
 	// p.Wait()
 }
 
