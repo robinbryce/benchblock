@@ -10,7 +10,8 @@ COPY go/loadtool/loader loader
 COPY go/loadtool/*.go .
 RUN find . && go build -o ${GOBIN}/loadtool main.go
 
-FROM gcr.io/distroless/base
+# FROM gcr.io/distroless/base
+FROM debian:bullseye-slim
 ENV PATH /usr/local/bin:${PATH}
 COPY --from=go-builder /go/bin/loadtool /usr/local/bin/
 ENTRYPOINT [ "/usr/local/bin/loadtool" ]

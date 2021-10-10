@@ -547,9 +547,13 @@ func NewAdder(ctx context.Context, cfg *Config) (Adder, error) {
 
 	switch {
 	case a.cfg.EthEndpoint != "":
-		a.clientsFromEthEndpoint(ctx)
+		if err = a.clientsFromEthEndpoint(ctx); err != nil {
+			return Adder{}, err
+		}
 	case a.cfg.StaticNodes != "":
-		a.clientsFromStaticNodes(ctx)
+		if err = a.clientsFromStaticNodes(ctx); err != nil {
+			return Adder{}, err
+		}
 	default:
 		return Adder{}, fmt.Errorf("you must provide either --ethendpoint or --staticnodes")
 	}
