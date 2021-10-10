@@ -54,7 +54,7 @@ run:
 
         # this assumes static-nodes.json is generated for compose with the hosts listed in
         # ascending order node0, node1 ...
-        # > ethnode8-0.ethnode8.{BBENCH_NAME}.svc.cluster.local
+        # > ethnode8.{BBENCH_NAME}.svc.cluster.local
         cat <<PYEND | python3
         import os, json
         from urllib.parse import urlparse, urlunparse
@@ -66,7 +66,7 @@ run:
           if u.hostname != f"node{i}":
             print(f"ERROR: static nodes declared in unexpected order or just plain wrong")
             sys.exit(1)
-          u = urlunparse((u.scheme, f"{u.username}@ethnode{i}-0.ethnode{i}.{namespace}.svc.cluster.local:{u.port}", '', '', u.query, ''))
+          u = urlunparse((u.scheme, f"{u.username}@ethnode{i}.{namespace}.svc.cluster.local:{u.port}", '', '', u.query, ''))
           nodes.append(u)
         json.dump(nodes, open("ibft/network/static-nodes.json", "w"), sort_keys=True, indent=True)
         PYEND
@@ -87,7 +87,9 @@ run:
         start=0
         end=$(($BBENCH_MAXNODES - 1))
         for i in $(seq $start $end); do
-          NODENUM=$i yq eval '.nameSuffix = env(NODENUM)' \
+          NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
+          .commonLabels.app += env(NODENUM) |
+          .commonLabels."app.kubernetes.io/name" += env(NODENUM)' \
             ${TUSKDIR}/k8s/ibft/nodes/node0/kustomization.yaml \
             > ibft/nodes/node${i}/kustomization.yaml
             cat ibft/nodes/node${i}/kustomization.yaml

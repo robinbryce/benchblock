@@ -71,7 +71,7 @@ run:
         echo "NUM_BOOTNODES=${NUM_BOOTNODES}" >> rrr/network/bootnodes.env
         for i in $(seq 0 $((${NUM_BOOTNODES} - 1))); do
           echo "BOOTNODE_PUB${i}=$(cat ${BBENCH_NODESDIR}/node${i}/enode)" >> rrr/network/bootnodes.env
-          echo "BOOTNODE_HOST${i}=ethnodeboot${i}-0.ethnodeboot${i}.${BBENCH_NAME}.svc.cluster.local" >> rrr/network/bootnodes.env
+          echo "BOOTNODE_HOST${i}=ethnodeboot${i}.${BBENCH_NAME}.svc.cluster.local" >> rrr/network/bootnodes.env
         done
         cat rrr/network/bootnodes.env
         echo "Wrote ${NUM_BOOTNODES} bootnodes to rrr/network/bootnodes.env"
@@ -98,7 +98,10 @@ run:
 
         # kustomizations for the boot nodes
         for i in $(seq 0 $((${NUM_BOOTNODES} - 1))); do
-          NODENUM=$i yq eval '.nameSuffix = env(NODENUM) | .resources[0] = "./../../../base/rrr/bootnode"' \
+          NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
+          .commonLabels.app += env(NODENUM) |
+          .commonLabels."app.kubernetes.io/name" += env(NODENUM) |
+          .resources[0] = "./../../../base/rrr/bootnode"' \
             ${TUSKDIR}/k8s/rrr/nodes/node0/kustomization.yaml \
             > rrr/nodes/node${i}/kustomization.yaml
             cat rrr/nodes/node${i}/kustomization.yaml
@@ -109,7 +112,9 @@ run:
         start=${NUM_BOOTNODES}
         end=$(($BBENCH_MAXNODES - 1))
         for i in $(seq $start $end); do
-          NODENUM=$i yq eval '.nameSuffix = env(NODENUM)' \
+          NODENUM=$i yq eval '.nameSuffix = env(NODENUM) | \
+          .commonLabels.app += env(NODENUM) | \
+          .commonLabels."app.kubernetes.io/name" += env(NODENUM)' \
             ${TUSKDIR}/k8s/rrr/nodes/node0/kustomization.yaml \
             > rrr/nodes/node${i}/kustomization.yaml
             cat rrr/nodes/node${i}/kustomization.yaml

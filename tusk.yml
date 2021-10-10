@@ -414,8 +414,12 @@ tasks:
 
             cd ${launchdir} && cd ${configdir}
 
-            [ -d ${TUSKDIR}/k8s/base ] && mkdir -p base && cp -r ${TUSKDIR}/k8s/base/* base
-            [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && mkdir -p ${BBENCH_CONSENSUS} && cp -r ${TUSKDIR}/k8s/${BBENCH_CONSENSUS}/* ${BBENCH_CONSENSUS}
+            [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && mkdir -p ${BBENCH_CONSENSUS}
+
+            if [ "${deploymode}" == "k8s" ]; then
+              [ -d ${TUSKDIR}/k8s/base ] && mkdir -p base && cp -r ${TUSKDIR}/k8s/base/* base
+              [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && cp -r ${TUSKDIR}/k8s/${BBENCH_CONSENSUS}/* ${BBENCH_CONSENSUS}
+            fi
 
             eval ${SHOW_CONFIG}
 

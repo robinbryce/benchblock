@@ -1,0 +1,11 @@
+{
+  "tps": 300,
+  "transactions": 2000,
+  "nodes": 3,
+  "threads": 27,
+  "baseport": 8300,
+  "resolvehosts": true,
+  "staticnodes": "static-nodes.json",
+  "dbsource": "/results/blocks.db"
+}
+

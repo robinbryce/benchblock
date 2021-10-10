@@ -2,17 +2,14 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: ethnode
-  labels:
-    app.kubernetes.io/name: ethnode
-    app.kubernetes.io/part-of: ethnet
 spec:
   selector:
     matchLabels:
       app: ethnode
+  replicas: 1
   serviceName: ethnode
   podManagementPolicy: "Parallel"
 
-  replicas: 1
   volumeClaimTemplates:
   - metadata:
       name: ethnode-pv
@@ -22,10 +19,6 @@ spec:
         requests:
           storage: 4Gi
   template:
-    metadata:
-      labels:
-        app: ethnode
-        app.kubernetes.io/part-of: ethnet
     spec:
       terminationGracePeriodSeconds: 10
       volumes:

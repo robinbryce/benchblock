@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: loadtool
+spec:
+  backoffLimit: 8
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: loadtool
+        app.kubernetes.io/part-of: ethnet
+    spec:
+      restartPolicy: Never
+      volumes:
+        - name: config
+          projected:
+            sources:
+              - configMap:
+                  name: loadtool-target-nodes-cfg
+                  items:
+                    - key: static-nodes.json
+                      path: static-nodes.json
+              - configMap:
+                  name: loadtool-cfg
+                  items:
+                    - key: loadtool.json
+                      path: loadtool.json
+        - name: results
+          emptyDir: {}
+      containers:
+        - name: loadtool
+          image: robinbryce/bbench-loadtool:main
+          imagePullPolicy: Always
+          command: ["loadtool", "--config", "/config/loadtool.json"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: results
+              mountPath: /results

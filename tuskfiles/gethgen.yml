@@ -62,7 +62,7 @@ run:
 
         genesis_doc=$(pwd)/genesis.json
         for i in $(seq 0 ${end}); do
-          /usr/local/bin/geth \
+          ${GETH_CMD} \
               --datadir=${BBENCH_NODESDIR}/node${i}/data  \
               --nodekey ${BBENCH_NODESDIR}/node${i}/key \
               init ${BBENCH_NODESDIR}/genesis.json
