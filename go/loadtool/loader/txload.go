@@ -461,11 +461,9 @@ func (a *Adder) clientsFromStaticNodes(ctx context.Context) error {
 		// will be the p2p port
 		parts := strings.Split(qu.Host, ":")
 		parts[len(parts)-1] = strconv.Itoa(quorumPort)
-		qurls[i].Scheme = "http"
 		qurls[i].Host = strings.Join(parts, ":")
 
 		parts[len(parts)-1] = strconv.Itoa(tesseraPort)
-		turls[i].Scheme = "http"
 		turls[i].Host = strings.Join(parts, ":")
 	}
 
