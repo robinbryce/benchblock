@@ -416,8 +416,9 @@ tasks:
 
             [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && mkdir -p ${BBENCH_CONSENSUS}
 
-            if [ "${deploymode}" == "k8s" ]; then
+            if ${k8s}; then
               [ -d ${TUSKDIR}/k8s/base ] && mkdir -p base && cp -r ${TUSKDIR}/k8s/base/* base
+              [ -d ${TUSKDIR}/k8s/jobs ] && mkdir -p jobs && cp -r ${TUSKDIR}/k8s/jobs/* jobs
               [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && cp -r ${TUSKDIR}/k8s/${BBENCH_CONSENSUS}/* ${BBENCH_CONSENSUS}
             fi
 

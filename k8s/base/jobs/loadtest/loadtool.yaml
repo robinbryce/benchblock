@@ -18,14 +18,19 @@ spec:
               - configMap:
                   name: loadtool-target-nodes-cfg
                   items:
+                    # the static-nodes.json in the base is intentionaly empty.
                     - key: static-nodes.json
                       path: static-nodes.json
               - configMap:
                   name: loadtool-cfg
                   items:
+                    # the loadtool.json in the base is valid but only targets a
+                    # single node.
                     - key: loadtool.json
                       path: loadtool.json
         - name: results
+          # XXX: frustratingly the emptyDir can not be read by kubectl cp after
+          # the job completes. will need to do something else here.
           emptyDir: {}
       containers:
         - name: loadtool

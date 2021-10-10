@@ -83,6 +83,14 @@ run:
         cat ibft/network/network.env
         echo "Wrote ibft/network/network.env"
 
+        cp -v raft/network/static-nodes.json jobs/loadtest
+        cat base/jobs/loadtest/loadtool.json | jq -r \
+          '.transactions = 10000 |
+           .nodes = (env.BBENCH_MAXNODES|tonumber) |
+           .threads = (env.BBENCH_MAXNODES|tonumber)' \
+           > jobs/loadtest/loadtool.json
+        echo "Wrote jobs/loadtest/loadtool.json"
+
         # kustomizations for the nodes
         start=0
         end=$(($BBENCH_MAXNODES - 1))

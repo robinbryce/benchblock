@@ -758,11 +758,15 @@ func (a *Adder) collector(ethC *Client, wg *sync.WaitGroup, banner string, ias i
 
 			// could actually capture and reconcile them if we wanted, for now just count them
 			ntx := len(block.Transactions())
-			a.pbTxMined.IncrBy(ntx)
+			if a.pbTxMined != nil {
+				a.pbTxMined.IncrBy(ntx)
+			}
 			numCollected += ntx
 			if numCollected >= a.cfg.NumTransactions {
 				fmt.Printf("collection complete: %d\n", numCollected)
-				a.pbTxMined.SetTotal(int64(a.cfg.NumTransactions), true)
+				if a.pbTxMined != nil {
+					a.pbTxMined.SetTotal(int64(a.cfg.NumTransactions), true)
+				}
 				return
 			}
 		}
