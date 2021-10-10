@@ -493,7 +493,7 @@ tasks:
           args:
             - ${configdir}
       - task:
-          name: ibftstatic
+          name: gethstatic
           args:
             - ${configdir}
       - task:
@@ -585,7 +585,9 @@ tasks:
           args:
             - ${configdir}
       - task:
-          name: raftstatic
+          name: gethstatic
+          options:
+            querystring: "?discport=0&raftport=50000"
           args:
             - ${configdir}
       - task:
@@ -702,6 +704,12 @@ tasks:
           args:
             - ${configdir}
       - task:
+          # this is just to provide config for the loadtool its ignored
+          # otherwise
+          name: gethstatic
+          args:
+            - ${configdir}
+      - task:
           name: rrralpha
           args:
             - ${configdir}
@@ -759,6 +767,9 @@ tasks:
   gethgen:
     include: tuskfiles/gethgen.yml
 
+  gethstatic:
+    include: tuskfiles/gethstatic.yml
+
   # raft consensus commands
   raftk8s:
     include: tuskfiles/raftk8s.yml
@@ -767,9 +778,6 @@ tasks:
   ibftextra:
     include: tuskfiles/ibftextra.yml
 
-  ibftstatic:
-    include: tuskfiles/ibftstatic.yml
-
   ibftcompose:
     include: tuskfiles/ibftcompose.yml
 
@@ -777,9 +785,6 @@ tasks:
     include: tuskfiles/ibftk8s.yml
 
   # raft consensus commands
-  raftstatic:
-    include: tuskfiles/raftstatic.yml
-
   raftcompose:
     include: tuskfiles/raftcompose.yml
 

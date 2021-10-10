@@ -36,3 +36,23 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.bbench-meta.outputs.tags }}
           labels: ${{ steps.bbench-meta.outputs.labels }}
+      -
+        name: Extract tags, labels for image
+        id: loadtool-meta
+        uses: docker/metadata-action@v3
+        with:
+          images: robinbryce/bbench-loadtool
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      -
+        name: Build and push bbench-loadtool
+        uses: docker/build-push-action@v2
+        with:
+          context: main
+          file: Dockerfile-loadtool
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.loadtool-meta.outputs.tags }}
+          labels: ${{ steps.loadtool-meta.outputs.labels }}

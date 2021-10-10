@@ -1,10 +1,15 @@
 ---
-usage: "make static-nodes.json for all the ibft nodes"
+usage: "make static-nodes.json for all the nodes"
 options:
   last:
     usage: >
       Set to the last node index to include (0 means all which is the default)
     default: "0"
+  querystring:
+    usage: |
+      for raft set this to "?discport=0&raftport=50000"
+    default: "?discport=0"
+
 args:
   configdir:
     usage: >
@@ -20,7 +25,7 @@ run:
         set -e
 
         # read the config file fields into BBENCH_ vars.
-        CONFIGVARS="${configvars}"
+        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
@@ -28,26 +33,27 @@ run:
         end=${last}
         [ "${end}" == "0" ] && end=$((BBENCH_MAXNODES -1))
         export end
+        echo "raftstatic: end=$end"
 
         source ${BBENCH_PYENV}/bin/activate
 
         cat <<PYEND | python3
-        import os, json, pathlib
-
-        nodesdir=os.environ["BBENCH_NODESDIR"]
+        import os, json, coincurve, sha3, secrets, pathlib
 
         static=[]
 
         p2port="7200"
+        raftport="50000"
+
+        nodesdir = os.environ["BBENCH_NODESDIR"]
 
         for i in range(int(os.environ['end']) + 1):
 
             dirname = f"{nodesdir}/node{i}"
             enode = open(f"{dirname}/enode", 'r').read()
             static.append(
-              f"enode://{enode}@node{i}:{p2port}?discport=0"
+              f"enode://{enode}@node{i}:{p2port}${querystring}"
             )
-
         with open(f"{nodesdir}/static-nodes.json", "w") as f:
             json.dump(static, f, indent=2, sort_keys=True)
             f.flush()
