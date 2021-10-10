@@ -430,7 +430,7 @@ func (a *Adder) clientsFromStaticNodes(ctx context.Context) error {
 		nodes = a.cfg.Threads
 	}
 
-	if nodes >= len(staticNodes) {
+	if nodes > len(staticNodes) {
 		return fmt.Errorf(
 			"to few nodes in %s. need %d, have %d", a.cfg.StaticNodes, nodes, len(staticNodes))
 	}
