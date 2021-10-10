@@ -461,16 +461,19 @@ func (a *Adder) clientsFromStaticNodes(ctx context.Context) error {
 		// will be the p2p port
 		parts := strings.Split(qu.Host, ":")
 		parts[len(parts)-1] = strconv.Itoa(quorumPort)
+		qurls[i].Scheme = "http"
 		qurls[i].Host = strings.Join(parts, ":")
 
 		parts[len(parts)-1] = strconv.Itoa(tesseraPort)
+		turls[i].Scheme = "http"
 		turls[i].Host = strings.Join(parts, ":")
 	}
 
 	for i := 0; i < a.cfg.Threads; i++ {
 
 		qu, tu := qurls[0], turls[0]
-		if !a.cfg.SingleNode {
+
+		if !a.cfg.SingleNode && nodes > 1 {
 			qu = qurls[i%(nodes-1)]
 			tu = turls[i%(nodes-1)]
 		}
