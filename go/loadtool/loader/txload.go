@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"net"
 	"net/url"
 	"path/filepath"
 	"strconv"
@@ -74,6 +75,8 @@ type Config struct {
 	// resourced.
 	SingleNode bool `mapstructure:"SINGLENODE"`
 
+	ResolveHosts bool `mapstructure:"RESOLVEHOSTS"`
+
 	// If true, confirm every transaction in a batch before doing the next batch.
 	CheckReceipts bool `mapstructure:"CHECK_RECEIPTS"`
 	Retries       int  `mapstructure:"RETRIES"`
@@ -107,6 +110,7 @@ var defaultCfg = Config{
 	PrivateFor:      "",
 	DBSource:        "",
 	SingleNode:      false,
+	ResolveHosts:    false,
 	CheckReceipts:   false,
 	Retries:         10,
 	EthEndpoint:     "",
@@ -166,6 +170,7 @@ func SetViperDefaults(v *viper.Viper) {
 	v.SetDefault("DBSource", defaultCfg.DBSource)
 
 	v.SetDefault("SINGLENODE", defaultCfg.SingleNode)
+	v.SetDefault("RESOLVEHOSTS", defaultCfg.ResolveHosts)
 	v.SetDefault("CHECK_RECIEPTS", defaultCfg.CheckReceipts)
 	v.SetDefault("RETRIES", defaultCfg.Retries)
 
@@ -222,6 +227,9 @@ only).  if not set, the transactions will be public`)
 
 	f.BoolVar(
 		&cfg.SingleNode, "singlenode", false, "if set all clients will connect to the same node")
+	f.BoolVar(
+		&cfg.ResolveHosts, "resolvehosts", false, "resolve target hostnames to ip addresses once at startup")
+
 	f.BoolVar(
 		&cfg.CheckReceipts, "check-reciepts", false, `
 if set, threads will verify the transactions issued for each batch at the end of
@@ -341,6 +349,20 @@ func NewAccountSet(ctx context.Context, ethC *ethclient.Client, cfg *Config, n i
 	return a, nil
 }
 
+func (a *Adder) resolveHost(host string) (string, error) {
+	if !a.cfg.ResolveHosts {
+		return host, nil
+	}
+	addrs, err := net.LookupIP(host)
+	if err != nil {
+		return "", err
+	}
+	if len(addrs) != 1 {
+		return "", fmt.Errorf("cant resolve ambigous host. could be any of: %v", addrs)
+	}
+	return addrs[0].String(), nil
+}
+
 func (a *Adder) clientsFromEthEndpoint(ctx context.Context) error {
 
 	if a.cfg.EthEndpoint == "" {
@@ -361,7 +383,11 @@ func (a *Adder) clientsFromEthEndpoint(ctx context.Context) error {
 		return err
 	}
 
-	quHostname := qu.Hostname()
+	quHostname, err := a.resolveHost(qu.Hostname())
+	if err != nil {
+		return err
+	}
+
 	baseQuorumPort := a.cfg.BasePort
 	if baseQuorumPort == 0 {
 		baseQuorumPort, err = strconv.Atoi(qu.Port())
@@ -379,7 +405,11 @@ func (a *Adder) clientsFromEthEndpoint(ctx context.Context) error {
 			return err
 		}
 
-		tuHostname = tu.Hostname()
+		tuHostname, err = a.resolveHost(tu.Hostname())
+		if err != nil {
+			return err
+		}
+
 		baseTesseraPort, err = strconv.Atoi(tu.Port())
 		if err != nil {
 			return err
@@ -462,6 +492,10 @@ func (a *Adder) clientsFromStaticNodes(ctx context.Context) error {
 		parts := strings.Split(qu.Host, ":")
 		parts[len(parts)-1] = strconv.Itoa(quorumPort)
 		qurls[i].Scheme = "http"
+		parts[0], err = a.resolveHost(parts[0])
+		if err != nil {
+			return err
+		}
 		qurls[i].Host = strings.Join(parts, ":")
 
 		parts[len(parts)-1] = strconv.Itoa(tesseraPort)
