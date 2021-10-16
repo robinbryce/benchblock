@@ -38,21 +38,21 @@ jobs:
           labels: ${{ steps.bbench-meta.outputs.labels }}
       -
         name: Extract tags, labels for image
-        id: loadtool-meta
+        id: bbencheth-meta
         uses: docker/metadata-action@v3
         with:
-          images: robinbryce/bbench-loadtool
+          images: robinbryce/bbencheth
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
       -
-        name: Build and push bbench-loadtool
+        name: Build and push bbencheth
         uses: docker/build-push-action@v2
         with:
           context: main
-          file: main/Dockerfile-loadtool
+          file: main/Dockerfile-bbencheth
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.loadtool-meta.outputs.tags }}
-          labels: ${{ steps.loadtool-meta.outputs.labels }}
+          tags: ${{ steps.bbencheth-meta.outputs.tags }}
+          labels: ${{ steps.bbencheth-meta.outputs.labels }}

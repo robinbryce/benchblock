@@ -3,11 +3,11 @@ kind: Kustomization
 resources:
   - ./../../base/jobs/loadtest
 configMapGenerator:
-  - name: loadtool-cfg
+  - name: bbencheth-cfg
     behavior: merge
     files:
-      - loadtool.json
-  - name: loadtool-target-nodes-cfg
+      - bbencheth.json
+  - name: bbencheth-target-nodes-cfg
     behavior: merge
     files:
     - ./static-nodes.json

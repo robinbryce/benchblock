@@ -1,4 +1,4 @@
-module github.com/robinbryce/blockbench/loadtool
+module github.com/robinbryce/blockbench/bbencheth
 
 go 1.15
 
@@ -21,6 +21,7 @@ replace (
 )
 
 require (
+	github.com/ConsenSys/quorum v21.1.0+incompatible
 	github.com/ethereum/go-ethereum v0.0.0-00010101000000-000000000000
 	github.com/ethereum/go-ethereum/crypto/secp256k1 v0.0.0
 	github.com/mattn/go-sqlite3 v1.14.8
@@ -28,5 +29,6 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.9.0
 	github.com/stretchr/testify v1.7.0
+	github.com/vbauerster/mpb v3.4.0+incompatible
 	github.com/vbauerster/mpb/v7 v7.1.5
 )

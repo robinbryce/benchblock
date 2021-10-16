@@ -18,7 +18,7 @@ usage: |
 
   `jpcfg' readies a network configuration for collecting chainhammer compatible
   block data and `jpyrender' processes the data collected by the load
-  generation tool [see ](./go/loadtool/main.go)
+  generation tool [see ](./go/bbencheth/main.go)
 
   The other commands provide various conveniences
 
@@ -709,7 +709,7 @@ tasks:
           args:
             - ${configdir}
       - task:
-          # this is just to provide config for the loadtool its ignored
+          # this is just to provide config for the loadtool. its ignored
           # otherwise
           name: gethstatic
           args:

@@ -7,7 +7,7 @@ usage: >
 options:
 
   toolbin:
-    usage: path to the loadtool binary. looks in $GOBIN by default
+    usage: path to the bbencheth binary. looks in $GOBIN by default
     default: ""
   config:
     usage: config file, all options can be set in this
@@ -20,7 +20,7 @@ run:
         TUSKDIR=$(pwd)
 
         cd ${launchdir}
-        loadtool=$GOBIN/loadtool
-        [ -f "${toolbin}" ] && loadtool="${toolbin}"
-        [ ! -f "${loadtool}" ] && loadtool="loadtool"
-        ${loadtool} --config "${config}"
+        bbencheth=$GOBIN/bbencheth
+        [ -f "${toolbin}" ] && bbencheth="${toolbin}"
+        [ ! -f "${bbencheth}" ] && bbencheth="bbencheth"
+        ${bbencheth} --config "${config}"

@@ -1,4 +1,4 @@
-package loader
+package client
 
 import (
 	"context"

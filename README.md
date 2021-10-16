@@ -44,8 +44,8 @@ docker-compose logs -f node1
 # watch the log for a bit to see that raft a peercount=4 in the logs
 
 # Run the load generation tool (from source for now)
-cd ../blockbench/go/loadtool
-go run main.go ethload -e http://127.0.0.1:8300/ -t 5 -a 3 --dbsource ~/workspace/raft5/raft5.db
+cd ../blockbench/go/bbencheth
+go run main.go -e http://127.0.0.1:8300/  load -t 5 -a 3 --dbsource ~/workspace/raft5/raft5.db
 
 cd ~/workspace/raft5
 bbench jpycfg .
@@ -155,6 +155,20 @@ Note: the cwd needs to be the quorum clone directory in order for source level b
 the quorum clone according to the Setup section, the defaults should be ok.
 
 # Setup
+
+## docker
+
+We provide a docker image as an alternative to installing the tools described below. 
+
+`docker run -u $(id -u):$(id -g) -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbench`
+
+Is equivelant to installing all the host tools and running
+
+`tusk -qf blockbench/tusk.yml`
+
+## Host (linux)
+
+Note: See the [Dockerfile](./Dockerfile) for full details
 
 Python >= 3.8 and docker (with docker-compose) is assumed. Currently, a go ~1.15
 development setup is required to run the load generation tool. If there is any

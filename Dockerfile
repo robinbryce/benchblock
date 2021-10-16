@@ -6,13 +6,18 @@ FROM golang:1.15-buster as go-builder
 
 ENV GOBIN=/go/bin
 
-WORKDIR go/loadtool
-COPY go/loadtool/go.mod go/loadtool/go.sum ./
+WORKDIR go/bbencheth
+COPY go/bbencheth/go.mod go/bbencheth/go.sum ./
 RUN go mod download
-COPY go/loadtool/cmd cmd
-COPY go/loadtool/loader loader
-COPY go/loadtool/*.go .
-RUN find . && go build -o ${GOBIN}/loadtool main.go
+
+COPY go/bbencheth/cmd cmd
+COPY go/bbencheth/client client
+COPY go/bbencheth/collect collect
+COPY go/bbencheth/load load
+COPY go/bbencheth/root root
+
+COPY go/bbencheth/*.go .
+RUN find . && go build -o ${GOBIN}/bbencheth main.go
 
 # FROM quorumengineering/quorum:${QUORUM_TAG} as quorum (its an alpine image)
 FROM robustroundrobin/rrrctl:${RRRCTL_TAG} as rrrctl
@@ -69,7 +74,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
 
 WORKDIR /bbench
 
-COPY --from=go-builder /go/bin/loadtool /usr/local/bin/loadtool
+COPY --from=go-builder /go/bin/bbencheth /usr/local/bin/bbencheth
 COPY --from=quorum_rrr /usr/local/bin/geth /usr/local/bin/geth
 COPY --from=quorum_rrr /usr/local/bin/geth /usr/local/bin/geth-rrr
 COPY --from=rrrctl /usr/local/bin/rrrctl /usr/local/bin/rrrctl

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/robinbryce/blockbench/loadtool/cmd"
+	"github.com/robinbryce/blockbench/bbencheth/cmd"
 )
 
 func main() {

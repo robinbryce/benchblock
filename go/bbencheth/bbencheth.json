@@ -1,0 +1,11 @@
+{
+   "bbencheth": {
+      "baseport": 8300,
+      "eth": "http://localhost:8300",
+      "load": {
+         "nodes": 3,
+         "staticnodes": "static-nodes.json",
+         "transactions": 102
+      }
+   }
+}

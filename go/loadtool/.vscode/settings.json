@@ -1,9 +1,0 @@
-{
-    "go.testEnvVars": {
-        "THREADS":"5",
-        "THREADACCOUNTS": "10",
-        "TRANSACTIONS": "500",
-        "DBSOURCE": ":memory:",
-        "ETH": "http://127.0.0.1:8300"
-    }
-}

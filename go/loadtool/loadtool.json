@@ -1,6 +1,0 @@
-{
-   "transactions": 100,
-   "nodes": 1,
-   "baseport": 8300,
-   "staticnodes": "static-nodes.json"
-}

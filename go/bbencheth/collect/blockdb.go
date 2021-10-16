@@ -1,4 +1,4 @@
-package loader
+package collect
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/robinbryce/blockbench/bbencheth/client"
 )
 
 type BlockDB struct {
@@ -116,11 +117,11 @@ func (bdb *BlockDB) Insert(
 	return err
 }
 
-func GetBlocks(cfg *Config, dbname string, dbshare bool, start, end int64) error {
+func GetBlocks(ethEndpoint, dbname string, dbshare bool, retries int, start, end int64) error {
 
 	var err error
 
-	eth, err := NewEthClient(cfg.EthEndpoint)
+	eth, err := client.NewEthClient(ethEndpoint)
 	if err != nil {
 		return fmt.Errorf("creating eth client: %w", err)
 	}
@@ -148,7 +149,7 @@ func GetBlocks(cfg *Config, dbname string, dbshare bool, start, end int64) error
 
 	for n := start; n <= end; n++ {
 
-		block, err = GetBlockByNumber(context.TODO(), eth, cfg.Retries, n)
+		block, err = client.GetBlockByNumber(context.TODO(), eth, retries, n)
 		if err != nil {
 			return fmt.Errorf("eth_blockByNumberd: %w", err)
 		}

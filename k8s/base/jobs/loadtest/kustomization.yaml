@@ -1,11 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - loadtool.yaml
+  - bbencheth.yaml
 configMapGenerator:
-  - name: loadtool-cfg
+  - name: bbencheth-cfg
     files:
-      - loadtool.json
-  - name: loadtool-target-nodes-cfg
+      - bbencheth.json
+  - name: bbencheth-target-nodes-cfg
     files:
       - static-nodes.json

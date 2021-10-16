@@ -13,7 +13,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/robinbryce/blockbench/loadtool/cmd"
+	"github.com/robinbryce/blockbench/bbencheth/cmd"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,13 +44,13 @@ func (s *QuorumSuite) SetupSuite() {
 // test contract.
 func (s *QuorumSuite) TestOneTransact() {
 
-	s.cmd.SetArgs([]string{"--one", "--singlenode", "-t", "1"})
+	s.cmd.SetArgs([]string{"load", "--one", "--singlenode", "-t", "1"})
 	s.cmd.Execute()
 }
 
 // TestQuorum issues "add" transactions from multiple threads. Note that it is
 // not very chatty.
 func (s *QuorumSuite) TestQuorum() {
-	s.cmd.SetArgs([]string{})
+	s.cmd.SetArgs([]string{"load"})
 	s.cmd.Execute()
 }

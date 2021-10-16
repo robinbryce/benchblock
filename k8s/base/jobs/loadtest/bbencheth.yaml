@@ -1,13 +1,13 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: loadtool
+  name: loadtest
 spec:
   backoffLimit: 8
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: loadtool
+        app.kubernetes.io/name: loadtest
         app.kubernetes.io/part-of: ethnet
     spec:
       restartPolicy: Never
@@ -16,27 +16,27 @@ spec:
           projected:
             sources:
               - configMap:
-                  name: loadtool-target-nodes-cfg
+                  name: bbencheth-target-nodes-cfg
                   items:
                     # the static-nodes.json in the base is intentionaly empty.
                     - key: static-nodes.json
                       path: static-nodes.json
               - configMap:
-                  name: loadtool-cfg
+                  name: bbencheth-cfg
                   items:
-                    # the loadtool.json in the base is valid but only targets a
+                    # the bbencheth.json in the base is valid but only targets a
                     # single node.
-                    - key: loadtool.json
-                      path: loadtool.json
+                    - key: bbencheth.json
+                      path: bbencheth.json
         - name: results
           # XXX: frustratingly the emptyDir can not be read by kubectl cp after
           # the job completes. will need to do something else here.
           emptyDir: {}
       containers:
-        - name: loadtool
-          image: robinbryce/bbench-loadtool:main
+        - name: bbencheth
+          image: robinbryce/bbencheth:main
           imagePullPolicy: Always
-          command: ["loadtool", "--config", "/config/loadtool.json"]
+          command: ["bbencheth", "--config", "/config/bbencheth.json"]
           volumeMounts:
             - name: config
               mountPath: /config
