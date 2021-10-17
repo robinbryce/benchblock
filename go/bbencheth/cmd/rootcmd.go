@@ -90,20 +90,6 @@ number of retries for any eth request (a geometric backoff is applied between ea
 }
 
 func (r *RootRunner) ProcessConfig() error {
-	if err := SetConfigFile(r.vroot, r.cfgFile, r.GetName()); err != nil {
-		return err
-	}
-
-	if err := r.vroot.ReadInConfig(); err != nil {
-		// It's okay if there isn't a config file
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return err
-		}
-	}
-
-	r.vroot.SetEnvPrefix(envPrefix)
-	r.vroot.AutomaticEnv()
-
 	r.cfgDir = filepath.Dir(r.vroot.ConfigFileUsed())
 
 	ReconcileOptions(r.cmd, r.vroot.Sub(root.GetRunnerName(r)))
@@ -150,7 +136,24 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	rr.GetCmd().PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		return rr.ProcessConfig()
+
+		if err := SetConfigFile(rr.vroot, rr.cfgFile, rr.GetName()); err != nil {
+			return err
+		}
+
+		if err := rr.vroot.ReadInConfig(); err != nil {
+			// It's okay if there isn't a config file
+			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+				return err
+			}
+		}
+
+		rr.vroot.SetEnvPrefix(envPrefix)
+		rr.vroot.AutomaticEnv()
+		for _, r := range cmds {
+			r.ProcessConfig()
+		}
+		return nil
 	}
 
 	f := rr.GetCmd().PersistentFlags()

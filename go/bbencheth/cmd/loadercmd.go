@@ -108,10 +108,17 @@ func (r *LoaderRunner) AddOptions(vroot *viper.Viper) error {
 	return nil
 }
 
-func (r *LoaderRunner) ProcessConfig() error {
+func (r *LoaderRunner) ProcessConfigxxx() error {
 
 	// Call parent first, results in root down processing order.
 	r.GetParent().ProcessConfig()
+	r.cfgDir = filepath.Dir(r.vroot.ConfigFileUsed())
+	ReconcileOptions(r.cmd, r.vroot.Sub(root.GetRunnerName(r)))
+	return nil
+}
+
+func (r *LoaderRunner) ProcessConfig() error {
+
 	r.cfgDir = filepath.Dir(r.vroot.ConfigFileUsed())
 	ReconcileOptions(r.cmd, r.vroot.Sub(root.GetRunnerName(r)))
 	return nil
@@ -131,22 +138,36 @@ func (r *LoaderRunner) Run(cmd *cobra.Command, args []string) {
 			cfg.NumTransactions+delta, cfg.NumTransactions)
 	}
 
+	collectCfg := r.GetParent().GetNamedConfig(collect.ConfigName).(*collect.Config)
+
 	if !rootCfg.NoProgress {
-		pb := client.NewTransactionProgress(cfg.NumTransactions, client.WithIssuedProgress(), client.WithMinedProgress())
+
+		progressOpts := []client.ProgressOption{client.WithIssuedProgress()}
+		if collectCfg.DBSource != "" {
+			progressOpts = append(progressOpts, client.WithMinedProgress())
+		}
+		pb := client.NewTransactionProgress(cfg.NumTransactions, progressOpts...)
+
+		// doesn't get used if DBSource == ""
 		collectorOpts = []collect.CollectorOption{collect.WithProgress(pb)}
+
 		opts = []load.LoaderOption{load.WithProgress(pb)}
 	}
 
 	// By default the collector gets the start block from the chain. It is
 	// theoretically racy to do so but I've never seen the first tx mine fast
 	// enough to be missed.
-	collectCfg := r.GetParent().GetNamedConfig(collect.ConfigName).(*collect.Config)
-	collectCfg.StartBlock = r.collectStartBlock
+	var collector *collect.Collector
+	if collectCfg.DBSource != "" {
+		var err error
 
-	collector, err := collect.NewCollector(context.Background(), r.cfgDir, r, collectorOpts...)
-	cobra.CheckErr(err)
+		collectCfg.StartBlock = r.collectStartBlock
 
-	opts = append(opts, load.WithCollector(collector))
+		collector, err = collect.NewCollector(context.Background(), r.cfgDir, r, collectorOpts...)
+		cobra.CheckErr(err)
+
+		opts = append(opts, load.WithCollector(collector))
+	}
 
 	a, err := load.NewLoader(context.Background(), r.cfgDir, r, opts...)
 	cobra.CheckErr(err)
@@ -176,9 +197,9 @@ ethereum networks`,
 		collectStartBlock: -1,
 	}
 	r.cmd.Run = r.Run
-	r.cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		return r.ProcessConfig()
-	}
+	// r.cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+	// 	return r.ProcessConfig()
+	// }
 
 	return r
 }

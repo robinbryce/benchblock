@@ -60,9 +60,16 @@ if you don't want the results but do want the rate indicators)`)
 	return nil
 }
 
-func (r *CollectRunner) ProcessConfig() error {
+func (r *CollectRunner) ProcessConfigxxx() error {
 	// Call parent first, results in root down processing order.
 	r.GetParent().ProcessConfig()
+	r.cfgDir = filepath.Dir(r.vroot.ConfigFileUsed())
+	ReconcileOptions(r.cmd, r.vroot.Sub(root.GetRunnerName(r)))
+	return nil
+}
+
+func (r *CollectRunner) ProcessConfig() error {
+	// Call parent first, results in root down processing order.
 	r.cfgDir = filepath.Dir(r.vroot.ConfigFileUsed())
 	ReconcileOptions(r.cmd, r.vroot.Sub(root.GetRunnerName(r)))
 	return nil
@@ -90,9 +97,9 @@ func NewCollectCmd(parent Runner, cfg *Config) Runner {
 	}
 
 	r.cmd.Run = r.Run
-	r.cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		return r.ProcessConfig()
-	}
+	// r.cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+	// 	return r.ProcessConfig()
+	// }
 
 	return r
 }

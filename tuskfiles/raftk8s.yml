@@ -86,9 +86,9 @@ run:
         # kustomization for the loadtest job
         cp -v raft/network/static-nodes.json jobs/loadtest
         cat base/jobs/loadtest/bbencheth.json | jq -r \
-          '.transactions = 1000 |
-           .nodes = (env.BBENCH_MAXNODES|tonumber) |
-           .threads = (env.BBENCH_MAXNODES|tonumber)' \
+          '.bbencheth.load.transactions = 1000 |
+           .bbencheth.load.nodes = (env.BBENCH_MAXNODES|tonumber) |
+           .bbencheth.load.threads = (env.BBENCH_MAXNODES|tonumber)' \
            > jobs/loadtest/bbencheth.json
         echo "Wrote jobs/loadtest/bbencheth.json"
         yq eval ".namespace = \"$BBENCH_NAME\"" \

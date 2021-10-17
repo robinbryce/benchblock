@@ -237,6 +237,11 @@ func (a *Loader) Run() {
 
 	var wg sync.WaitGroup
 
+	if a.collector != nil {
+		wg.Add(1)
+		go a.collector.Collect(a.ethC[0], &wg, fmt.Sprintf("client-%d", 0), 0)
+	}
+
 	for i := 0; i < a.loadCfg.Threads; i++ {
 		wg.Add(1)
 		clientId, addr := fmt.Sprintf("client-%d", i), a.ethCUrl[i]
@@ -244,10 +249,6 @@ func (a *Loader) Run() {
 		go a.adder(a.ethC[i].Client, &wg, clientId, i)
 	}
 
-	if a.collector != nil {
-		wg.Add(1)
-		go a.collector.Collect(a.ethC[0], &wg, fmt.Sprintf("client-%d", 0), 0)
-	}
 	wg.Wait()
 	if a.pb.IsEnabled() {
 		fmt.Printf("sent: %d, mined: %d\n", a.pb.CurrentIssued(), a.pb.CurrentMined())

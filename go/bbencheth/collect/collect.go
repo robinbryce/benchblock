@@ -28,7 +28,6 @@ type Collector struct {
 
 	c              *client.Client
 	collectLimiter *time.Ticker
-	startBlock     int64
 }
 
 type Config struct {
@@ -170,7 +169,7 @@ func (c *Collector) Collect(ethC *client.Client, wg *sync.WaitGroup, banner stri
 	}
 
 	// initialise last block number
-	lastBlock = c.startBlock
+	lastBlock = c.collectCfg.StartBlock
 	if lastBlock == -1 {
 		if lastBlock, err = getBlockNumber(); err != nil {
 			return
@@ -210,7 +209,7 @@ func (c *Collector) Collect(ethC *client.Client, wg *sync.WaitGroup, banner stri
 			}
 			lastBlock = i
 
-			// could actually capture and reconcile them if we wanted, for now just count them
+			// could actually capture and reconcile them against the accounts we created if we wanted, for now just count them.
 			ntx := len(block.Transactions())
 			if c.pb.MinedComplete(ntx) || (c.collectCfg.EndBlock != -1 && lastBlock > c.collectCfg.EndBlock) {
 				fmt.Printf("collection complete. block %d, mined: %d\n", lastBlock, c.pb.NumMined())

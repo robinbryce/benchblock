@@ -36,7 +36,7 @@ spec:
         - name: bbencheth
           image: robinbryce/bbencheth:main
           imagePullPolicy: Always
-          command: ["bbencheth", "--config", "/config/bbencheth.json"]
+          command: ["bbencheth", "load", "--config", "/config/bbencheth.json"]
           volumeMounts:
             - name: config
               mountPath: /config
