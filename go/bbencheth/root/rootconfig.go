@@ -18,7 +18,7 @@ type Config struct {
 }
 
 func (cfg *Config) SetDefaults() {
-	cfg.EthEndpoint = "http://localhost:8300"
+	cfg.EthEndpoint = ""
 	cfg.BasePort = 8300
 	cfg.ClientTimeout = 60 * time.Second
 	cfg.ResolveHosts = true

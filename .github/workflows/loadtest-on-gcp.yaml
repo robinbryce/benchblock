@@ -33,8 +33,8 @@ on:
           IAM & Admin / Service Accounts -> Compute Engine Default Service account -> create key -> create as json
         required: true
 jobs:
-  loadtest-on-gcp:
-    name: loadtest-on-gcp
+  create-network:
+    name: create-network
     runs-on: ubuntu-latest
     steps:
 
@@ -44,6 +44,7 @@ jobs:
           args: >
             new
             --k8s
+            --name github-${{ inputs.consensus }}${{ inputs.numnodes }}-${{ env.GITHUB_RUN_NUMBER }}
             --maxnodes ${{ inputs.numnodes }}
             --profile ${{ inputs.numnodes }}
             networks/${{ inputs.consensus }}${{ inputs.numnodes }}
@@ -54,25 +55,6 @@ jobs:
         with:
           kustomize-version: "4.3.0"
 
-      - id: render-network
-        run: |
-          kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
-            | tee kustomized-${{ inputs.consensus }}${{ inputs.numnodes }}.yaml
-
-      - id: publish-kustomized-network
-        uses: actions/upload-artifact@v2
-        # XXX: WARNING: This publishes the secrets in the manifest. The only
-        # secrets in that manifest are the private node keys. They are not
-        # useful to anyone without access to the target cluster. They are also
-        # ephemeral, new keys are rolled for each run. But for as long as the
-        # network is up, the node private keys are in the wind.  If this really
-        # is problematic for loadtesting scenarios we will just apply directly
-        # and not publish the artifact. We only publish it because it is
-        # convenient for manual cleanup and triaging errors.
-        with:
-          name: kustomized-deployment
-          path: kustomized-${{ inputs.consensus }}${{ inputs.numnodes }}.yaml
-
       - id: get-credentials
         uses: google-github-actions/get-gke-credentials@main
         with:
@@ -81,7 +63,91 @@ jobs:
           project_id: ${{ inputs.project_id }}
           credentials: ${{ secrets.gcp_project_key }}
 
+      - id: apply-network
+        run: |
+          set -e
+          kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
+            | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-${{ env.GITHUB_RUN_NUMBER }} \
+                apply -f -
+
+      - id: wait-for-startup:
+          run: |
+            # this can all be finessed once the basics are working
+            echo "sleeping for 60s"
+            sleep 60
+
+      - id: generate-load
+        run: |
+          set -e
+          cd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+
+
+          # TODO get the current block to start collecting from.
+
+          kustomize build jobs/loadtest \
+          | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-${{ env.GITHUB_RUN_NUMBER }} \
+              apply -f -
+          echo "waiting for job to complete"
+
+          # this can all be finessed once the basics are working
+          limit=0
+          while true; do 
+            echo "sleep 15"
+            state=$(kubectl \
+              -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-${{ env.GITHUB_RUN_NUMBER }} \
+              get pods \
+              --selector=job-name=loadtest -o jsonpath='{.items[0].status.containerStatuses[0].state.terminated.reason}')
+            echo "State: $state"
+            if [ "$state" == "Completed" ] && break
+            limit=$((limit + 1))
+            if [ "$limit" -gt 100 ]; do
+              echo "timed out"
+              exit 1
+            fi
+          done
+
+          # TODO bbencheth collect the blocks
+          echo "loadtest complete"
+
+
+  cleanup-network:
+    name: cleanup-network
+    needs: create-network
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - id: delete-network
+        run: |
+          kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
+            | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-${{ env.GITHUB_RUN_NUMBER }} \
+                delete -f -
+
+          kustomize build jobs/loadtest \
+          | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-${{ env.GITHUB_RUN_NUMBER }} \
+              delete -f -
+
+
+      # - id: render-network
+      #   run: |
+      #     kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
+      #       | tee kustomized-${{ inputs.consensus }}${{ inputs.numnodes }}.yaml
+
+      #- id: publish-kustomized-network
+      #  uses: actions/upload-artifact@v2
+      #  # XXX: WARNING: This publishes the secrets in the manifest. The only
+      #  # secrets in that manifest are the private node keys. They are not
+      #  # useful to anyone without access to the target cluster. They are also
+      #  # ephemeral, new keys are rolled for each run. But for as long as the
+      #  # network is up, the node private keys are in the wind.  If this really
+      #  # is problematic for loadtesting scenarios we will just apply directly
+      #  # and not publish the artifact. We only publish it because it is
+      #  # convenient for manual cleanup and triaging errors.
+      #  with:
+      #    name: kustomized-deployment
+      #    path: kustomized-${{ inputs.consensus }}${{ inputs.numnodes }}.yaml
+
+
       # The KUBECONFIG env var is automatically exported and picked up by kubectl.
-      - id: get-pods
-        run: kubectl -n ${{ inputs.consensus }}${{ inputs.numnodes }} get pods
+      # - id: get-pods
+      #  run: kubectl -n ${{ inputs.consensus }}${{ inputs.numnodes }} get pods
 
