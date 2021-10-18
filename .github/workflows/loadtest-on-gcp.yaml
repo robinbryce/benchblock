@@ -70,7 +70,7 @@ jobs:
             | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-${{ env.GITHUB_RUN_NUMBER }} \
                 apply -f -
 
-      - id: wait-for-startup:
+      - id: wait-for-startup
           run: |
             # this can all be finessed once the basics are working
             echo "sleeping for 60s"
