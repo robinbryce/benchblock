@@ -44,7 +44,7 @@ jobs:
           args: >
             new
             --k8s
-            --name github-${{ inputs.consensus }}${{ inputs.numnodes }}-${{ env.GITHUB_RUN_NUMBER }}
+            --name github-${{ inputs.consensus }}${{ inputs.numnodes }}
             --maxnodes ${{ inputs.numnodes }}
             --profile ${{ inputs.numnodes }}
             networks/${{ inputs.consensus }}${{ inputs.numnodes }}
@@ -67,7 +67,7 @@ jobs:
         run: |
           set -e
           kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
-            | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-$GITHUB_RUN_NUMBER \
+            | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
                 apply -f -
 
       - id: wait-for-startup
@@ -86,7 +86,7 @@ jobs:
           # TODO get the current block to start collecting from.
 
           kustomize build jobs/loadtest \
-          | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-$GITHUB_RUN_NUMBER \
+          | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
               apply -f -
           echo "waiting for job to complete"
 
@@ -95,7 +95,7 @@ jobs:
           while true; do 
             echo "sleep 15"
             state=$(kubectl \
-              -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-$GITHUB_RUN_NUMBER \
+              -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
               get pods \
               --selector=job-name=loadtest -o jsonpath='{.items[0].status.containerStatuses[0].state.terminated.reason}')
             echo "State: $state"
@@ -119,11 +119,11 @@ jobs:
       - id: delete-network
         run: |
           kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
-            | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-$GITHUB_RUN_NUMBER \
+            | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
                 delete -f -
 
           kustomize build jobs/loadtest \
-          | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-$GITHUB_RUN_NUMBER \
+          | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
               delete -f -
 
 
