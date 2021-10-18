@@ -70,6 +70,13 @@ jobs:
             | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }}-${{ env.GITHUB_RUN_NUMBER }} \
                 apply -f -
 
+      - id: wait-for-startup
+        run: |
+          set -e
+          # this can all be finessed once the basics are working
+          echo "sleeping for 60s"
+          sleep 60
+
       - id: generate-load
         run: |
           set -e
@@ -102,14 +109,6 @@ jobs:
 
           # TODO bbencheth collect the blocks
           echo "loadtest complete"
-
-      - id: wait-for-startup
-        run: |
-          set -e
-          # this can all be finessed once the basics are working
-          echo "sleeping for 60s"
-          sleep 60
-
 
   cleanup-network:
     name: cleanup-network
