@@ -101,7 +101,7 @@ jobs:
             echo "State: $state"
             if [ "$state" == "Completed" ] && break
             limit=$((limit + 1))
-            if [ "$limit" -gt 100 ]; do
+            if [ "$limit" -gt 100 ]; then
               echo "timed out"
               exit 1
             fi
