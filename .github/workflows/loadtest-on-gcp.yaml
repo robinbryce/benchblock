@@ -105,7 +105,7 @@ jobs:
               get pods \
               --selector=job-name=loadtest -o jsonpath='{.items[0].status.containerStatuses[0].state.terminated.reason}')
             echo "State: $state"
-            if [ "$state" == "Completed" ] && break
+            [ "$state" == "Completed" ] && break
             limit=$((limit + 1))
             if [ "$limit" -gt 100 ]; then
               echo "timed out"
