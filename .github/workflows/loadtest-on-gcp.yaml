@@ -66,7 +66,7 @@ jobs:
       - id: apply-network
         run: |
 
-          ATTEMPTS_REMAINING=20
+          ATTEMPTS_REMAINING=30
 
           # clean up any previous attempt
 
@@ -111,7 +111,7 @@ jobs:
       - id: wait-for-startup
         run: |
 
-          ATTEMPTS_REMAINING=20
+          ATTEMPTS_REMAINING=30
 
           # this can all be finessed once the basics are working
           NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
@@ -126,7 +126,7 @@ jobs:
             [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
             ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
 
-            echo "${NRUNNING} of ${{ inputs.numnodes }} running sleeping for 2s"
+            echo "${NRUNNING} of ${{ inputs.numnodes }} running sleeping for 2s (attempts left $ATTEMPTS_REMAINING)"
             sleep 2
           done
 
