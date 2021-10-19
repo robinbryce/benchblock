@@ -67,8 +67,15 @@ jobs:
         run: |
           set -e
           kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
+            | tee ${{ inputs.consensus }}${{ inputs.numnodes }}-rendered.yaml
+
+          kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
             | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
-                apply -f -
+                delete -f ${{ inputs.consensus }}${{ inputs.numnodes }}-rendered.yaml
+
+          kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
+            | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
+                apply -f ${{ inputs.consensus }}${{ inputs.numnodes }}-rendered.yaml
 
       - id: wait-for-startup
         run: |
