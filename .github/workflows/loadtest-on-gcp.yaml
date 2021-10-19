@@ -105,9 +105,8 @@ jobs:
           fi
 
           set -e
-          kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
-            | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
-                apply -f ${{ inputs.consensus }}${{ inputs.numnodes }}-rendered.yaml
+          kustomize build networks/$NAME/${{ inputs.consensus }} \
+            | kubectl -n $NAMESPACE apply -f $NAME-rendered.yaml
 
       - id: wait-for-startup
         run: |
@@ -127,7 +126,7 @@ jobs:
             [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
             ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
 
-            echo "${NRUNNING} of ${{ inputs.numnodes }} sleeping for 2s"
+            echo "${NRUNNING} of ${{ inputs.numnodes }} running sleeping for 2s"
             sleep 2
           done
 
