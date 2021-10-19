@@ -65,7 +65,6 @@ jobs:
 
       - id: apply-network
         run: |
-          set -e
           kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
             | tee ${{ inputs.consensus }}${{ inputs.numnodes }}-rendered.yaml
 
@@ -73,6 +72,7 @@ jobs:
             | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
                 delete -f ${{ inputs.consensus }}${{ inputs.numnodes }}-rendered.yaml
 
+          set -e
           kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
             | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
                 apply -f ${{ inputs.consensus }}${{ inputs.numnodes }}-rendered.yaml
@@ -119,9 +119,9 @@ jobs:
 
   cleanup-network:
     name: cleanup-network
-    needs: create-network
     runs-on: ubuntu-latest
-    if: always()
+    if: ${{ always() }}
+    needs: create-network
     steps:
       - id: delete-network
         run: |
