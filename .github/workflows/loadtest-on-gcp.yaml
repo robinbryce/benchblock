@@ -65,6 +65,7 @@ jobs:
 
       - id: apply-network
         run: |
+          set +e
           kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
             | tee ${{ inputs.consensus }}${{ inputs.numnodes }}-rendered.yaml
 
@@ -79,14 +80,12 @@ jobs:
 
       - id: wait-for-startup
         run: |
-          set -e
           # this can all be finessed once the basics are working
           echo "sleeping for 60s"
           sleep 60
 
       - id: generate-load
         run: |
-          set -e
           cd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
 
@@ -99,7 +98,7 @@ jobs:
 
           # this can all be finessed once the basics are working
           limit=0
-          while true; do 
+          while true; do
             echo "sleep 15"
             state=$(kubectl \
               -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
@@ -125,6 +124,7 @@ jobs:
     steps:
       - id: delete-network
         run: |
+          set +e
           kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
             | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
                 delete -f -
