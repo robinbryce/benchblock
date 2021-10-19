@@ -65,13 +65,44 @@ jobs:
 
       - id: apply-network
         run: |
-          set +e
-          kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
-            | tee ${{ inputs.consensus }}${{ inputs.numnodes }}-rendered.yaml
 
-          kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
-            | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
-                delete -f ${{ inputs.consensus }}${{ inputs.numnodes }}-rendered.yaml
+          ATTEMPTS_REMAINING=20
+
+          # clean up any previous attempt
+
+          NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
+
+          NAMESPACE=github-$NAME
+
+          kustomize build networks/$NAME/${{ inputs.consensus }} \
+            | tee $NAME-rendered.yaml
+
+          NRUNNING=$(kubectl -n $NAMESPACE \
+            get pods --selector=app.kubernetes.io/part-of=ethnet \
+            --output=jsonpath={.items..metadata.name} | wc -w)
+
+          if [ "$NRUNNING" != "0" ]; then
+
+            set +e
+            kustomize build networks/$NAME/${{ inputs.consensus }} \
+              | kubectl -n $NAMESPACE \
+                  delete -f $NAME-rendered.yaml
+
+            while [ "$NRUNNING" != "0" ]; do
+
+              [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
+
+              ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
+
+              NRUNNING=$(kubectl -n $NAMESPACE \
+                get pods --selector=app.kubernetes.io/part-of=ethnet \
+                --output=jsonpath={.items..metadata.name} | wc -w)
+
+              echo "Waiting for $NRUNNING to terminate (attempts left $ATTEMPTS_REMAINING)"
+              sleep 2
+            done
+            set -e
+          fi
 
           set -e
           kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
@@ -80,81 +111,96 @@ jobs:
 
       - id: wait-for-startup
         run: |
+
+          ATTEMPTS_REMAINING=20
+
           # this can all be finessed once the basics are working
-          echo "sleeping for 60s"
-          sleep 60
+          NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
+
+          while true; do
+            NRUNNING=$(kubectl -n $NAMESPACE get pods \
+              --field-selector=status.phase=Running \
+              --output=jsonpath={.items..metadata.name} | wc -w)
+
+            [ "${NRUNNING}" == "${{ inputs.numnodes }}" ] && break
+
+            [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
+            ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
+
+            echo "${NRUNNING} of ${{ inputs.numnodes }} sleeping for 2s"
+            sleep 2
+          done
 
       - id: generate-load
         run: |
-          cd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
+          ATTEMPTS_REMAINING=100
+          NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
+
+          cd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
           # TODO get the current block to start collecting from.
 
           kustomize build jobs/loadtest \
-          | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
+          | kubectl -n $NAMESPACE \
               apply -f -
           echo "waiting for job to complete"
 
           # this can all be finessed once the basics are working
-          limit=0
           while true; do
             echo "sleep 15"
-            state=$(kubectl \
-              -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
-              get pods \
+            state=$(kubectl  -n $NAMESPACE get pods \
               --selector=job-name=loadtest -o jsonpath='{.items[0].status.containerStatuses[0].state.terminated.reason}')
             echo "State: $state"
             [ "$state" == "Completed" ] && break
-            limit=$((limit + 1))
-            if [ "$limit" -gt 100 ]; then
-              echo "timed out"
-              exit 1
-            fi
+
+            [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
+            ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
+
           done
 
           # TODO bbencheth collect the blocks
           echo "loadtest complete"
 
-  cleanup-network:
-    name: cleanup-network
-    runs-on: ubuntu-latest
-    if: ${{ always() }}
-    needs: create-network
-    steps:
-      - id: delete-network
-        run: |
-          set +e
-          kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
-            | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
-                delete -f -
+  #cleanup-network:
+  #  name: cleanup-network
+  #  runs-on: ubuntu-latest
+  #  if: ${{ always() }}
+  #  needs: create-network
+  #  steps:
+  #    - id: delete-network
+  #      run: |
+  #        set +e
+  #        kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
+  #          | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
+  #              delete -f -
 
-          kustomize build jobs/loadtest \
-          | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
-              delete -f -
-
-
-      # - id: render-network
-      #   run: |
-      #     kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
-      #       | tee kustomized-${{ inputs.consensus }}${{ inputs.numnodes }}.yaml
-
-      #- id: publish-kustomized-network
-      #  uses: actions/upload-artifact@v2
-      #  # XXX: WARNING: This publishes the secrets in the manifest. The only
-      #  # secrets in that manifest are the private node keys. They are not
-      #  # useful to anyone without access to the target cluster. They are also
-      #  # ephemeral, new keys are rolled for each run. But for as long as the
-      #  # network is up, the node private keys are in the wind.  If this really
-      #  # is problematic for loadtesting scenarios we will just apply directly
-      #  # and not publish the artifact. We only publish it because it is
-      #  # convenient for manual cleanup and triaging errors.
-      #  with:
-      #    name: kustomized-deployment
-      #    path: kustomized-${{ inputs.consensus }}${{ inputs.numnodes }}.yaml
+  #        kustomize build jobs/loadtest \
+  #        | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
+  #            delete -f -
 
 
-      # The KUBECONFIG env var is automatically exported and picked up by kubectl.
-      # - id: get-pods
-      #  run: kubectl -n ${{ inputs.consensus }}${{ inputs.numnodes }} get pods
+  #    # - id: render-network
+  #    #   run: |
+  #    #     kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
+  #    #       | tee kustomized-${{ inputs.consensus }}${{ inputs.numnodes }}.yaml
+
+  #    #- id: publish-kustomized-network
+  #    #  uses: actions/upload-artifact@v2
+  #    #  # XXX: WARNING: This publishes the secrets in the manifest. The only
+  #    #  # secrets in that manifest are the private node keys. They are not
+  #    #  # useful to anyone without access to the target cluster. They are also
+  #    #  # ephemeral, new keys are rolled for each run. But for as long as the
+  #    #  # network is up, the node private keys are in the wind.  If this really
+  #    #  # is problematic for loadtesting scenarios we will just apply directly
+  #    #  # and not publish the artifact. We only publish it because it is
+  #    #  # convenient for manual cleanup and triaging errors.
+  #    #  with:
+  #    #    name: kustomized-deployment
+  #    #    path: kustomized-${{ inputs.consensus }}${{ inputs.numnodes }}.yaml
+
+
+  #    # The KUBECONFIG env var is automatically exported and picked up by kubectl.
+  #    # - id: get-pods
+  #    #  run: kubectl -n ${{ inputs.consensus }}${{ inputs.numnodes }} get pods
 
