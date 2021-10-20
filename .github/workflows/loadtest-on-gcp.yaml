@@ -130,7 +130,13 @@ jobs:
             sleep 2
           done
 
+      - id: checkout-main
+        uses: actions/checkout@v2
+        with:
+          path: main
+
       - id: generate-load
+        uses: actions/setup-go@v2
         run: |
 
           ATTEMPTS_REMAINING=100
@@ -138,7 +144,9 @@ jobs:
 
           cd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
-          # TODO get the current block to start collecting from.
+          STARTBLOCK=$(kubectl exec -n $NAMESPACE ethnode0-0 -- \
+            geth attach /data/node/geth.ipc \
+              --exec eth.blockNumber)
 
           kustomize build jobs/loadtest \
           | kubectl -n $NAMESPACE \
@@ -160,46 +168,11 @@ jobs:
 
           # TODO bbencheth collect the blocks
           echo "loadtest complete"
+          kubectl port-forward -n $NAMESPACE ethnode0-0 8300:8300 &
+          PF_PID=$!
 
-  #cleanup-network:
-  #  name: cleanup-network
-  #  runs-on: ubuntu-latest
-  #  if: ${{ always() }}
-  #  needs: create-network
-  #  steps:
-  #    - id: delete-network
-  #      run: |
-  #        set +e
-  #        kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
-  #          | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
-  #              delete -f -
+          cd main/go/bbencheth
 
-  #        kustomize build jobs/loadtest \
-  #        | kubectl -n github-${{ inputs.consensus }}${{ inputs.numnodes }} \
-  #            delete -f -
-
-
-  #    # - id: render-network
-  #    #   run: |
-  #    #     kustomize build networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }} \
-  #    #       | tee kustomized-${{ inputs.consensus }}${{ inputs.numnodes }}.yaml
-
-  #    #- id: publish-kustomized-network
-  #    #  uses: actions/upload-artifact@v2
-  #    #  # XXX: WARNING: This publishes the secrets in the manifest. The only
-  #    #  # secrets in that manifest are the private node keys. They are not
-  #    #  # useful to anyone without access to the target cluster. They are also
-  #    #  # ephemeral, new keys are rolled for each run. But for as long as the
-  #    #  # network is up, the node private keys are in the wind.  If this really
-  #    #  # is problematic for loadtesting scenarios we will just apply directly
-  #    #  # and not publish the artifact. We only publish it because it is
-  #    #  # convenient for manual cleanup and triaging errors.
-  #    #  with:
-  #    #    name: kustomized-deployment
-  #    #    path: kustomized-${{ inputs.consensus }}${{ inputs.numnodes }}.yaml
-
-
-  #    # The KUBECONFIG env var is automatically exported and picked up by kubectl.
-  #    # - id: get-pods
-  #    #  run: kubectl -n ${{ inputs.consensus }}${{ inputs.numnodes }} get pods
+          go run main.go -e http://localhost:8300 --no_progress \
+            collect -s $STARTBLOCK -x 1800
 

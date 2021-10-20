@@ -1,4 +1,5 @@
 name: Build and publish bbench image
+# TODO https://github.com/marketplace/actions/go-release-binaries
 on: [push]
 jobs:
   build-and-publish-images:
