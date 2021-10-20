@@ -1,7 +1,5 @@
 on: [push]
 jobs:
-  releases-matrix:
-    name: Release bbencheth
   build-and-publish-binaries:
     name: Build and publish bbencheth
     runs-on: ubuntu-latest
