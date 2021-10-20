@@ -1,0 +1,22 @@
+on: [push]
+jobs:
+  releases-matrix:
+    name: Release bbencheth
+  build-and-publish-binaries:
+    name: Build and publish bbencheth
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [ amd64 ]
+    steps:
+    - uses: actions/checkout@v2
+    - uses: wangyoucao577/go-release-action@v1.20
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        goos: ${{ matrix.goos }}
+        goarch: ${{ matrix.goarch }}
+        # goversion: "https://golang.org/dl/go1.15.15.linux-amd64.tar.gz"
+        project_path: "./go/bbencheth"
+        binary_name: "bbencheth"
+
