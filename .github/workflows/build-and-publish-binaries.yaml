@@ -21,5 +21,5 @@ jobs:
           # goversion: "https://golang.org/dl/go1.15.15.linux-amd64.tar.gz"
           project_path: "./main/go/bbencheth"
           binary_name: "bbencheth"
-          build_command: "go build main.go"
+          build_command: "go build"
 
