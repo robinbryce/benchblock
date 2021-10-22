@@ -21,4 +21,3 @@ jobs:
           goarch: ${{ matrix.goarch }}
           goversion: "https://golang.org/dl/go1.15.15.linux-amd64.tar.gz"
           project_path: "./main/go/bbencheth"
-          binary_name: "bbencheth"
