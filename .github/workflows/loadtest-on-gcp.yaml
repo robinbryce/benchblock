@@ -50,6 +50,12 @@ jobs:
             networks/${{ inputs.consensus }}${{ inputs.numnodes }}
             ${{ inputs.consensus }}
 
+      - id: setup-jupyter
+        uses: docker://robinbryce/bbench:main
+        with:
+          args: >
+            jpycfg networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+
       - id: setup-kustomize
         uses: imranismail/setup-kustomize@v1
         with:
@@ -140,7 +146,8 @@ jobs:
         run: |
 
           ATTEMPTS_REMAINING=100
-          NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
+          NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
+          NAMESPACE=github-$NAME
 
           cd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
@@ -174,5 +181,27 @@ jobs:
           cd main/go/bbencheth
 
           go run main.go -e http://localhost:8300 --no_progress \
+            --dbsource ${NAME}.db
             collect -s $STARTBLOCK -x 1800
+
+      - id: generate-graphs
+        uses: docker://robinbryce/bbench:main
+        with:
+          args: >
+            jpyrender networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+
+      - id: archive-plots
+        run: |
+          cd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+          zip standard-plots.${GITHUB_RUN_NUMBER}.zip *.jpg
+          mv standard-plots.html standard-plots.${GITHUB_RUN_NUMBER}.html
+
+      - id: upload-results
+        uses: actions/upload-artifact@v2
+        with:
+          name: standard-plots
+          path: |
+            networks/${{ inputs.consensus }}${{ inputs.numnodes }}/standard-plots.${GITHUB_RUN_NUMBER}.html
+            networks/${{ inputs.consensus }}${{ inputs.numnodes }}/standard-plots.${GITHUB_RUN_NUMBER}.zip
+
 
