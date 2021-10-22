@@ -159,6 +159,7 @@ jobs:
           NAMESPACE=github-$NAME
 
           pushd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+          RESULTSDIR=$(pwd)
 
           STARTBLOCK=$(kubectl exec -n $NAMESPACE ethnode0-0 -- \
             geth attach /data/node/geth.ipc \
@@ -190,7 +191,6 @@ jobs:
           kubectl port-forward -n $NAMESPACE ethnode0-0 8300:8300 &
           PF_PID=$!
 
-          RESULTSDIR=$(pwd)/networks/${{ inputs.consensus }}${{ inputs.numnodes }}
           cd main/go/bbencheth
 
           go run main.go -e http://localhost:8300 --no_progress \
