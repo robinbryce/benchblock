@@ -39,6 +39,7 @@ jobs:
     steps:
 
       - id: create-network-manifests
+        name: create network manifests
         uses: docker://robinbryce/bbench:main
         with:
           args: >
@@ -51,6 +52,7 @@ jobs:
             ${{ inputs.consensus }}
 
       - id: setup-jupyter
+        name: setup jupyter
         uses: docker://robinbryce/bbench:main
         with:
           args: >
@@ -70,6 +72,7 @@ jobs:
           credentials: ${{ secrets.gcp_project_key }}
 
       - id: apply-network
+        name: deploy network
         run: |
 
           ATTEMPTS_REMAINING=40
@@ -115,6 +118,7 @@ jobs:
             | kubectl -n $NAMESPACE apply -f $NAME-rendered.yaml
 
       - id: wait-for-startup
+        name: wait for network to start
         run: |
 
           ATTEMPTS_REMAINING=30
@@ -147,6 +151,7 @@ jobs:
           go-version: 1.15.15
 
       - id: generate-load
+        name: generate transaction load
         run: |
 
           ATTEMPTS_REMAINING=100
@@ -193,12 +198,14 @@ jobs:
             collect -s $STARTBLOCK -x 1800
 
       - id: generate-graphs
+        name: generate graphs
         uses: docker://robinbryce/bbench:main
         with:
           args: >
             jpyrender networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
       - id: archive-plots
+        name: archive results
         run: |
           cd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
           zip standard-plots.${GITHUB_RUN_NUMBER}.zip *.jpg
