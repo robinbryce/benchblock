@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [linux, windows, darwin]
+        goos: [linux]
         goarch: [ amd64 ]
     steps:
       - id: checkout-main
