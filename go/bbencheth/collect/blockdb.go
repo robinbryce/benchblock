@@ -44,6 +44,8 @@ func NewBlockDB(dataSourceName string, share bool) (*BlockDB, error) {
 
 	var err error
 
+	fmt.Printf("dbsource: %s\n", dataSourceName)
+
 	if dataSourceName == "" {
 		return nil, nil
 	}
