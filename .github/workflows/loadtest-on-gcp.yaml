@@ -72,7 +72,7 @@ jobs:
       - id: apply-network
         run: |
 
-          ATTEMPTS_REMAINING=30
+          ATTEMPTS_REMAINING=40
 
           # clean up any previous attempt
 
@@ -132,8 +132,8 @@ jobs:
             [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
             ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
 
-            echo "${NRUNNING} of ${{ inputs.numnodes }} running sleeping for 2s (attempts left $ATTEMPTS_REMAINING)"
-            sleep 2
+            echo "${NRUNNING} of ${{ inputs.numnodes }} running sleeping for 4s (attempts left $ATTEMPTS_REMAINING)"
+            sleep 4
           done
 
       - id: checkout-main
@@ -153,7 +153,7 @@ jobs:
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           NAMESPACE=github-$NAME
 
-          cd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+          pushd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
           STARTBLOCK=$(kubectl exec -n $NAMESPACE ethnode0-0 -- \
             geth attach /data/node/geth.ipc \
@@ -166,7 +166,8 @@ jobs:
 
           # this can all be finessed once the basics are working
           while true; do
-            echo "sleep 15"
+            echo "sleep 4s"
+            sleep 4
             state=$(kubectl  -n $NAMESPACE get pods \
               --selector=job-name=loadtest -o jsonpath='{.items[0].status.containerStatuses[0].state.terminated.reason}')
             echo "State: $state"
@@ -177,15 +178,18 @@ jobs:
 
           done
 
+          popd
+
           # TODO bbencheth collect the blocks
           echo "loadtest complete"
           kubectl port-forward -n $NAMESPACE ethnode0-0 8300:8300 &
           PF_PID=$!
 
           cd main/go/bbencheth
+          RESULTSDIR=$(pwd)/networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
           go run main.go -e http://localhost:8300 --no_progress \
-            --dbsource ${NAME}.db
+            --dbsource ${RESULTSDIR}/${NAME}.db \
             collect -s $STARTBLOCK -x 1800
 
       - id: generate-graphs
