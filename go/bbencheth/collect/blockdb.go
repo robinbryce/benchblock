@@ -80,6 +80,7 @@ func NewBlockDB(dataSourceName string, share bool) (*BlockDB, error) {
 		timeScale: time.Nanosecond,
 	}
 	if bdb.db, err = sql.Open("sqlite3", dataSourceName); err != nil {
+		fmt.Printf("failed to open: %s\n", dataSourceName)
 		return nil, err
 	}
 
