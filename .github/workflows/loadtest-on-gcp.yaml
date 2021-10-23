@@ -38,6 +38,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      # It is important the directory is created in the main process. If we let
+      # docker create it when it mounts the volume, its created with the wrong
+      # ownership and we don't have write access
       - run: mkdir -p networks/${{ inputs.consensus }}${{ inputs.numnodes }}
       - id: create-network-manifests
         name: create network manifests
@@ -204,8 +207,7 @@ jobs:
             collect --dbsource results.db -s $STARTBLOCK --endblock $ENDBLOCK
 
           popd
-          cp -v main/go/bbencheth/results.db networks/${NAME}/${NAME}.db
-          ls -la networks/${NAME}/${NAME}.db
+          cp -v main/go/bbencheth/results.db networks/${NAME}/${NAMESPACE}.db
           cat networks/${NAME}/parameters.yml
 
       - id: generate-graphs
@@ -221,11 +223,11 @@ jobs:
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           cd networks/${NAME}
           cat parameters.yml
-          ls -la ${NAME}.db
           zip standard-plots.${GITHUB_RUN_NUMBER}.zip *.jpg
           mv standard-plots.html standard-plots.${GITHUB_RUN_NUMBER}.html
 
       - id: upload-results
+        name: upload results
         uses: actions/upload-artifact@v2
         with:
           name: standard-plots
