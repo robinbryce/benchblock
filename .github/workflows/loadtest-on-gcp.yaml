@@ -38,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      - run: mkdir -p networks/${{ inputs.consensus }}${{ inputs.numnodes }}
       - id: create-network-manifests
         name: create network manifests
         uses: docker://robinbryce/bbench:main
