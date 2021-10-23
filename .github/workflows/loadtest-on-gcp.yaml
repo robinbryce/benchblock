@@ -223,6 +223,7 @@ jobs:
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           cd networks/${NAME}
           cat parameters.yml
+          ls
           zip standard-plots.${GITHUB_RUN_NUMBER}.zip *.png
           mv standard-plots.html standard-plots.${GITHUB_RUN_NUMBER}.html
 
@@ -231,8 +232,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: standard-plots
-          path: |
-            networks/${{ inputs.consensus }}${{ inputs.numnodes }}/standard-plots.${GITHUB_RUN_NUMBER}.html
-            networks/${{ inputs.consensus }}${{ inputs.numnodes }}/standard-plots.${GITHUB_RUN_NUMBER}.zip
+          path: networks/${{ inputs.consensus }}${{ inputs.numnodes }}/standard-plots.${GITHUB_RUN_NUMBER}.html
+          # networks/${{ inputs.consensus }}${{ inputs.numnodes }}/standard-plots.${GITHUB_RUN_NUMBER}.zip
 
 
