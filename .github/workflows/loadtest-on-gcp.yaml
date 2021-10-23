@@ -45,8 +45,6 @@ jobs:
         name: prerequisits
         run: |
           mkdir -p networks/${{ inputs.consensus }}${{ inputs.numnodes }}
-          mkdir bin
-          curl -sL https://git.io/tusk | bash -s -- -b bin latest
 
       - id: create-network-manifests
         name: create network manifests
