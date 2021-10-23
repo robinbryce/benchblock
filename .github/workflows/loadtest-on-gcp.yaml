@@ -223,17 +223,18 @@ jobs:
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           cd networks/${NAME}
           cat parameters.yml
-          mkdir -p ../../results/${NAME}-$(date +%F)-${GITHUB_RUN_NUMBER}
-          mv *.png ../../results/${NAME}-$(date +%F)-${GITHUB_RUN_NUMBER}/
-          mv standard-plots.html ../../results/${NAME}-$(date +%F)-${GITHUB_RUN_NUMBER}/
-          ls ../../results/${NAME}-$(date +%F)-${GITHUB_RUN_NUMBER}/
+          mkdir -p ../../results-${NAME}-${GITHUB_RUN_NUMBER}
+          mv *.png ../../results-${NAME}-${GITHUB_RUN_NUMBER}/
+          touch ../../results-${NAME}-${GITHUB_RUN_NUMBER}/DATE-$(date +%F)
+          mv standard-plots.html ../../results-${NAME}-${GITHUB_RUN_NUMBER}/
+          ls ../../results-${NAME}-${GITHUB_RUN_NUMBER}/
 
       - id: upload-results
         name: upload results
         uses: actions/upload-artifact@v2
         with:
-          name: results
-          path: results
+          name: results-${{ inputs.consensus }}${{ inputs.numnodes }}
+          path: results-${{ inputs.consensus }}${{ inputs.numnodes }}-${{ env.GITHUB_RUN_NUMBER }}
 
       - id: delete-network
         name: delete network
