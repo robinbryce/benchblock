@@ -20,8 +20,8 @@ on:
         default: 'raft'
       numnodes:
         description: 'number of nodes required in the network'
-        type: number
-        default: 9
+        type: string
+        default: "3"
       profile:
         description: 'name of a blockbench profile ({consensus}-k8s-{profile}.json in blockbench/configs). defaults to numnodes'
         type: string
