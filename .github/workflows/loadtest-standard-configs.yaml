@@ -1,0 +1,146 @@
+name: "Load test a standard set of network configurations for all supported consensus algs"
+on:
+  workflow_dispatch:
+jobs:
+  raft3:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "raft"
+      numnodes: 3
+
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+
+  ibft5:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "ibft"
+      numnodes: 5
+
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+
+  rrr5:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "rrr"
+      numnodes: 5
+
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+
+  raft9:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "raft"
+      numnodes: 9
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+
+  ibft9:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "ibft"
+      numnodes: 9
+
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+
+  rrr9:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "rrr"
+      numnodes: 9
+
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+
+
+  raft13:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "raft"
+      numnodes: 13
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+
+  ibft13:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "ibft"
+      numnodes: 13
+
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+
+  rrr13:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "rrr"
+      numnodes: 13
+
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+
+  ibft17:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "ibft"
+      numnodes: 17
+
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+
+  rrr17:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "rrr"
+      numnodes: 17
+
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+
+  rrr30:
+    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    with:
+      project_id: "fetlar-1"
+      location: "europe-west2-a"
+      cluster_name: "kluster"
+      consensus: "rrr"
+      numnodes: 30
+
+    secrets:
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
