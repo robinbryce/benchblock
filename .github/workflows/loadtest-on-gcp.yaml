@@ -88,7 +88,7 @@ jobs:
           ATTEMPTS_REMAINING=40
           SLEEP=2
           NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
-          MANIFESTSDIR=networks/$NAME/${{ inputs.consensus }}
+          MANIFESTSDIR=networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }}
 
           kustomize build $MANIFESTSDIR | tee rendered.yaml
 
@@ -235,7 +235,7 @@ jobs:
           ATTEMPTS_REMAINING=40
           SLEEP=2
           NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
-          MANIFESTSDIR=networks/$NAME/${{ inputs.consensus }}
+          MANIFESTSDIR=networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }}
 
           kustomize build $MANIFESTSDIR | tee rendered.yaml
 
