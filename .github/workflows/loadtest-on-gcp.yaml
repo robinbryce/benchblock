@@ -185,6 +185,9 @@ jobs:
           done
 
           popd
+          find . -type d
+          ls -la ${RESULTSDIR}/
+          ls -la ${RESULTSDIR}/${NAME}.db
 
           # TODO bbencheth collect the blocks
           echo "loadtest complete"
