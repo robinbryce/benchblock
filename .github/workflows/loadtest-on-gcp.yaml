@@ -234,3 +234,41 @@ jobs:
         with:
           name: results
           path: results
+
+      - id: delete-network
+        name: delete network
+        run: |
+
+          ATTEMPTS_REMAINING=40
+          NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
+          NAMESPACE=github-$NAME
+
+          kustomize build networks/$NAME/${{ inputs.consensus }} \
+            | tee $NAME-rendered.yaml
+
+          NRUNNING=$(kubectl -n $NAMESPACE \
+            get pods --selector=app.kubernetes.io/part-of=ethnet \
+            --output=jsonpath={.items..metadata.name} | wc -w)
+
+          if [ "$NRUNNING" != "0" ]; then
+
+            set +e
+            kustomize build networks/$NAME/${{ inputs.consensus }} \
+              | kubectl -n $NAMESPACE \
+                  delete -f $NAME-rendered.yaml
+
+            while [ "$NRUNNING" != "0" ]; do
+
+              [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
+
+              ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
+
+              NRUNNING=$(kubectl -n $NAMESPACE \
+                get pods --selector=app.kubernetes.io/part-of=ethnet \
+                --output=jsonpath={.items..metadata.name} | wc -w)
+
+              echo "Waiting for $NRUNNING to terminate (attempts left $ATTEMPTS_REMAINING)"
+              sleep 2
+            done
+            set -e
+          fi
