@@ -223,7 +223,7 @@ jobs:
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           cd networks/${NAME}
           cat parameters.yml
-          zip standard-plots.${GITHUB_RUN_NUMBER}.zip *.jpg
+          zip standard-plots.${GITHUB_RUN_NUMBER}.zip *.png
           mv standard-plots.html standard-plots.${GITHUB_RUN_NUMBER}.html
 
       - id: upload-results
