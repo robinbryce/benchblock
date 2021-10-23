@@ -83,7 +83,7 @@ jobs:
         name: deploy network
         run: |
 
-          ATTEMPTS_REMAINING=40
+          ATTEMPTS_REMAINING=120
           SLEEP=2
           NUMNODES=${{ inputs.numnodes }}
           NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
