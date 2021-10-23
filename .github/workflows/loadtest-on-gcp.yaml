@@ -41,7 +41,13 @@ jobs:
       # It is important the directory is created in the main process. If we let
       # docker create it when it mounts the volume, its created with the wrong
       # ownership and we don't have write access
-      - run: mkdir -p networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+      - id: prerequisits
+        name: prerequisits
+        run: |
+          mkdir -p networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+          mkdir bin
+          curl -sL https://git.io/tusk | bash -s -- -b bin latest
+
       - id: create-network-manifests
         name: create network manifests
         uses: docker://robinbryce/bbench:main
@@ -80,15 +86,13 @@ jobs:
         run: |
 
           ATTEMPTS_REMAINING=40
+          SLEEP=2
+          NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
+          MANIFESTSDIR=networks/$NAME/${{ inputs.consensus }}
 
-          # clean up any previous attempt
+          kustomize build $MANIFESTSDIR | tee rendered.yaml
 
-          NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
-
-          NAMESPACE=github-$NAME
-
-          kustomize build networks/$NAME/${{ inputs.consensus }} \
-            | tee $NAME-rendered.yaml
+          # delete any previous network first
 
           NRUNNING=$(kubectl -n $NAMESPACE \
             get pods --selector=app.kubernetes.io/part-of=ethnet \
@@ -97,51 +101,39 @@ jobs:
           if [ "$NRUNNING" != "0" ]; then
 
             set +e
-            kustomize build networks/$NAME/${{ inputs.consensus }} \
-              | kubectl -n $NAMESPACE \
-                  delete -f $NAME-rendered.yaml
+            kustomize build ${MANIFESTSDIR} | kubectl -n $NAMESPACE delete -f rendered.yaml
 
             while [ "$NRUNNING" != "0" ]; do
 
               [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
-
               ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
 
               NRUNNING=$(kubectl -n $NAMESPACE \
                 get pods --selector=app.kubernetes.io/part-of=ethnet \
                 --output=jsonpath={.items..metadata.name} | wc -w)
 
-              echo "Waiting for $NRUNNING to terminate (attempts left $ATTEMPTS_REMAINING)"
-              sleep 2
+              echo "Waiting for $NRUNNING to terminate (attempts left $ATTEMPTS_REMAINING, sleeping for ${SLEEP}s)"
+              sleep ${SLEEP}
             done
             set -e
           fi
 
-          set -e
-          kustomize build networks/$NAME/${{ inputs.consensus }} \
-            | kubectl -n $NAMESPACE apply -f $NAME-rendered.yaml
+          kustomize build ${MANIFESTSDIR} \
+            | kubectl -n $NAMESPACE apply -f rendered.yaml
 
-      - id: wait-for-startup
-        name: wait for network to start
-        run: |
-
-          ATTEMPTS_REMAINING=30
-
-          # this can all be finessed once the basics are working
-          NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
-
+          ATTEMPTS_REMAINING=40
           while true; do
             NRUNNING=$(kubectl -n $NAMESPACE get pods \
               --field-selector=status.phase=Running \
               --output=jsonpath={.items..metadata.name} | wc -w)
 
-            [ "${NRUNNING}" == "${{ inputs.numnodes }}" ] && break
+            [ "${NRUNNING}" == "${numnodes}" ] && break
 
             [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
             ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
 
-            echo "${NRUNNING} of ${{ inputs.numnodes }} running sleeping for 4s (attempts left $ATTEMPTS_REMAINING)"
-            sleep 4
+            echo "${NRUNNING} of ${numnodes} running. (attempts left $ATTEMPTS_REMAINING,  sleeping for ${SLEEP}s)"
+            sleep ${SLEEP}
           done
 
       - id: checkout-main
@@ -161,22 +153,21 @@ jobs:
           ATTEMPTS_REMAINING=100
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           NAMESPACE=github-$NAME
+          SLEEP=4
 
-          pushd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+          pushd networks/${NAME}
 
           STARTBLOCK=$(kubectl exec -n $NAMESPACE ethnode0-0 -- \
-            geth attach /data/node/geth.ipc \
-              --exec eth.blockNumber)
+            geth attach /data/node/geth.ipc --exec eth.blockNumber)
 
-          kustomize build jobs/loadtest \
-          | kubectl -n $NAMESPACE \
-              apply -f -
+          kustomize build jobs/loadtest | kubectl -n $NAMESPACE apply -f -
           echo "waiting for job to complete"
 
           # this can all be finessed once the basics are working
           while true; do
-            echo "sleep 4s"
-            sleep 4
+            echo "Waiting for completion. sleep ${SLEEP}s"
+            sleep ${SLEEP}
+
             state=$(kubectl  -n $NAMESPACE get pods \
               --selector=job-name=loadtest -o jsonpath='{.items[0].status.containerStatuses[0].state.terminated.reason}')
             echo "State: $state"
@@ -228,24 +219,25 @@ jobs:
           touch ../../results-${NAME}-${GITHUB_RUN_NUMBER}/DATE-$(date +%F)
           mv standard-plots.html ../../results-${NAME}-${GITHUB_RUN_NUMBER}/
           ls ../../results-${NAME}-${GITHUB_RUN_NUMBER}/
+          echo ../../results-${NAME}-${GITHUB_RUN_NUMBER}
 
       - id: upload-results
         name: upload results
         uses: actions/upload-artifact@v2
         with:
           name: results-${{ inputs.consensus }}${{ inputs.numnodes }}
-          path: results-${{ inputs.consensus }}${{ inputs.numnodes }}-${{ env.GITHUB_RUN_NUMBER }}
+          path: results-${{ inputs.consensus }}${{ inputs.numnodes }}-*
 
       - id: delete-network
         name: delete network
         run: |
 
           ATTEMPTS_REMAINING=40
-          NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
-          NAMESPACE=github-$NAME
+          SLEEP=2
+          NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
+          MANIFESTSDIR=networks/$NAME/${{ inputs.consensus }}
 
-          kustomize build networks/$NAME/${{ inputs.consensus }} \
-            | tee $NAME-rendered.yaml
+          kustomize build $MANIFESTSDIR | tee rendered.yaml
 
           NRUNNING=$(kubectl -n $NAMESPACE \
             get pods --selector=app.kubernetes.io/part-of=ethnet \
@@ -254,22 +246,19 @@ jobs:
           if [ "$NRUNNING" != "0" ]; then
 
             set +e
-            kustomize build networks/$NAME/${{ inputs.consensus }} \
-              | kubectl -n $NAMESPACE \
-                  delete -f $NAME-rendered.yaml
+            kustomize build ${MANIFESTSDIR} | kubectl -n $NAMESPACE delete -f rendered.yaml
 
             while [ "$NRUNNING" != "0" ]; do
 
               [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
-
               ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
 
               NRUNNING=$(kubectl -n $NAMESPACE \
                 get pods --selector=app.kubernetes.io/part-of=ethnet \
                 --output=jsonpath={.items..metadata.name} | wc -w)
 
-              echo "Waiting for $NRUNNING to terminate (attempts left $ATTEMPTS_REMAINING)"
-              sleep 2
+              echo "Waiting for $NRUNNING to terminate (attempts left $ATTEMPTS_REMAINING, sleeping for ${SLEEP}s)"
+              sleep ${SLEEP}
             done
             set -e
           fi
