@@ -48,7 +48,7 @@ func (cfg *Config) SetDefaults() {
 	cfg.DBSource = ":memory:"
 	cfg.StartBlock = -1
 	cfg.EndBlock = -1
-	cfg.NumTransactions = 0
+	cfg.NumTransactions = -1
 	cfg.CollectRate = 10 * time.Second
 }
 
@@ -79,6 +79,11 @@ func NewCollector(ctx context.Context, cfgDir string, r root.Runner, opts ...Col
 
 	for _, opt := range opts {
 		opt(c)
+	}
+
+	if c.collectCfg.EndBlock != -1 {
+		fmt.Printf("endblock set to %d, ignoring numtransactions\n", c.collectCfg.EndBlock)
+		c.collectCfg.NumTransactions = -1
 	}
 
 	// Progress is disabled entirely if the WithProgress option is not
@@ -176,6 +181,7 @@ func (c *Collector) Collect(ethC *client.Client, wg *sync.WaitGroup, banner stri
 			return
 		}
 	}
+	fmt.Printf("starting collection at block: %d\n", lastBlock)
 
 	for range c.collectLimiter.C {
 
@@ -190,7 +196,9 @@ func (c *Collector) Collect(ethC *client.Client, wg *sync.WaitGroup, banner stri
 			if blockNumber < lastBlock {
 				fmt.Printf("re-org ? new head %d is < %dn", blockNumber, lastBlock)
 			}
-			fmt.Printf("no more blocks since %d\n", blockNumber)
+			if c.rootCfg.NoProgress {
+				fmt.Printf("no more blocks since %d\n", blockNumber)
+			}
 			continue
 		}
 
@@ -212,9 +220,14 @@ func (c *Collector) Collect(ethC *client.Client, wg *sync.WaitGroup, banner stri
 
 			// could actually capture and reconcile them against the accounts we created if we wanted, for now just count them.
 			ntx := len(block.Transactions())
-			if c.pb.MinedComplete(ntx) || (c.collectCfg.EndBlock != -1 && lastBlock > c.collectCfg.EndBlock) {
+
+			if c.pb.MinedComplete(ntx) || (c.collectCfg.EndBlock == lastBlock || (lastBlock > c.collectCfg.EndBlock && c.collectCfg.EndBlock > -1)) {
 				fmt.Printf("collection complete. block %d, mined: %d\n", lastBlock, c.pb.NumMined())
 				return
+			}
+
+			if c.rootCfg.NoProgress { // NoProgress meter so print updates instead
+				fmt.Printf("block %v, txs %d, total %d\n", h.Number, ntx, c.pb.NumMined())
 			}
 		}
 	}

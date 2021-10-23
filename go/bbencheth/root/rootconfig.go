@@ -11,10 +11,10 @@ const (
 type Config struct {
 	EthEndpoint   string
 	BasePort      int
-	ClientTimeout time.Duration `mapstructure:"client_timeout"`
+	ClientTimeout time.Duration `mapstructure:"client-timeout"`
 	ResolveHosts  bool
 	Retries       int
-	NoProgress    bool `mapstructure:"no_progress"`
+	NoProgress    bool `mapstructure:"no-progress"`
 }
 
 func (cfg *Config) SetDefaults() {

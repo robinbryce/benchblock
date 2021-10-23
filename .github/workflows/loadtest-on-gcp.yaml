@@ -183,6 +183,10 @@ jobs:
 
           done
 
+          ENDBLOCK=$(kubectl exec -n $NAMESPACE ethnode0-0 -- \
+            geth attach /data/node/geth.ipc \
+              --exec eth.blockNumber)
+
           popd
 
           RESULTSDIR=$(pwd)
@@ -193,19 +197,15 @@ jobs:
           PF_PID=$!
 
           cd main/go/bbencheth
-          echo ${RESULTSDIR}
-          ls -la ${RESULTSDIR}/
-          echo "STARTBLOCK: $STARTBLOCK"
 
-          echo "STARTBLOCK: $STARTBLOCK"
-          go run main.go -e http://127.0.0.1:8300 --no_progress \
+          echo "STARTBLOCK: $STARTBLOCK, ENDBLOCK: $ENDBLOCK"
+          go run main.go -e http://127.0.0.1:8300 --no-progress \
             --dbsource results.db \
-            collect -s $STARTBLOCK -x 1800
+            collect -s $STARTBLOCK -e $ENDBLOCK
           # --dbsource ${RESULTSDIR}/${NAME}.db \
-          cp -v results.db ${RESULTSDIR}
-          cp -v results.db networks/${{ inputs.consensus }}${{ inputs.numnodes }}/
-
-          ls -la ${RESULTSDIR}/${NAME}.db
+          popd
+          cp -v main/go/bbencheth/results.db networks/${NAME}/${NAME}.db
+          ls -la networks/${NAME}/${NAME}.db
 
 
       - id: generate-graphs

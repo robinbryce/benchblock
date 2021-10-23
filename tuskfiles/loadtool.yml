@@ -13,14 +13,18 @@ options:
     usage: config file, all options can be set in this
     type: string
 
+args:
+  command:
+    usage: "load or collect"
+
 run:
   - command:
       exec: |
-        set -ex
+        set -e
         TUSKDIR=$(pwd)
 
         cd ${launchdir}
         bbencheth=$GOBIN/bbencheth
         [ -f "${toolbin}" ] && bbencheth="${toolbin}"
         [ ! -f "${bbencheth}" ] && bbencheth="bbencheth"
-        ${bbencheth} --config "${config}"
+        ${bbencheth} --config "${config}" ${command}

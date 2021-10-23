@@ -87,7 +87,7 @@ type Config struct {
 	SingleNode bool `mapstructure:"singlenode"`
 
 	// If true, confirm every transaction in a batch before doing the next batch.
-	CheckReceipts bool `mapstructure:"check_receipts"`
+	CheckReceipts bool `mapstructure:"check-receipts"`
 
 	TesseraEndpoint string `mapstructure:"tesera"`
 	// If staticnodes is provided, Nodes hosts are read from the file. Its
@@ -99,8 +99,8 @@ type Config struct {
 
 	ExpectedLatency time.Duration `mapstructure:"expected_latency"`
 
-	DeployGasLimit uint64 `mapstructure:"deploy_gaslimit"`
-	DeployKey      string `mapstructure:"deploy_key"` // needs to have funds even for quorum, used to deploy contract
+	DeployGasLimit uint64 `mapstructure:"deploy-gaslimit"`
+	DeployKey      string `mapstructure:"deploy-key"` // needs to have funds even for quorum, used to deploy contract
 	RunOne         bool   `mapstructure:"run_one"`
 }
 

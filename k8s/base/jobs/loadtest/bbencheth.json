@@ -1,7 +1,7 @@
 {
   "bbencheth": {
     "eth": "",
-    "no_progress": true,
+    "no-progress": true,
     "collect": {
        "dbsource": ""
     },

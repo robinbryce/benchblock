@@ -31,7 +31,7 @@ func (r *LoaderRunner) AddOptions(vroot *viper.Viper) error {
 	r.vroot = vroot
 
 	f := r.cmd.PersistentFlags()
-	f.SetNormalizeFunc(NormalizeOptions)
+	// f.SetNormalizeFunc(NormalizeOptions)
 
 	f.IntVarP(
 		&cfg.TPS, "tps", "r", cfg.TPS,
@@ -105,15 +105,6 @@ func (r *LoaderRunner) AddOptions(vroot *viper.Viper) error {
 	f.Int64VarP(&r.collectStartBlock, "startblock", "s", -1,
 		`first block to collect. -1 starts at the current head`)
 
-	return nil
-}
-
-func (r *LoaderRunner) ProcessConfigxxx() error {
-
-	// Call parent first, results in root down processing order.
-	r.GetParent().ProcessConfig()
-	r.cfgDir = filepath.Dir(r.vroot.ConfigFileUsed())
-	ReconcileOptions(r.cmd, r.vroot.Sub(root.GetRunnerName(r)))
 	return nil
 }
 

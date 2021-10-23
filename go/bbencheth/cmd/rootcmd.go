@@ -64,7 +64,7 @@ func (r *RootRunner) AddOptions(vroot *viper.Viper) error {
 	r.vroot = vroot
 
 	f := r.cmd.PersistentFlags()
-	f.SetNormalizeFunc(NormalizeOptions)
+	// f.SetNormalizeFunc(NormalizeOptions)
 
 	f.StringVarP(
 		&r.cfg.EthEndpoint, "eth", "e", r.cfg.EthEndpoint, `
@@ -182,10 +182,10 @@ func ReconcileOptions(cmd *cobra.Command, v *viper.Viper) {
 	})
 }
 
-func NormalizeOptions(f *pflag.FlagSet, name string) pflag.NormalizedName {
-	name = strings.Replace(name, "-", "_", -1)
-	return pflag.NormalizedName(name)
-}
+// func NormalizeOptions(f *pflag.FlagSet, name string) pflag.NormalizedName {
+// 	name = strings.Replace(name, "-", "_", -1)
+// 	return pflag.NormalizedName(name)
+// }
 
 func SetConfigFile(v *viper.Viper, cfgFile, name string) error {
 	if cfgFile != "" {

@@ -27,8 +27,12 @@ func WithIssuedProgress() ProgressOption {
 		if p.pb == nil {
 			p.pb = mpb.New()
 		}
+		numExpected := p.numExpected
+		if numExpected == -1 {
+			numExpected = p.numExpected
+		}
 		p.pbTxIssued = p.pb.AddBar(
-			int64(p.numExpected), mpb.PrependDecorators(
+			int64(numExpected), mpb.PrependDecorators(
 				decor.Name("sent", decor.WCSyncSpace),
 				decor.CurrentNoUnit("%d", decor.WCSyncSpace),
 				decor.AverageSpeed(0, "%f.2/s", decor.WCSyncSpace),
@@ -46,8 +50,12 @@ func WithMinedProgress() ProgressOption {
 		if p.pb == nil {
 			p.pb = mpb.New()
 		}
+		numExpected := p.numExpected
+		if numExpected == -1 {
+			numExpected = 0
+		}
 		p.pbTxMined = p.pb.AddBar(
-			int64(p.numExpected),
+			int64(numExpected),
 			mpb.PrependDecorators(
 				decor.Name("mined", decor.WCSyncSpace),
 				decor.CurrentNoUnit("%d", decor.WCSyncSpace),
@@ -80,7 +88,7 @@ func (p *TransactionProgress) MinedComplete(ntx int) bool {
 
 	p.MinedIncrBy(ntx)
 
-	if p.numMined < p.numExpected {
+	if p.numMined < p.numExpected || p.numExpected == -1 {
 		return false
 	}
 	p.SetTotalMined(int64(p.numExpected), true)
