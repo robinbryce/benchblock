@@ -1,6 +1,6 @@
+project_name: bbencheth
 builds:
   -
-    project_name: bbencheth
     binary: bbencheth
     dir: go/bbencheth
     main: .
