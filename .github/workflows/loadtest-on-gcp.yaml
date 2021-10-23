@@ -87,6 +87,7 @@ jobs:
 
           ATTEMPTS_REMAINING=40
           SLEEP=2
+          NUMNODES=${{ inputs.numnodes }}
           NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
           MANIFESTSDIR=networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }}
 
@@ -127,12 +128,12 @@ jobs:
               --field-selector=status.phase=Running \
               --output=jsonpath={.items..metadata.name} | wc -w)
 
-            [ "${NRUNNING}" == "${numnodes}" ] && break
+            [ "${NRUNNING}" == "${NUMNODES}" ] && break
 
             [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
             ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
 
-            echo "${NRUNNING} of ${numnodes} running. (attempts left $ATTEMPTS_REMAINING,  sleeping for ${SLEEP}s)"
+            echo "${NRUNNING} of ${NUMNODES} running. (attempts left $ATTEMPTS_REMAINING,  sleeping for ${SLEEP}s)"
             sleep ${SLEEP}
           done
 
