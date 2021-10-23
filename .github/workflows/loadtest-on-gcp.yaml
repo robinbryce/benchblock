@@ -206,7 +206,7 @@ jobs:
           popd
           cp -v main/go/bbencheth/results.db networks/${NAME}/${NAME}.db
           ls -la networks/${NAME}/${NAME}.db
-
+          cat networks/${NAME}/parameters.yml
 
       - id: generate-graphs
         name: generate graphs
@@ -218,7 +218,10 @@ jobs:
       - id: archive-plots
         name: archive results
         run: |
-          cd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+          NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
+          cd networks/${NAME}
+          cat parameters.yml
+          ls -la ${NAME}.db
           zip standard-plots.${GITHUB_RUN_NUMBER}.zip *.jpg
           mv standard-plots.html standard-plots.${GITHUB_RUN_NUMBER}.html
 
