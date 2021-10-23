@@ -1,0 +1,19 @@
+builds:
+  -
+    binary: bbencheth
+    dir: go/bbencheth
+    main: .
+    goos:
+      - linux
+    goarch:
+      - amd64
+    gobinary: "go1.15"
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.Date={{.CommitDate}}
+      - -X main.builtBy=goreleaser
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - -trimpath
