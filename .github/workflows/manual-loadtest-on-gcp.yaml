@@ -35,7 +35,6 @@ jobs:
       cluster_name: ${{ github.event.inputs.cluster_name }}
       consensus: ${{ github.event.inputs.consensus }}
       profile: ${{ github.event.inputs.profile }}
-      numnodes: ${{ github.event.inputs.numnodes }}
 
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
