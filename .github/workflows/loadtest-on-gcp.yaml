@@ -159,7 +159,6 @@ jobs:
           NAMESPACE=github-$NAME
 
           pushd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
-          RESULTSDIR=$(pwd)
 
           STARTBLOCK=$(kubectl exec -n $NAMESPACE ethnode0-0 -- \
             geth attach /data/node/geth.ipc \
@@ -186,7 +185,7 @@ jobs:
 
           popd
 
-          pwd
+          RESULTSDIR=$(pwd)
 
           # TODO bbencheth collect the blocks
           echo "loadtest complete"
@@ -199,11 +198,12 @@ jobs:
           echo "STARTBLOCK: $STARTBLOCK"
 
           echo "STARTBLOCK: $STARTBLOCK"
-          go run main.go -e http://localhost:8300 --no_progress \
+          go run main.go -e http://127.0.0.1:8300 --no_progress \
             --dbsource results.db \
             collect -s $STARTBLOCK -x 1800
           # --dbsource ${RESULTSDIR}/${NAME}.db \
-          mv results.db ${RESULTSDIR}
+          cp -v results.db ${RESULTSDIR}
+          cp -v results.db networks/${{ inputs.consensus }}${{ inputs.numnodes }}/
 
           ls -la ${RESULTSDIR}/${NAME}.db
 
