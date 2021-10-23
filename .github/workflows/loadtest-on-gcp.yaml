@@ -185,9 +185,8 @@ jobs:
           done
 
           popd
-          find . -type d
-          ls -la ${RESULTSDIR}/
-          ls -la ${RESULTSDIR}/${NAME}.db
+
+          pwd
 
           # TODO bbencheth collect the blocks
           echo "loadtest complete"
@@ -199,6 +198,12 @@ jobs:
           go run main.go -e http://localhost:8300 --no_progress \
             --dbsource ${RESULTSDIR}/${NAME}.db \
             collect -s $STARTBLOCK -x 1800
+
+          echo "STARTBLOCK: $STARTBLOCK"
+          echo ${RESULTSDIR}
+          ls -la ${RESULTSDIR}/
+          ls -la ${RESULTSDIR}/${NAME}.db
+
 
       - id: generate-graphs
         name: generate graphs
