@@ -196,11 +196,12 @@ jobs:
           kubectl port-forward -n $NAMESPACE ethnode0-0 8300:8300 &
           PF_PID=$!
 
-          cd main/go/bbencheth
+          pushd main/go/bbencheth
 
           echo "STARTBLOCK: $STARTBLOCK, ENDBLOCK: $ENDBLOCK"
           go run main.go -e http://127.0.0.1:8300 --no-progress \
             collect --dbsource results.db -s $STARTBLOCK --endblock $ENDBLOCK
+
           popd
           cp -v main/go/bbencheth/results.db networks/${NAME}/${NAME}.db
           ls -la networks/${NAME}/${NAME}.db
