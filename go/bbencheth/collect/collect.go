@@ -92,6 +92,7 @@ func NewCollector(ctx context.Context, cfgDir string, r root.Runner, opts ...Col
 			"dbsource is required by collector (try :memory: if you just want to wait for completion")
 	}
 	if c.db, err = NewBlockDB(c.collectCfg.DBSource, true /*share*/); err != nil {
+		fmt.Printf("failed creating db (%s): %v\n", c.collectCfg.DBSource, err)
 		return nil, err
 	}
 
