@@ -223,17 +223,14 @@ jobs:
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           cd networks/${NAME}
           cat parameters.yml
-          zip standard-plots.${GITHUB_RUN_NUMBER}.zip *.png
-          cp standard-plots.html standard-plots.${GITHUB_RUN_NUMBER}.html
-          ls
+          mkdir -p ../../results/${NAME}-$(date +%F)-${GITHUB_RUN_NUMBER}
+          mv *.png ../../results/${NAME}-$(date +%F)-${GITHUB_RUN_NUMBER}/
+          mv standard-plots.html ../../results/${NAME}-$(date +%F)-${GITHUB_RUN_NUMBER}/
+          ls ../../results/${NAME}-$(date +%F)-${GITHUB_RUN_NUMBER}/
 
       - id: upload-results
         name: upload results
         uses: actions/upload-artifact@v2
         with:
-          name: standard-plots
-          path: networks/${{ inputs.consensus }}${{ inputs.numnodes }}/standard-plots.html
-          # path: networks/${{ inputs.consensus }}${{ inputs.numnodes }}/standard-plots.${GITHUB_RUN_NUMBER}.html
-          # networks/${{ inputs.consensus }}${{ inputs.numnodes }}/standard-plots.${GITHUB_RUN_NUMBER}.zip
-
-
+          name: results
+          path: results

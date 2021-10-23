@@ -1,4 +1,7 @@
 project_name: bbencheth
+release:
+  draft: false
+
 builds:
   -
     binary: bbencheth
