@@ -200,8 +200,10 @@ jobs:
 
           echo "STARTBLOCK: $STARTBLOCK"
           go run main.go -e http://localhost:8300 --no_progress \
-            --dbsource ${RESULTSDIR}/${NAME}.db \
+            --dbsource results.db \
             collect -s $STARTBLOCK -x 1800
+          # --dbsource ${RESULTSDIR}/${NAME}.db \
+          mv results.db ${RESULTSDIR}
 
           ls -la ${RESULTSDIR}/${NAME}.db
 
