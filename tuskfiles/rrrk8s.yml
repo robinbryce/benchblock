@@ -40,7 +40,7 @@ run:
 
         cd ${launchdir} && cd ${configdir}
 
-        NUM_BOOTNODES=${numbootnodes}
+        export NUM_BOOTNODES=${numbootnodes}
         [ -n "${NUM_BOOTNODES}" ] | NUM_BOOTNODES=0
 
         export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
@@ -70,12 +70,15 @@ run:
         nodesdir = os.environ['BBENCH_NODESDIR']
         namespace = os.environ['BBENCH_NAME']
         consensus = os.environ['BBENCH_CONSENSUS']
+        numbootnodes = int(os.environ['NUM_BOOTNODES'])
         for i, u in enumerate(json.load(open(f"{nodesdir}/static-nodes.json"))):
           u = urlparse(u)
           if u.hostname != f"node{i}":
             print(f"ERROR: static nodes declared in unexpected order or just plain wrong")
             sys.exit(1)
-          u = urlunparse((u.scheme, f"{u.username}@ethnode{i}.{namespace}.svc.cluster.local:{u.port}", '', '', u.query, ''))
+
+          nodename = f"ethnode{i}" if i < numbootnodes else f"ethnodeboot{i}"
+          u = urlunparse((u.scheme, f"{u.username}@{nodename}-0.{nodename}.{namespace}.svc.cluster.local:{u.port}", '', '', u.query, ''))
           nodes.append(u)
         json.dump(nodes, open(f"{consensus}/network/static-nodes.json", "w"), sort_keys=True, indent=True)
         PYEND
@@ -95,7 +98,7 @@ run:
         echo "NUM_BOOTNODES=${NUM_BOOTNODES}" >> rrr/network/bootnodes.env
         for i in $(seq 0 $((${NUM_BOOTNODES} - 1))); do
           echo "BOOTNODE_PUB${i}=$(cat ${BBENCH_NODESDIR}/node${i}/enode)" >> rrr/network/bootnodes.env
-          echo "BOOTNODE_HOST${i}=ethnodeboot${i}.${BBENCH_NAME}.svc.cluster.local" >> rrr/network/bootnodes.env
+          echo "BOOTNODE_HOST${i}=ethnodeboot${i}-0.ethnodeboot${i}.${BBENCH_NAME}.svc.cluster.local" >> rrr/network/bootnodes.env
         done
         cat rrr/network/bootnodes.env
         echo "Wrote ${NUM_BOOTNODES} bootnodes to rrr/network/bootnodes.env"
