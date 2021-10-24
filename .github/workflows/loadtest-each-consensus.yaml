@@ -1,4 +1,4 @@
-name: "Load test a standard set of network configurations for all supported consensus algs"
+name: "Load test one configuration for each consensus alg"
 on:
   workflow_dispatch:
 jobs:
