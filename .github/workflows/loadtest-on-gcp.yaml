@@ -22,6 +22,9 @@ on:
         description: 'number of nodes required in the network'
         type: string
         default: "3"
+      bootnodes:
+        type: string
+        default: "0"
       profile:
         description: 'name of a blockbench profile ({consensus}-k8s-{profile}.json in blockbench/configs). defaults to numnodes'
         type: string
@@ -114,6 +117,24 @@ jobs:
           # are transactions to mine this wont work. but raft is ready to go as
           # soon as the nodes are ready.
           # TODO: if ibft or rrr wait for next block
+          [ "${consensus}" == "raft" ] && exit 0
+
+          NODENAME=ethnode$([ "{bootnodes}" != "0" ] && echo "boot")0-0
+          STARTBLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
+            geth attach /data/node/geth.ipc --exec eth.blockNumber)
+
+          ATTEMPTS_REMAINING=120
+          SLEEP=5
+          while true; do
+            echo "Waiting for block to be produced. sleeping for ${SLEEP}s"
+            sleep ${SLEEP}
+
+            BLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
+              geth attach /data/node/geth.ipc --exec eth.blockNumber)
+            # it might be different because the exec fails in some way
+            [ "$STARTBLOCK" != "$BLOCK" ] && echo "eth.blockNumber changed: $BLOCK" && exit 0
+
+          done
 
       - id: checkout_main
         uses: actions/checkout@v2
@@ -136,7 +157,8 @@ jobs:
 
           pushd networks/${NAME}
 
-          STARTBLOCK=$(kubectl exec -n $NAMESPACE ethnode0-0 -- \
+          NODENAME=ethnode$([ "{bootnodes}" != "0" ] && echo "boot")0-0
+          STARTBLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
             geth attach /data/node/geth.ipc --exec eth.blockNumber)
 
           kustomize build jobs/loadtest | kubectl -n $NAMESPACE apply -f -
