@@ -34,6 +34,7 @@ jobs:
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 5
+      bootnodes: 2
 
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
@@ -69,6 +70,7 @@ jobs:
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 9
+      bootnodes: 2
 
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
@@ -105,6 +107,7 @@ jobs:
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 13
+      bootnodes: 2
 
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
@@ -129,6 +132,7 @@ jobs:
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 17
+      bootnodes: 2
 
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
@@ -141,6 +145,7 @@ jobs:
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 30
+      bootnodes: 2
 
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}

@@ -77,7 +77,7 @@ run:
             print(f"ERROR: static nodes declared in unexpected order or just plain wrong")
             sys.exit(1)
 
-          nodename = f"ethnode{i}" if i < numbootnodes else f"ethnodeboot{i}"
+          nodename = f"ethnodeboot{i}" if i < numbootnodes else f"ethnode{i}"
           u = urlunparse((u.scheme, f"{u.username}@{nodename}-0.{nodename}.{namespace}.svc.cluster.local:{u.port}", '', '', u.query, ''))
           nodes.append(u)
         json.dump(nodes, open(f"{consensus}/network/static-nodes.json", "w"), sort_keys=True, indent=True)
