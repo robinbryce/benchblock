@@ -211,7 +211,7 @@ jobs:
       - id: delete_network
         name: delete network
         # if: ${{ steps.render_manifests.outcome == 'success' }}
-        if: always()
+        if: always() && steps.render_manifests.outcome == 'success'
         run: |
 
           echo "render_manifests.outcome: ${{ steps.render_manifests.outcome }}"
