@@ -1,6 +1,4 @@
 commonLabels:
-  app: ethnode
-  app.kubernetes.io/name: ethnode
   app.kubernetes.io/part-of: ethnet
 resources:
 - service.yaml

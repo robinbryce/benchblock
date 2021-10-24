@@ -170,7 +170,6 @@ jobs:
 
           popd
           cp -v main/go/bbencheth/results.db networks/${NAME}/${NAMESPACE}.db
-          cat networks/${NAME}/parameters.yml
 
       - id: setup_jupyter
         name: setup jupyter
