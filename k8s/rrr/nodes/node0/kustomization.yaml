@@ -1,5 +1,4 @@
 nameSuffix: "0"
-
 commonLabels:
   app: ethnode
   app.kubernetes.io/name: ethnode

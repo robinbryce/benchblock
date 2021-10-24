@@ -33,7 +33,7 @@ run:
         end=${last}
         [ "${end}" == "0" ] && end=$((BBENCH_MAXNODES -1))
         export end
-        echo "raftstatic: end=$end"
+        echo "gethstatic: end=$end"
 
         source ${BBENCH_PYENV}/bin/activate
 

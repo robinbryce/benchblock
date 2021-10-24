@@ -56,6 +56,30 @@ run:
         mkdir -p rrr/network
         cp ${BBENCH_NODESDIR}/genesis.json rrr/network
 
+        # rrr uses discovery. we generate static-nodes.json anyway to be
+        # consistent.
+        cp ${BBENCH_NODESDIR}/static-nodes.json rrr/network
+
+        # this assumes static-nodes.json is generated for compose with the hosts listed in
+        # ascending order node0, node1 ...
+        # > ethnode8.{BBENCH_NAME}.svc.cluster.local
+        cat <<PYEND | python3
+        import os, json
+        from urllib.parse import urlparse, urlunparse
+        nodes = []
+        nodesdir = os.environ['BBENCH_NODESDIR']
+        namespace = os.environ['BBENCH_NAME']
+        consensus = os.environ['BBENCH_CONSENSUS']
+        for i, u in enumerate(json.load(open(f"{nodesdir}/static-nodes.json"))):
+          u = urlparse(u)
+          if u.hostname != f"node{i}":
+            print(f"ERROR: static nodes declared in unexpected order or just plain wrong")
+            sys.exit(1)
+          u = urlunparse((u.scheme, f"{u.username}@ethnode{i}.{namespace}.svc.cluster.local:{u.port}", '', '', u.query, ''))
+          nodes.append(u)
+        json.dump(nodes, open(f"{consensus}/network/static-nodes.json", "w"), sort_keys=True, indent=True)
+        PYEND
+
         cat <<END > rrr/network/network.env
         CONSENSUS_OPTS=${CONSENSUS_OPTS}
         NETWORKID=${networkid}
@@ -110,6 +134,8 @@ run:
         fi
 
         # kustomizations for the boot nodes
+        # * suffix app and k8s/name labels with the node index
+        # * refer to the bootnode base
         for i in $(seq 0 $((${NUM_BOOTNODES} - 1))); do
           NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
           .commonLabels.app += env(NODENUM) |
@@ -122,11 +148,12 @@ run:
         done
 
         # kustomizations for the remaining nodes
+        # * suffix app and k8s/name labels with the node index
         start=${NUM_BOOTNODES}
         end=$(($BBENCH_MAXNODES - 1))
         for i in $(seq $start $end); do
-          NODENUM=$i yq eval '.nameSuffix = env(NODENUM) | \
-          .commonLabels.app += env(NODENUM) | \
+          NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
+          .commonLabels.app += env(NODENUM) |
           .commonLabels."app.kubernetes.io/name" += env(NODENUM)' \
             ${TUSKDIR}/k8s/rrr/nodes/node0/kustomization.yaml \
             > rrr/nodes/node${i}/kustomization.yaml
