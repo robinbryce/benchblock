@@ -210,10 +210,11 @@ jobs:
 
       - id: delete_network
         name: delete network
-        if: ${{ steps.render_manifests.outcome == 'success' }}
+        # if: ${{ steps.render_manifests.outcome == 'success' }}
+        if: allways()
         run: |
 
-          [ ! -f rendered.yaml ] && echo "rendered.yaml missing" && exit 1
+          [ ! -f rendered.yaml ] && echo "rendered.yaml missing" && exit 0
 
           ATTEMPTS_REMAINING=40
           SLEEP=4
