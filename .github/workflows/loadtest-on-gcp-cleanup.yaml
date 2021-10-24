@@ -89,7 +89,8 @@ jobs:
           if [ "$NRUNNING" != "0" ]; then
 
             set +e
-            kustomize build ${MANIFESTSDIR} | kubectl -n $NAMESPACE delete -f rendered.yaml
+            kustomize build ${MANIFESTSDIR} > rendered.yaml
+            kubectl -n $NAMESPACE delete -f rendered.yaml
 
             while [ "$NRUNNING" != "0" ]; do
 
