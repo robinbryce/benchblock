@@ -214,6 +214,8 @@ jobs:
         if: always()
         run: |
 
+          echo "render_manifests.outcome: ${{ steps.render_manifests.outcome }}"
+
           [ ! -f rendered.yaml ] && echo "rendered.yaml missing" && exit 0
 
           ATTEMPTS_REMAINING=40
