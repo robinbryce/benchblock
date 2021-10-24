@@ -83,7 +83,7 @@ run:
         cat ibft/network/network.env
         echo "Wrote ibft/network/network.env"
 
-        cp -v raft/network/static-nodes.json jobs/loadtest
+        cp -v ibft/network/static-nodes.json jobs/loadtest
         cat base/jobs/loadtest/bbencheth.json | jq -r \
           '.bbencheth.load.transactions = 10000 |
            .bbencheth.load.nodes = (env.BBENCH_MAXNODES|tonumber) |

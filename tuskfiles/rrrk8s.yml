@@ -77,7 +77,7 @@ run:
         echo "Wrote ${NUM_BOOTNODES} bootnodes to rrr/network/bootnodes.env"
 
         # kustomizations for jobs
-        cp -v raft/network/static-nodes.json jobs/loadtest
+        cp -v rrr/network/static-nodes.json jobs/loadtest
         cat base/jobs/loadtest/bbencheth.json | jq -r \
           '.bbencheth.load.transactions = 10000 |
            .bbencheth.load.nodes = (env.BBENCH_MAXNODES|tonumber) |
@@ -87,7 +87,7 @@ run:
         yq eval ".namespace = \"$BBENCH_NAME\"" \
           ${TUSKDIR}/k8s/jobs/loadtest/kustomization.yaml | \
           tee jobs/loadtest/kustomization.yaml
-        echo "Wrote raft/kustomization.yaml"
+        echo "Wrote rrr/kustomization.yaml"
 
         # kustomizations for the rrr base node
         for i in $(seq 0 $((${NUM_BOOTNODES} - 1))); do
