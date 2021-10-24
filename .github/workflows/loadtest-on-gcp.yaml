@@ -121,8 +121,6 @@ jobs:
         name: generate transaction load
         run: |
 
-          echo "force fail" && exit 1
-
           ATTEMPTS_REMAINING=100
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           NAMESPACE=github-$NAME
@@ -210,7 +208,6 @@ jobs:
 
       - id: delete_network
         name: delete network
-        # if: ${{ steps.render_manifests.outcome == 'success' }}
         if: always() && steps.render_manifests.outcome == 'success'
         run: |
 
