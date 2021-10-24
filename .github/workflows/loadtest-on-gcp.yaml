@@ -33,8 +33,8 @@ on:
           IAM & Admin / Service Accounts -> Compute Engine Default Service account -> create key -> create as json
         required: true
 jobs:
-  create-network:
-    name: create-network
+  loadtest:
+    name: loadtest
     runs-on: ubuntu-latest
     steps:
 
@@ -46,7 +46,7 @@ jobs:
         run: |
           mkdir -p networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
-      - id: create-network-manifests
+      - id: create_network_manifests
         name: create network manifests
         uses: docker://robinbryce/bbench:main
         with:
@@ -59,19 +59,12 @@ jobs:
             networks/${{ inputs.consensus }}${{ inputs.numnodes }}
             ${{ inputs.consensus }}
 
-      - id: setup-jupyter
-        name: setup jupyter
-        uses: docker://robinbryce/bbench:main
-        with:
-          args: >
-            jpycfg networks/${{ inputs.consensus }}${{ inputs.numnodes }}
-
-      - id: setup-kustomize
+      - id: setup_kustomize
         uses: imranismail/setup-kustomize@v1
         with:
           kustomize-version: "4.3.0"
 
-      - id: get-credentials
+      - id: get_credentials
         uses: google-github-actions/get-gke-credentials@main
         with:
           cluster_name: ${{ inputs.cluster_name }}
@@ -79,7 +72,17 @@ jobs:
           project_id: ${{ inputs.project_id }}
           credentials: ${{ secrets.gcp_project_key }}
 
-      - id: apply-network
+      - id: render_manifests
+        # if this step succeedes, the cleanup task will always run and always
+        # try to delete any running pods. apply-network may work but not wait
+        # long enough. And its always safe to delete based on the manifests we
+        # render here
+        name: "render manifests"
+        run: |
+          MANIFESTSDIR=networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }}
+          kustomize build $MANIFESTSDIR | tee rendered.yaml
+
+      - id: apply_network
         name: deploy network
         run: |
 
@@ -87,38 +90,8 @@ jobs:
           SLEEP=2
           NUMNODES=${{ inputs.numnodes }}
           NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
-          MANIFESTSDIR=networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }}
 
-          kustomize build $MANIFESTSDIR | tee rendered.yaml
-
-          # delete any previous network first
-
-          NRUNNING=$(kubectl -n $NAMESPACE \
-            get pods --selector=app.kubernetes.io/part-of=ethnet \
-            --output=jsonpath={.items..metadata.name} | wc -w)
-
-          if [ "$NRUNNING" != "0" ]; then
-
-            set +e
-            kustomize build ${MANIFESTSDIR} | kubectl -n $NAMESPACE delete -f rendered.yaml
-
-            while [ "$NRUNNING" != "0" ]; do
-
-              [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
-              ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
-
-              NRUNNING=$(kubectl -n $NAMESPACE \
-                get pods --selector=app.kubernetes.io/part-of=ethnet \
-                --output=jsonpath={.items..metadata.name} | wc -w)
-
-              echo "Waiting for $NRUNNING to terminate (attempts left $ATTEMPTS_REMAINING, sleeping for ${SLEEP}s)"
-              sleep ${SLEEP}
-            done
-            set -e
-          fi
-
-          kustomize build ${MANIFESTSDIR} \
-            | kubectl -n $NAMESPACE apply -f rendered.yaml
+          kubectl -n $NAMESPACE apply -f rendered.yaml
 
           ATTEMPTS_REMAINING=40
           while true; do
@@ -127,7 +100,6 @@ jobs:
               --output=jsonpath={.items..metadata.name} | wc -w)
 
             [ "${NRUNNING}" == "${NUMNODES}" ] && break
-
             [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
             ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
 
@@ -135,17 +107,17 @@ jobs:
             sleep ${SLEEP}
           done
 
-      - id: checkout-main
+      - id: checkout_main
         uses: actions/checkout@v2
         with:
           path: main
 
-      - id: setup-go
+      - id: setup_go
         uses: actions/setup-go@v2
         with:
           go-version: 1.15.15
 
-      - id: generate-load
+      - id: generate_load
         name: generate transaction load
         run: |
 
@@ -200,14 +172,21 @@ jobs:
           cp -v main/go/bbencheth/results.db networks/${NAME}/${NAMESPACE}.db
           cat networks/${NAME}/parameters.yml
 
-      - id: generate-graphs
+      - id: setup_jupyter
+        name: setup jupyter
+        uses: docker://robinbryce/bbench:main
+        with:
+          args: >
+            jpycfg networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+
+      - id: generate_graphs
         name: generate graphs
         uses: docker://robinbryce/bbench:main
         with:
           args: >
             jpyrender networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
-      - id: archive-plots
+      - id: archive_plots
         name: archive results
         run: |
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
@@ -220,23 +199,23 @@ jobs:
           ls ../../results-${NAME}-${GITHUB_RUN_NUMBER}/
           echo ../../results-${NAME}-${GITHUB_RUN_NUMBER}
 
-      - id: upload-results
+      - id: upload_results
         name: upload results
         uses: actions/upload-artifact@v2
         with:
           name: results-${{ inputs.consensus }}${{ inputs.numnodes }}
           path: results-${{ inputs.consensus }}${{ inputs.numnodes }}-*
 
-      - id: delete-network
+      - id: delete_network
         name: delete network
+        if: ${{ steps.render_manifests.outcome == 'success' }}
         run: |
 
-          ATTEMPTS_REMAINING=40
-          SLEEP=2
-          NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
-          MANIFESTSDIR=networks/${{ inputs.consensus }}${{ inputs.numnodes }}/${{ inputs.consensus }}
+          [ ! -f rendered.yaml ] && echo "rendered.yaml missing" && exit 1
 
-          kustomize build $MANIFESTSDIR | tee rendered.yaml
+          ATTEMPTS_REMAINING=40
+          SLEEP=4
+          NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
 
           NRUNNING=$(kubectl -n $NAMESPACE \
             get pods --selector=app.kubernetes.io/part-of=ethnet \
@@ -245,7 +224,7 @@ jobs:
           if [ "$NRUNNING" != "0" ]; then
 
             set +e
-            kustomize build ${MANIFESTSDIR} | kubectl -n $NAMESPACE delete -f rendered.yaml
+            kubectl -n $NAMESPACE delete -f rendered.yaml
 
             while [ "$NRUNNING" != "0" ]; do
 
