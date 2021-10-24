@@ -58,6 +58,10 @@ FROM python:3.9-slim-bullseye
 ENV YQ_BINARY=yq_linux_amd64
 ENV YQ_VERSION=v4.12.0
 ENV TUSK_VERSION latest
+ENV PATH /usr/local/bin:${PATH}
+ENV BBENCH_GETH_BIN=/usr/local/bin/geth
+ENV BBENCH_GETH_RRR_BIN=/usr/local/bin/geth-rrr
+ENV BBENCH_RRRCTL_BIN=/usr/local/bin/rrrctl
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
   && apt-get upgrade -y --no-install-recommends \

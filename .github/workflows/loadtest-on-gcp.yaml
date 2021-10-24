@@ -25,6 +25,7 @@ on:
       profile:
         description: 'name of a blockbench profile ({consensus}-k8s-{profile}.json in blockbench/configs). defaults to numnodes'
         type: string
+
     secrets:
       gcp_project_key:
         description: >
@@ -106,6 +107,13 @@ jobs:
             echo "${NRUNNING} of ${NUMNODES} running. (attempts left $ATTEMPTS_REMAINING,  sleeping for ${SLEEP}s)"
             sleep ${SLEEP}
           done
+
+          # ibft and rrr consensus require that blocks are continualy minted.
+          # for that style of consensus, we wait for a block to be minted
+          # before calling the deployment successful. raft only mints if there
+          # are transactions to mine this wont work. but raft is ready to go as
+          # soon as the nodes are ready.
+          # TODO: if ibft or rrr wait for next block
 
       - id: checkout_main
         uses: actions/checkout@v2
