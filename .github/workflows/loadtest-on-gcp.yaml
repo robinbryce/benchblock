@@ -93,7 +93,9 @@ jobs:
 
           ATTEMPTS_REMAINING=120
           SLEEP=2
+          CONSENSUS=${{ inputs.consensus }}
           NUMNODES=${{ inputs.numnodes }}
+          BOOTNODES=${{ inputs.bootnodes }}
           NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
 
           kubectl -n $NAMESPACE apply -f rendered.yaml
@@ -118,9 +120,8 @@ jobs:
           # are transactions to mine this wont work. but raft is ready to go as
           # soon as the nodes are ready.
           # TODO: if ibft or rrr wait for next block
-          [ "${consensus}" == "raft" ] && echo "raft network ready" && exit 0
+          [ "${CONSENSUS}" == "raft" ] && echo "raft network ready" && exit 0
 
-          BOOTNODES="${bootnodes}"
           NODENAME=ethnode0-0
           [ $((BOOTNODES > 0 )) == 1 ] && NODENAME=ethnodeboot0-0
 
