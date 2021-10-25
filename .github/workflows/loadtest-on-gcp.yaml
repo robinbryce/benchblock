@@ -120,7 +120,10 @@ jobs:
           # TODO: if ibft or rrr wait for next block
           [ "${consensus}" == "raft" ] && echo "raft network ready" && exit 0
 
-          NODENAME=ethnode$([ -n "${bootnodes}" ] && echo "boot")0-0
+          BOOTNODES="${bootnodes}"
+          NODENAME=ethnode0-0
+          [ $((BOOTNODES > 0 )) == 1 ] && NODENAME=ethnodeboot0-0
+
           STARTBLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
             geth attach /data/node/geth.ipc --exec eth.blockNumber)
 
@@ -159,7 +162,10 @@ jobs:
 
           pushd networks/${NAME}
 
-          NODENAME=ethnode$([ -n "${bootnodes}" ] && echo "boot")0-0
+          BOOTNODES="${bootnodes}"
+          NODENAME=ethnode0-0
+          [ $((BOOTNODES > 0 )) == 1 ] && NODENAME=ethnodeboot0-0
+
           STARTBLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
             geth attach /data/node/geth.ipc --exec eth.blockNumber)
 
