@@ -70,14 +70,13 @@ run:
         nodesdir = os.environ['BBENCH_NODESDIR']
         namespace = os.environ['BBENCH_NAME']
         consensus = os.environ['BBENCH_CONSENSUS']
-        numbootnodes = int(os.environ['NUM_BOOTNODES'])
         for i, u in enumerate(json.load(open(f"{nodesdir}/static-nodes.json"))):
           u = urlparse(u)
           if u.hostname != f"node{i}":
             print(f"ERROR: static nodes declared in unexpected order or just plain wrong")
             sys.exit(1)
 
-          nodename = f"ethnodeboot{i}" if i < numbootnodes else f"ethnode{i}"
+          nodename = f"ethnode{i}"
           u = urlunparse((u.scheme, f"{u.username}@{nodename}-0.{nodename}.{namespace}.svc.cluster.local:{u.port}", '', '', u.query, ''))
           nodes.append(u)
         json.dump(nodes, open(f"{consensus}/network/static-nodes.json", "w"), sort_keys=True, indent=True)
@@ -98,7 +97,7 @@ run:
         echo "NUM_BOOTNODES=${NUM_BOOTNODES}" >> rrr/network/bootnodes.env
         for i in $(seq 0 $((${NUM_BOOTNODES} - 1))); do
           echo "BOOTNODE_PUB${i}=$(cat ${BBENCH_NODESDIR}/node${i}/enode)" >> rrr/network/bootnodes.env
-          echo "BOOTNODE_HOST${i}=ethnodeboot${i}-0.ethnodeboot${i}.${BBENCH_NAME}.svc.cluster.local" >> rrr/network/bootnodes.env
+          echo "BOOTNODE_HOST${i}=ethnode${i}-0.ethnode${i}.${BBENCH_NAME}.svc.cluster.local" >> rrr/network/bootnodes.env
         done
         cat rrr/network/bootnodes.env
         echo "Wrote ${NUM_BOOTNODES} bootnodes to rrr/network/bootnodes.env"
@@ -142,6 +141,7 @@ run:
         for i in $(seq 0 $((${NUM_BOOTNODES} - 1))); do
           NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
           .commonLabels.app += env(NODENUM) |
+          .commonLabels.bootnode = strenv(NODENUM) |
           .commonLabels."app.kubernetes.io/name" += env(NODENUM) |
           .resources[0] = "./../../../base/rrr/bootnode"' \
             ${TUSKDIR}/k8s/rrr/nodes/node0/kustomization.yaml \

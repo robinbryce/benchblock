@@ -242,20 +242,6 @@ tasks:
             START=${start}
             END=${end}
 
-            if [ "${bootnodes}" != 0 ]; then
-
-              END=$((${START} + ${bootnodes}))
-
-              for i in $(seq ${START} $((${END} - 1))); do
-                PORT=$(printf '83%02d' ${i})
-                CMD="(kubectl ${CONTEXT:+--context ${CONTEXT}} port-forward -n ${namespace} ethnodeboot${i}-0 ${PORT}:8300)"
-                COMMANDS="${COMMANDS} $CMD &"
-              done
-
-              START=$((${START} + ${bootnodes}))
-              END=${end}
-            fi
-
             for i in $(seq ${START} $((${END} - 1))); do
               PORT=$(printf '83%02d' ${i})
               CMD="(kubectl ${CONTEXT:+--context ${CONTEXT}} port-forward -n ${namespace} ethnode${i}-0 ${PORT}:8300)"
@@ -839,7 +825,6 @@ tasks:
 
             i=${node}
             POD=rrr-ethnode${i}-0
-            [[ $i -lt ${BBENCH_NUMBOOTNODES} ]] && POD=rrr-ethnodeboot${i}-0
             export POD
 
             kubectl \

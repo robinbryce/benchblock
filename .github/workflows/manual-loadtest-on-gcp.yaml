@@ -22,10 +22,6 @@ on:
         description: 'number of nodes required in the network'
         type: string
         default: "3"
-      bootnodes:
-        description: 'number of bootstrap nodes'
-        type: string
-        default: ""
 
       profile:
         description: 'name of a blockbench profile ({consensus}-k8s-{profile}.json in blockbench/configs). defaults to numnodes'
@@ -41,7 +37,6 @@ jobs:
       consensus: ${{ github.event.inputs.consensus }}
       profile: ${{ github.event.inputs.profile }}
       numnodes: ${{ github.event.inputs.numnodes }}
-      bootnodes: ${{ github.event.inputs.bootnodes }}
 
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
