@@ -8,9 +8,9 @@ configMapGenerator:
   - BOOTNODE_PUB1=
   - BOOTNODE_HOST1=
   #- >-
-  #  BOOTNODE0_DNS=bootnode-0.bootnode.queth.svc.cluster.local
+  #  BOOTNODE0_DNS=ethnode0-0.ethnode0.queth.svc.cluster.local
   #- >-
-  #  BOOTNODE1_DNS=bootnode-1.bootnode.queth.svc.cluster.local
+  #  BOOTNODE1_DNS=ethnode1-0.ethnode1.queth.svc.cluster.local
   #- >-
   - METRICS_OPTS=
   #  --metrics --metrics.addr 0.0.0.0 --metrics.port 6060

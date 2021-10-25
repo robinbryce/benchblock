@@ -34,7 +34,6 @@ jobs:
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 5
-      bootnodes: 2
 
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
