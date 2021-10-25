@@ -188,7 +188,7 @@ jobs:
 
           done
 
-          ENDBLOCK=$(kubectl exec -n $NAMESPACE ethnode0-0 -- \
+          ENDBLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
             geth attach /data/node/geth.ipc \
               --exec eth.blockNumber)
 
@@ -198,7 +198,7 @@ jobs:
 
           # TODO bbencheth collect the blocks
           echo "loadtest complete"
-          kubectl port-forward -n $NAMESPACE ethnode0-0 8300:8300 &
+          kubectl port-forward -n $NAMESPACE $NODENAME 8300:8300 &
           PF_PID=$!
 
           pushd main/go/bbencheth
