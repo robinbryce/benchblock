@@ -117,7 +117,7 @@ jobs:
           # are transactions to mine this wont work. but raft is ready to go as
           # soon as the nodes are ready.
           # TODO: if ibft or rrr wait for next block
-          [ "${consensus}" == "raft" ] && exit 0
+          [ "${consensus}" == "raft" ] && echo "raft network ready" && exit 0
 
           NODENAME=ethnode$([ -n "${bootnodes}" ] && echo "boot")0-0
           STARTBLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
@@ -135,6 +135,7 @@ jobs:
             [ "$STARTBLOCK" != "$BLOCK" ] && echo "eth.blockNumber changed: $STARTBLOCK -> $BLOCK" && exit 0
 
           done
+          echo "network ready"
 
       - id: checkout_main
         uses: actions/checkout@v2
