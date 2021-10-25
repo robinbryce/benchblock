@@ -160,10 +160,10 @@ jobs:
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           NAMESPACE=github-$NAME
           SLEEP=4
+          BOOTNODES=${{ inputs.bootnodes }}
 
           pushd networks/${NAME}
 
-          BOOTNODES="${bootnodes}"
           NODENAME=ethnode0-0
           [ $((BOOTNODES > 0 )) == 1 ] && NODENAME=ethnodeboot0-0
 
