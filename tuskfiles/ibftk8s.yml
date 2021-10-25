@@ -5,7 +5,7 @@ options:
   networkid:
     default: "53456"
   numbootnodes:
-    default: 2
+    default: 0
     short: b
     type: int
   gastarget:
