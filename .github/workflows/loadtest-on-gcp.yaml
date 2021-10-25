@@ -89,6 +89,7 @@ jobs:
       - id: apply_network
         name: deploy network
         run: |
+          set -ex
 
           ATTEMPTS_REMAINING=120
           SLEEP=2
@@ -104,7 +105,7 @@ jobs:
               --output=jsonpath={.items..metadata.name} | wc -w)
 
             [ "${NRUNNING}" == "${NUMNODES}" ] && break
-            [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
+            [ "$ATTEMPTS_REMAINING" == "0" ] && echo "attempts exhausted" && exit -1
             ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
 
             echo "${NRUNNING} of ${NUMNODES} running. (attempts left $ATTEMPTS_REMAINING,  sleeping for ${SLEEP}s)"
