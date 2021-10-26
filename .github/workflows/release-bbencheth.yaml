@@ -23,4 +23,3 @@ jobs:
         goversion: "1.15"
         project_path: "./main/go/bbencheth"
         binary_name: "bbencheth"
-        extra_files: LICENSE README.md
