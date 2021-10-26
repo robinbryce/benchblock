@@ -1,5 +1,7 @@
 # blockbench
 
+[![Load test one configuration for each consensus alg](https://github.com/robinbryce/blockbench/actions/workflows/loadtest-each-consensus.yaml/badge.svg)](https://github.com/robinbryce/blockbench/actions/workflows/loadtest-each-consensus.yaml)
+
 Tools to explore the performance characteristics of different etherum/quorum
 private network deployments. Emphasis is given to fast creation and
 re-configuration of different shaped networks. Read "bench" as in work/bench
@@ -10,6 +12,7 @@ Features
 * Single command to create kustomize manifests for ibft, raft or rrr[^1] network.
 * Single command to create docker-compose setup for ibft, raft or rrr[^1] network.
 * Loadtesting tool with output to chainhammer compatible db format
+* GitHub action automation example using kubernetes job to run in-cluster loadtest
 * Single command graph generation & reports (markdown, jupytext,
   papermill).
   ![raft-example](examples/raft5-compose-plot-combined.png)
