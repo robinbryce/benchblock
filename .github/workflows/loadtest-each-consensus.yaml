@@ -1,4 +1,4 @@
-name: "Load test one configuration for each consensus alg"
+name: "raft, ibft and rrr loadtests"
 on:
   workflow_dispatch:
 jobs:
