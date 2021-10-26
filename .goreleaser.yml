@@ -9,6 +9,8 @@ builds:
     main: .
     goos:
       - linux
+      - darwin
+      - windows
     goarch:
       - amd64
     ldflags:
