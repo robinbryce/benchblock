@@ -13,7 +13,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/robinbryce/blockbench/bbencheth/cmd"
+	"github.com/robinbryce/benchblock/bbencheth/cmd"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

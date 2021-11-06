@@ -7,8 +7,8 @@ import os
 from setuptools import setup, find_packages
 
 HERE = os.path.dirname(__file__)
-REPO_URL = 'https://github.com/robinbryce/blockbench/jupyiter-support/'
-NAME = "blockbench-plots"
+REPO_URL = 'https://github.com/robinbryce/benchblock/jupyiter-support/'
+NAME = "benchblock-plots"
 
 with open(os.path.join(HERE, 'README.md')) as FF:
     DESC = FF.read()
@@ -20,7 +20,7 @@ setup(
     name=NAME,
     author="Robin Bryce",
     author_email="robinbryce@gmail.com",
-    description="Jupyter & jupytext notebook support for blockbench",
+    description="Jupyter & jupytext notebook support for benchblock",
     long_description=DESC,
     long_description_content_type="text/markdown",
     url=REPO_URL,

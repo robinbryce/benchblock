@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
 jobs:
   raft3:
-    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
       project_id: "fetlar-1"
       location: "europe-west2-a"
@@ -15,7 +15,7 @@ jobs:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
 
   ibft5:
-    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
       project_id: "fetlar-1"
       location: "europe-west2-a"
@@ -27,7 +27,7 @@ jobs:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
 
   rrr5:
-    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp.yaml@main
+    uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
       project_id: "fetlar-1"
       location: "europe-west2-a"
