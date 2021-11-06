@@ -1,6 +1,6 @@
-# blockbench
+# benchblock
 
-[![Load test one configuration for each consensus alg](https://github.com/robinbryce/blockbench/actions/workflows/loadtest-each-consensus.yaml/badge.svg)](https://github.com/robinbryce/blockbench/actions/workflows/loadtest-each-consensus.yaml)
+[![Load test one configuration for each consensus alg](https://github.com/robinbryce/benchblock/actions/workflows/loadtest-each-consensus.yaml/badge.svg)](https://github.com/robinbryce/benchblock/actions/workflows/loadtest-each-consensus.yaml)
 
 Tools to explore the performance characteristics of different etherum/quorum
 private network deployments. Emphasis is given to fast creation and
@@ -47,7 +47,7 @@ docker-compose logs -f node1
 # watch the log for a bit to see that raft a peercount=4 in the logs
 
 # Run the load generation tool (from source for now)
-cd ../blockbench/go/bbencheth
+cd ../benchblock/go/bbencheth
 go run main.go -e http://127.0.0.1:8300/  load -t 5 -a 3 --dbsource ~/workspace/raft5/raft5.db
 
 cd ~/workspace/raft5
@@ -122,7 +122,7 @@ QUORUM_SRC refers to the location of your geth clone and DELVE_IMAGE has the
 name of an approprate delve image. See the example [Dockerfile](./compose/delve-debug/Dockerfile-delve). If you want to use the example, then
 
 ```
-cd ~/workspace/blockbench/compose/delv-debug
+cd ~/workspace/benchblock/compose/delv-debug
 docker build . -f Dockerfile-delve -t geth-delve:latest
 ```
 
@@ -167,7 +167,7 @@ We provide a docker image as an alternative to installing the tools described be
 
 Is equivelant to installing all the host tools and running
 
-`tusk -qf blockbench/tusk.yml`
+`tusk -qf benchblock/tusk.yml`
 
 ## Host (linux)
 
@@ -200,8 +200,8 @@ $(cd quorum && git checkout v21.4.1)
 # Install go-task and alias the main entry point
 curl -sL https://git.io/tusk | bash -s -- -b ~/.local/bin latest
 
-git clone https://github.com/robinbryce/blockbench.git
-alias bbench='tusk -qf ~/workspace/blockbench/tusk.yml'
+git clone https://github.com/robinbryce/benchblock.git
+alias bbench='tusk -qf ~/workspace/benchblock/tusk.yml'
 ```
 
 Please see [go-tusk](https://github.com/rliebz/tusk#readme), [yq](https://github.com/mikefarah/yq/blob/master/README.md) for up to installation details and information for other platforms.

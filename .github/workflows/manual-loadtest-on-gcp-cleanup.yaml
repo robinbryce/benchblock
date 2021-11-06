@@ -15,7 +15,7 @@ on:
         type: string
         default: "kluster"
       consensus:
-        description: 'The name of a consensus scheme supported by blockbench. Eg, raft ibft or rrr'
+        description: 'The name of a consensus scheme supported by benchblock. Eg, raft ibft or rrr'
         type: string
         default: 'raft'
       numnodes:
@@ -23,12 +23,12 @@ on:
         type: string
         default: "3"
       profile:
-        description: 'name of a blockbench profile ({consensus}-k8s-{profile}.json in blockbench/configs). defaults to numnodes'
+        description: 'name of a benchblock profile ({consensus}-k8s-{profile}.json in benchblock/configs). defaults to numnodes'
         type: string
         default: ""
 jobs:
   run-loadtest-on-gcp-cleanup:
-    uses: robinbryce/blockbench/.github/workflows/loadtest-on-gcp-cleanup.yaml@main
+    uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp-cleanup.yaml@main
     with:
       project_id: ${{ github.event.inputs.project_id }}
       location: ${{ github.event.inputs.location }}

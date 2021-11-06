@@ -1,1 +1,1 @@
-# Jupyter & jupytext notebook support for blockbench
+# Jupyter & jupytext notebook support for benchblock

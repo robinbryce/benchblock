@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/robinbryce/blockbench/bbencheth/client"
-	"github.com/robinbryce/blockbench/bbencheth/root"
+	"github.com/robinbryce/benchblock/bbencheth/client"
+	"github.com/robinbryce/benchblock/bbencheth/root"
 )
 
 const (

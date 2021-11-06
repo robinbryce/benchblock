@@ -12,7 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/robinbryce/blockbench/bbencheth/client"
+	"github.com/robinbryce/benchblock/bbencheth/client"
 )
 
 type BlockDB struct {

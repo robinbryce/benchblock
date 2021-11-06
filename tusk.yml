@@ -1,5 +1,5 @@
 interpreter: bash -c
-name: blockbench
+name: benchblock
 usage: |
 
   Use the `new' command to create a full configuration for a supported
@@ -335,7 +335,7 @@ tasks:
             else:
               pyenvdir = configdir.joinpath("env").resolve()
 
-            # The configuration defaults come from the appropriate blockbench
+            # The configuration defaults come from the appropriate benchblock
             # profile for the consensus and deployment method
             deploymode="k8s"
             if "${k8s}" != "true":
