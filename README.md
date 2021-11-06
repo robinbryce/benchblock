@@ -39,7 +39,7 @@ Having completed [Setup](#Setup), these are the steps to deploy and load test a 
 
 cd ~/workspace
 
-bbench new -n 5 raft5 raft
+bbake new -n 5 raft5 raft
 cd raft5
 
 docker-compose up -d
@@ -47,12 +47,12 @@ docker-compose logs -f node1
 # watch the log for a bit to see that raft a peercount=4 in the logs
 
 # Run the load generation tool (from source for now)
-cd ../benchblock/go/bbencheth
+cd ../benchblock/go/bbeth
 go run main.go -e http://127.0.0.1:8300/  load -t 5 -a 3 --dbsource ~/workspace/raft5/raft5.db
 
 cd ~/workspace/raft5
-bbench jpycfg .
-bbench jpyrender .
+bbake jpycfg .
+bbake jpyrender .
 ```
 
 Then open standard-plots.html (it is self contained)
@@ -70,21 +70,21 @@ Follow the instructions in the log to access the environment in your browser
 # k8s - raft
 
 ```sh
-bbench new -k raftk8 raft
+bbake new -k raftk8 raft
 kustomize build raftk8/raft | kubectl apply -f -
 ```
 
 # k8s - ibft
 
 ```sh
-bbench new -k ibftk8 ibft
+bbake new -k ibftk8 ibft
 kustomize build ibftk8/ibft | kubectl apply -f -
 ```
 
 
 # k8s - rrr
 ```sh
-bbench new -k -p small rrrk8 rrr
+bbake new -k -p small rrrk8 rrr
 kustomize build rrr30k/rrr | kubectl apply -f -
 ```
 
@@ -163,7 +163,7 @@ the quorum clone according to the Setup section, the defaults should be ok.
 
 We provide a docker image as an alternative to installing the tools described below. 
 
-`docker run -u $(id -u):$(id -g) -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbench`
+`docker run -u $(id -u):$(id -g) -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake`
 
 Is equivelant to installing all the host tools and running
 
@@ -201,7 +201,7 @@ $(cd quorum && git checkout v21.4.1)
 curl -sL https://git.io/tusk | bash -s -- -b ~/.local/bin latest
 
 git clone https://github.com/robinbryce/benchblock.git
-alias bbench='tusk -qf ~/workspace/benchblock/tusk.yml'
+alias bbake='tusk -qf ~/workspace/benchblock/tusk.yml'
 ```
 
 Please see [go-tusk](https://github.com/rliebz/tusk#readme), [yq](https://github.com/mikefarah/yq/blob/master/README.md) for up to installation details and information for other platforms.
@@ -210,7 +210,7 @@ The [go-quorum](https://github.com/ConsenSys/quorum.git) clone clone is needed t
 
 # Smoke test all supported consensus methods
 
-`for cc in raft ibft rrr; do bbench new ${cc}default ${cc}; done` Then cd into
+`for cc in raft ibft rrr; do bbake new ${cc}default ${cc}; done` Then cd into
 each of raftdefault, ibftdefault and rrrdefault in turn and do `docker-compose
 up`
 

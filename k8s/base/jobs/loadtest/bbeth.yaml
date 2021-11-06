@@ -16,27 +16,27 @@ spec:
           projected:
             sources:
               - configMap:
-                  name: bbencheth-target-nodes-cfg
+                  name: bbeth-target-nodes-cfg
                   items:
                     # the static-nodes.json in the base is intentionaly empty.
                     - key: static-nodes.json
                       path: static-nodes.json
               - configMap:
-                  name: bbencheth-cfg
+                  name: bbeth-cfg
                   items:
-                    # the bbencheth.json in the base is valid but only targets a
+                    # the bbeth.json in the base is valid but only targets a
                     # single node.
-                    - key: bbencheth.json
-                      path: bbencheth.json
+                    - key: bbeth.json
+                      path: bbeth.json
         - name: results
           # XXX: frustratingly the emptyDir can not be read by kubectl cp after
           # the job completes. will need to do something else here.
           emptyDir: {}
       containers:
-        - name: bbencheth
-          image: robinbryce/bbencheth:main
+        - name: bbeth
+          image: robinbryce/bbeth:main
           imagePullPolicy: Always
-          command: ["bbencheth", "load", "--config", "/config/bbencheth.json"]
+          command: ["bbeth", "load", "--config", "/config/bbeth.json"]
           volumeMounts:
             - name: config
               mountPath: /config

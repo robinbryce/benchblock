@@ -1,11 +1,11 @@
-project_name: bbencheth
+project_name: bbeth
 release:
   draft: false
 
 builds:
   -
-    binary: bbencheth
-    dir: go/bbencheth
+    binary: bbeth
+    dir: go/bbeth
     main: .
     goos:
       - linux

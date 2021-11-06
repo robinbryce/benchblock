@@ -51,7 +51,7 @@ run:
 
         source ${BBENCH_PYENV}/bin/activate
 
-        KERNEL=bbench-${BBENCH_NAME}
+        KERNEL=bbake-${BBENCH_NAME}
 
         [ -z ${DBFILE} ] && DBFILE=${BBENCH_NAME}.db
 

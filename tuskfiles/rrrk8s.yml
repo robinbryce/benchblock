@@ -104,12 +104,12 @@ run:
 
         # kustomizations for jobs
         cp -v rrr/network/static-nodes.json jobs/loadtest
-        cat base/jobs/loadtest/bbencheth.json | jq -r \
-          '.bbencheth.load.transactions = 10000 |
-           .bbencheth.load.nodes = (env.BBENCH_MAXNODES|tonumber) |
-           .bbencheth.load.threads = (env.BBENCH_MAXNODES|tonumber)' \
-           > jobs/loadtest/bbencheth.json
-        echo "Wrote jobs/loadtest/bbencheth.json"
+        cat base/jobs/loadtest/bbeth.json | jq -r \
+          '.bbeth.load.transactions = 10000 |
+           .bbeth.load.nodes = (env.BBENCH_MAXNODES|tonumber) |
+           .bbeth.load.threads = (env.BBENCH_MAXNODES|tonumber)' \
+           > jobs/loadtest/bbeth.json
+        echo "Wrote jobs/loadtest/bbeth.json"
         yq eval ".namespace = \"$BBENCH_NAME\"" \
           ${TUSKDIR}/k8s/jobs/loadtest/kustomization.yaml | \
           tee jobs/loadtest/kustomization.yaml

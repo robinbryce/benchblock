@@ -49,7 +49,7 @@ jobs:
 
       - id: create_network_manifests
         name: create network manifests
-        uses: docker://robinbryce/bbench:main
+        uses: docker://robinbryce/bbake:main
         with:
           args: >
             new
@@ -189,30 +189,30 @@ jobs:
 
           RESULTSDIR=$(pwd)
 
-          # TODO bbencheth collect the blocks
+          # TODO bbeth collect the blocks
           echo "loadtest complete"
           kubectl port-forward -n $NAMESPACE $NODENAME 8300:8300 &
           PF_PID=$!
 
-          pushd main/go/bbencheth
+          pushd main/go/bbeth
 
           echo "STARTBLOCK: $STARTBLOCK, ENDBLOCK: $ENDBLOCK"
           go run main.go -e http://127.0.0.1:8300 --no-progress \
             collect --dbsource results.db -s $STARTBLOCK --endblock $ENDBLOCK
 
           popd
-          cp -v main/go/bbencheth/results.db networks/${NAME}/${NAMESPACE}.db
+          cp -v main/go/bbeth/results.db networks/${NAME}/${NAMESPACE}.db
 
       - id: setup_jupyter
         name: setup jupyter
-        uses: docker://robinbryce/bbench:main
+        uses: docker://robinbryce/bbake:main
         with:
           args: >
             jpycfg networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
       - id: generate_graphs
         name: generate graphs
-        uses: docker://robinbryce/bbench:main
+        uses: docker://robinbryce/bbake:main
         with:
           args: >
             jpyrender networks/${{ inputs.consensus }}${{ inputs.numnodes }}

@@ -18,7 +18,7 @@ usage: |
 
   `jpcfg' readies a network configuration for collecting chainhammer compatible
   block data and `jpyrender' processes the data collected by the load
-  generation tool [see ](./go/bbencheth/main.go)
+  generation tool [see ](./go/bbeth/main.go)
 
   The other commands provide various conveniences
 
