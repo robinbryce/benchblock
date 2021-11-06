@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/robinbryce/benchblock/bbencheth/root"
+	"github.com/robinbryce/benchblock/bbeth/root"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

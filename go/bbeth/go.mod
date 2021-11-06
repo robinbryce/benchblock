@@ -1,4 +1,4 @@
-module github.com/robinbryce/benchblock/bbencheth
+module github.com/robinbryce/benchblock/bbeth
 
 go 1.15
 

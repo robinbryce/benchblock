@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/robinbryce/benchblock/bbencheth/collect"
-	"github.com/robinbryce/benchblock/bbencheth/load"
-	"github.com/robinbryce/benchblock/bbencheth/root"
+	"github.com/robinbryce/benchblock/bbeth/collect"
+	"github.com/robinbryce/benchblock/bbeth/load"
+	"github.com/robinbryce/benchblock/bbeth/root"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -21,7 +21,7 @@ var (
 	envPrefix = ""
 )
 
-// Config defines the overall aggregate configuration for bbencheth.
+// Config defines the overall aggregate configuration for bbeth.
 type Config struct {
 	root.Config
 	Collect collect.Config

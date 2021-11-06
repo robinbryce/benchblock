@@ -1,5 +1,5 @@
 {
-   "bbencheth": {
+   "bbeth": {
       "baseport": 8300,
       "eth": "http://localhost:8300",
       "collect": {

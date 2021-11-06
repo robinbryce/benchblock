@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	ConfigName = "bbencheth"
+	ConfigName = "bbeth"
 )
 
 type Config struct {

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/robinbryce/benchblock/bbencheth/client"
-	"github.com/robinbryce/benchblock/bbencheth/collect"
-	"github.com/robinbryce/benchblock/bbencheth/load"
-	"github.com/robinbryce/benchblock/bbencheth/root"
+	"github.com/robinbryce/benchblock/bbeth/client"
+	"github.com/robinbryce/benchblock/bbeth/collect"
+	"github.com/robinbryce/benchblock/bbeth/load"
+	"github.com/robinbryce/benchblock/bbeth/root"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

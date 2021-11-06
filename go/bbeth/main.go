@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/robinbryce/benchblock/bbencheth/cmd"
+	"github.com/robinbryce/benchblock/bbeth/cmd"
 )
 
 func main() {

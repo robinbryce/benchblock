@@ -19,9 +19,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/robinbryce/benchblock/bbencheth/client"
-	"github.com/robinbryce/benchblock/bbencheth/collect"
-	"github.com/robinbryce/benchblock/bbencheth/root"
+	"github.com/robinbryce/benchblock/bbeth/client"
+	"github.com/robinbryce/benchblock/bbeth/collect"
+	"github.com/robinbryce/benchblock/bbeth/root"
 )
 
 const (
