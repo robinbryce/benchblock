@@ -31,7 +31,7 @@ run:
 
         pip3 install -e ${TUSKDIR}/jupyter-support
 
-        KERNEL=bbench-${BBENCH_NAME}
+        KERNEL=bbake-${BBENCH_NAME}
         echo "KERNEL: ${KERNEL}"
         # --sys-prefix uses the *virtual-env* sys-prefix, which is what we
         # want

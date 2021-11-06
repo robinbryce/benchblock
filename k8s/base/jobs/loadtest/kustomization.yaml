@@ -1,11 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - bbencheth.yaml
+  - bbeth.yaml
 configMapGenerator:
-  - name: bbencheth-cfg
+  - name: bbeth-cfg
     files:
-      - bbencheth.json
-  - name: bbencheth-target-nodes-cfg
+      - bbeth.json
+  - name: bbeth-target-nodes-cfg
     files:
       - static-nodes.json

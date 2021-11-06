@@ -7,7 +7,7 @@ usage: >
 options:
 
   toolbin:
-    usage: path to the bbencheth binary. looks in $GOBIN by default
+    usage: path to the bbeth binary. looks in $GOBIN by default
     default: ""
   config:
     usage: config file, all options can be set in this
@@ -24,7 +24,7 @@ run:
         TUSKDIR=$(pwd)
 
         cd ${launchdir}
-        bbencheth=$GOBIN/bbencheth
-        [ -f "${toolbin}" ] && bbencheth="${toolbin}"
-        [ ! -f "${bbencheth}" ] && bbencheth="bbencheth"
-        ${bbencheth} --config "${config}" ${command}
+        bbeth=$GOBIN/bbeth
+        [ -f "${toolbin}" ] && bbeth="${toolbin}"
+        [ ! -f "${bbeth}" ] && bbeth="bbeth"
+        ${bbeth} --config "${config}" ${command}

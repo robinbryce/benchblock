@@ -6,18 +6,18 @@ FROM golang:1.15-buster as go-builder
 
 ENV GOBIN=/go/bin
 
-WORKDIR go/bbencheth
-COPY go/bbencheth/go.mod go/bbencheth/go.sum ./
+WORKDIR go/bbeth
+COPY go/bbeth/go.mod go/bbeth/go.sum ./
 RUN go mod download
 
-COPY go/bbencheth/cmd cmd
-COPY go/bbencheth/client client
-COPY go/bbencheth/collect collect
-COPY go/bbencheth/load load
-COPY go/bbencheth/root root
+COPY go/bbeth/cmd cmd
+COPY go/bbeth/client client
+COPY go/bbeth/collect collect
+COPY go/bbeth/load load
+COPY go/bbeth/root root
 
-COPY go/bbencheth/*.go .
-RUN find . && go build -o ${GOBIN}/bbencheth main.go
+COPY go/bbeth/*.go .
+RUN find . && go build -o ${GOBIN}/bbeth main.go
 
 # FROM quorumengineering/quorum:${QUORUM_TAG} as quorum (its an alpine image)
 FROM robustroundrobin/rrrctl:${RRRCTL_TAG} as rrrctl
@@ -41,7 +41,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libtool \
         gettext-base
 
-WORKDIR /bbench
+WORKDIR /bbake
 
 COPY requirements.txt requirements.txt
 COPY jupyter-support/requirements.txt jupyter-support/requirements.txt
@@ -76,9 +76,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
      | tar xz && mv ${YQ_BINARY} /usr/local/bin/yq
 
 
-WORKDIR /bbench
+WORKDIR /bbake
 
-COPY --from=go-builder /go/bin/bbencheth /usr/local/bin/bbencheth
+COPY --from=go-builder /go/bin/bbeth /usr/local/bin/bbeth
 COPY --from=quorum_rrr /usr/local/bin/geth /usr/local/bin/geth
 COPY --from=quorum_rrr /usr/local/bin/geth /usr/local/bin/geth-rrr
 COPY --from=rrrctl /usr/local/bin/rrrctl /usr/local/bin/rrrctl
@@ -94,4 +94,4 @@ COPY tuskfiles tuskfiles
 COPY tusk.yml tusk.yml
 COPY entrypoint.sh entrypoint.sh
 
-ENTRYPOINT [ "/bbench/entrypoint.sh" ]
+ENTRYPOINT [ "/bbake/entrypoint.sh" ]
