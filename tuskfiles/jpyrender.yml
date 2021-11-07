@@ -57,7 +57,7 @@ run:
 
         echo "KERNEL: ${KERNEL}"
 
-        set -ex
+        set -e
         cat standard-plots.md \
         | jupytext --from .md --to notebook --set-kernel ${KERNEL} --output - \
         | papermill \

@@ -30,7 +30,7 @@ run:
         - ${configdir}
   - command:
       exec: |
-        set -ex
+        set -e
         TUSKDIR=$(pwd)
 
         # read the config file fields into BBAKE_ vars.

@@ -2,10 +2,14 @@
 
 [![Load test one configuration for each consensus alg](https://github.com/robinbryce/benchblock/actions/workflows/loadtest-each-consensus.yaml/badge.svg)](https://github.com/robinbryce/benchblock/actions/workflows/loadtest-each-consensus.yaml)
 
-Tools to explore the performance characteristics of different etherum/quorum
+
+Tools to explore the behaviour and performance of different etherum/quorum
 private network deployments. Emphasis is given to fast creation and
-re-configuration of different shaped networks. Read "bench" as in work/bench
-rather than bench/mark.
+re-configuration of different shaped networks.
+
+Why benchblock ? A rubber bench block is typically placed on a work bench to
+absorb the shock of working metal or wire with a hammer.  Read "bench" as in
+work/bench rather than bench/mark.
 
 Features
 
@@ -23,9 +27,25 @@ Features
 * Directly running geth/quorum nodes from sources (go run on volume mounted sources)
 * Discovery enabled networks with bootnodes (rrr only for now, ibft and raft use static-nodes.json)
 
+
+# Related work
+
+## Chainhammer
+
 The jupyter charting support owes much to the
 [chainhammer](https://github.com/drandreaskrueger/chainhammer/blob/master/README.md)
 project, which also supports a broader range of ledgers.
+
+## Blockbench
+The blockbench [project](https://github.com/ooibc88/blockbench) &
+[paper](https://core.ac.uk/download/pdf/84912082.pdf) which take a deeper look
+at the performance of different platforms in the face of different smart
+contract use cases.
+
+## ConsenSys dev quickstart
+
+ConsenSys provid their own family of tools for configuring networks. The
+developer quickstart can be found [here](https://github.com/ConsenSys/quorum-dev-quickstart)
 
 [^1]: A pre-alpha implementation of this
   [paper](https://arxiv.org/pdf/1804.07391.pdf) for go-ethereum. Testing and

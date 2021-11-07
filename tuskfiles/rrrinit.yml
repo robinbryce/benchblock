@@ -15,7 +15,7 @@ run:
         - ${configdir}
   - command:
       exec: |
-        set -ex
+        set -e
 
         TUSKDIR=$(pwd)
 

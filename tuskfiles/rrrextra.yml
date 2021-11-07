@@ -17,7 +17,7 @@ run:
 
   - command:
       exec: |
-        set -ex
+        set -e
 
         # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance rrrctl_image"
