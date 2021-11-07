@@ -33,7 +33,7 @@ run:
           ALPHAS="$ALPHAS ${BBENCH_NODESDIR}/node${n}/alpha.json"
         done
 
-        env | grep bbake
+        env | grep BBENCH
 
         RRRCTL_CMD="docker run --rm -u $(id -u):$(id -g) -v ${BBENCH_NODESDIR}:${BBENCH_NODESDIR} ${BBENCH_RRRCTL_IMAGE}"
         [ -n "${BBENCH_RRRCTL_BIN}" ] && RRRCTL_CMD="${BBENCH_RRRCTL_BIN}"
