@@ -12,7 +12,7 @@ run:
 
   - command:
       exec: |
-        set -e
+        set -ex
 
         # read the config file fields into BBENCH_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"

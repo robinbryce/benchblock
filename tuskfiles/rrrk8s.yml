@@ -30,7 +30,7 @@ run:
         - ${configdir}
   - command:
       exec: |
-        set -e
+        set -ex
         TUSKDIR=$(pwd)
 
         # read the config file fields into BBENCH_ vars.
