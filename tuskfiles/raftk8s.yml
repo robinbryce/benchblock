@@ -33,7 +33,7 @@ run:
         set -e
         TUSKDIR=$(pwd)
 
-        # read the config file fields into BBENCH_ vars.
+        # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
@@ -45,12 +45,12 @@ run:
 
         export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
         export CONSENSUS_OPTS="\
-        --raft --raftport 50000 --raftdnsenable --raftblocktime ${BBENCH_RAFT_BLOCKTIME}
+        --raft --raftport 50000 --raftdnsenable --raftblocktime ${BBAKE_RAFT_BLOCKTIME}
         "
 
         mkdir -p raft/network
-        cp ${BBENCH_NODESDIR}/genesis.json raft/network
-        cp ${BBENCH_NODESDIR}/static-nodes.json raft/network
+        cp ${BBAKE_NODESDIR}/genesis.json raft/network
+        cp ${BBAKE_NODESDIR}/static-nodes.json raft/network
 
         # this assumes static-nodes.json is generated for compose with the hosts listed in
         # ascending order node0, node1 ...
@@ -59,8 +59,8 @@ run:
         import os, json
         from urllib.parse import urlparse, urlunparse
         nodes = []
-        nodesdir = os.environ['BBENCH_NODESDIR']
-        namespace = os.environ['BBENCH_NAME']
+        nodesdir = os.environ['BBAKE_NODESDIR']
+        namespace = os.environ['BBAKE_NAME']
         numbootnodes = int(os.environ['NUM_BOOTNODES'])
         for i, u in enumerate(json.load(open(f"{nodesdir}/static-nodes.json"))):
           u = urlparse(u)
@@ -79,7 +79,7 @@ run:
         NETWORKID=${networkid}
         DISCOVERY_OPTS=--nodiscover
         ETHERBASE=${ETHERBASE}
-        GETH_IMAGE= ${BBENCH_GETH_IMAGE}
+        GETH_IMAGE= ${BBAKE_GETH_IMAGE}
         GAS_OPTS=$GAS_OPTS
         LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
         END
@@ -90,18 +90,18 @@ run:
         cp -v raft/network/static-nodes.json jobs/loadtest
         cat base/jobs/loadtest/bbeth.json | jq -r \
           '.bbeth.load.transactions = 1000 |
-           .bbeth.load.nodes = (env.BBENCH_MAXNODES|tonumber) |
-           .bbeth.load.threads = (env.BBENCH_MAXNODES|tonumber)' \
+           .bbeth.load.nodes = (env.BBAKE_MAXNODES|tonumber) |
+           .bbeth.load.threads = (env.BBAKE_MAXNODES|tonumber)' \
            > jobs/loadtest/bbeth.json
         echo "Wrote jobs/loadtest/bbeth.json"
-        yq eval ".namespace = \"$BBENCH_NAME\"" \
+        yq eval ".namespace = \"$BBAKE_NAME\"" \
           ${TUSKDIR}/k8s/jobs/loadtest/kustomization.yaml | \
           tee jobs/loadtest/kustomization.yaml
         echo "Wrote jobs/loadtest/kustomization.yaml"
 
         # kustomizations for the nodes
         start=0
-        end=$(($BBENCH_MAXNODES - 1))
+        end=$(($BBAKE_MAXNODES - 1))
         for i in $(seq $start $end); do
           NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
           .commonLabels.app += env(NODENUM) |
@@ -113,13 +113,13 @@ run:
         done
 
         # volumes for all the nodes. no transformation required
-        for i in $(seq 0 $((${BBENCH_MAXNODES} - 1))); do
+        for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
           cp ${TUSKDIR}/k8s/raft/nodes/node0/statefulset-volumes.yaml raft/nodes/node${i}/statefulset-volumes.yaml
           cat raft/nodes/node${i}/statefulset-volumes.yaml
           echo "Wrote: raft/nodes/node${i}/statefulset-volumes.yaml"
         done
 
-        for i in $(seq 0 $((${BBENCH_MAXNODES} - 1))); do
+        for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
         echo "- ./../nodes/node${i}"
         done | \
         yq eval-all 'select(fi==0) *+ {"resources": select(fi==1)}' ${TUSKDIR}/k8s/raft/network/kustomization.yaml - \
@@ -128,7 +128,7 @@ run:
         echo "Wrote raft/network/kustomization.yaml"
 
         # The namespace is the name - eg raft7
-        yq eval ".namespace = \"$BBENCH_NAME\"" \
+        yq eval ".namespace = \"$BBAKE_NAME\"" \
           ${TUSKDIR}/k8s/raft/kustomization.yaml | \
           tee raft/kustomization.yaml
         echo "Wrote raft/kustomization.yaml"
@@ -137,7 +137,7 @@ run:
         cat raft/namespace.yaml
         echo "Wrote raft/namespace.yaml"
 
-        source ${BBENCH_PYENV}/bin/activate
+        source ${BBAKE_PYENV}/bin/activate
         cat <<PYEND | python3
         import os, json
         j = None

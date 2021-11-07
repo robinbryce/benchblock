@@ -19,7 +19,7 @@ run:
       exec: |
         set -ex
 
-        # read the config file fields into BBENCH_ vars.
+        # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance rrrctl_image"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
@@ -29,20 +29,20 @@ run:
         ${showids} && SHOWIDS="--showids"
 
         ALPHAS=""
-        for n in $(seq 0 $(($BBENCH_MAXNODES - 1))); do
-          ALPHAS="$ALPHAS ${BBENCH_NODESDIR}/node${n}/alpha.json"
+        for n in $(seq 0 $(($BBAKE_MAXNODES - 1))); do
+          ALPHAS="$ALPHAS ${BBAKE_NODESDIR}/node${n}/alpha.json"
         done
 
-        env | grep BBENCH
+        env | grep BBAKE
 
-        RRRCTL_CMD="docker run --rm -u $(id -u):$(id -g) -v ${BBENCH_NODESDIR}:${BBENCH_NODESDIR} ${BBENCH_RRRCTL_IMAGE}"
-        [ -n "${BBENCH_RRRCTL_BIN}" ] && RRRCTL_CMD="${BBENCH_RRRCTL_BIN}"
+        RRRCTL_CMD="docker run --rm -u $(id -u):$(id -g) -v ${BBAKE_NODESDIR}:${BBAKE_NODESDIR} ${BBAKE_RRRCTL_IMAGE}"
+        [ -n "${BBAKE_RRRCTL_BIN}" ] && RRRCTL_CMD="${BBAKE_RRRCTL_BIN}"
 
-        echo "RRRCTL_BIN: ${BBENCH_RRRCTL_BIN}"
+        echo "RRRCTL_BIN: ${BBAKE_RRRCTL_BIN}"
         echo "RRRCTL_CMD: ${RRRCTL_CMD}"
 
         export EXTRADATA=$(${RRRCTL_CMD} genextra \
-              ${SHOWIDS} --datadir ${BBENCH_NODESDIR}/node0 $ALPHAS)
+              ${SHOWIDS} --datadir ${BBAKE_NODESDIR}/node0 $ALPHAS)
 
         cat <<PYEND | python3
         import os, sys, json

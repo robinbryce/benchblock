@@ -179,8 +179,8 @@ tasks:
             # priority to the command line. if neither the command line nor the
             # k8s_context config vars is set, use the current context
             CONTEXT=${context}
-            [ -z "${CONTEXT}" ] && CONTEXT=${BBENCH_K8S_CONTEXT}
-            kustomize build ${BBENCH_CONSENSUS} | kubectl ${CONTEXT:+ --context ${CONTEXT}} apply -f -
+            [ -z "${CONTEXT}" ] && CONTEXT=${BBAKE_K8S_CONTEXT}
+            kustomize build ${BBAKE_CONSENSUS} | kubectl ${CONTEXT:+ --context ${CONTEXT}} apply -f -
 
   kdelete:
     usage: "Runs kustomize build | kubectl delete -f - for the configured consensus"
@@ -207,9 +207,9 @@ tasks:
             # priority to the command line. if neither the command line nor the
             # k8s_context config vars is set, use the current context
             CONTEXT=${context}
-            [ -z "${CONTEXT}" ] && CONTEXT=${BBENCH_K8S_CONTEXT}
+            [ -z "${CONTEXT}" ] && CONTEXT=${BBAKE_K8S_CONTEXT}
 
-            kustomize build ${BBENCH_CONSENSUS} | kubectl ${CONTEXT:+ --context ${CONTEXT}} delete -f -
+            kustomize build ${BBAKE_CONSENSUS} | kubectl ${CONTEXT:+ --context ${CONTEXT}} delete -f -
 
   pf:
     usage: "port formward to all k8s nodes. run in seperate terminal. ctrl-c to kill the forwardings"
@@ -394,18 +394,18 @@ tasks:
             CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance nodeallocs timestamp_scale recommit"
             eval ${READ_CONFIG}
 
-            python3 -m venv ${BBENCH_PYENV}
-            source ${BBENCH_PYENV}/bin/activate
+            python3 -m venv ${BBAKE_PYENV}
+            source ${BBAKE_PYENV}/bin/activate
             pip3 install -r ${TUSKDIR}/requirements.txt
 
             cd ${launchdir} && cd ${configdir}
 
-            [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && mkdir -p ${BBENCH_CONSENSUS}
+            [ -d ${TUSKDIR}/k8s/${BBAKE_CONSENSUS} ] && mkdir -p ${BBAKE_CONSENSUS}
 
             if ${k8s}; then
               [ -d ${TUSKDIR}/k8s/base ] && mkdir -p base && cp -r ${TUSKDIR}/k8s/base/* base
               [ -d ${TUSKDIR}/k8s/jobs ] && mkdir -p jobs && cp -r ${TUSKDIR}/k8s/jobs/* jobs
-              [ -d ${TUSKDIR}/k8s/${BBENCH_CONSENSUS} ] && cp -r ${TUSKDIR}/k8s/${BBENCH_CONSENSUS}/* ${BBENCH_CONSENSUS}
+              [ -d ${TUSKDIR}/k8s/${BBAKE_CONSENSUS} ] && cp -r ${TUSKDIR}/k8s/${BBAKE_CONSENSUS}/* ${BBAKE_CONSENSUS}
             fi
 
             eval ${SHOW_CONFIG}
@@ -441,12 +441,12 @@ tasks:
             set -e
             TUSKDIR=$(pwd)
 
-            # read the config file fields into BBENCH_ vars.
+            # read the config file fields into BBAKE_ vars.
             CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
-            [ "${BBENCH_CONSENSUS}" != "ibft" ] && echo "Configured for ${BBENCH_CONSENSUS} not ibft" && exit 1
+            [ "${BBAKE_CONSENSUS}" != "ibft" ] && echo "Configured for ${BBAKE_CONSENSUS} not ibft" && exit 1
 
             cd ${launchdir} && cd ${configdir}
 
@@ -500,7 +500,7 @@ tasks:
             eval ${READ_CONFIG}
 
             CMD=ibftcompose
-            ${BBENCH_K8S} && CMD=ibftk8s
+            ${BBAKE_K8S} && CMD=ibftk8s
 
             cd ${launchdir}
             tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir} \
@@ -529,18 +529,18 @@ tasks:
             set -e
             TUSKDIR=$(pwd)
 
-            # read the config file fields into BBENCH_ vars.
+            # read the config file fields into BBAKE_ vars.
             CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod raft_blocktime"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
-            [ "${BBENCH_CONSENSUS}" != "raft" ] && echo "Configured for ${BBENCH_CONSENSUS} not raft" && exit 1
+            [ "${BBAKE_CONSENSUS}" != "raft" ] && echo "Configured for ${BBAKE_CONSENSUS} not raft" && exit 1
 
             # prioritize commandline setting for raft blocktime. if its not
             # already set (by the profile or by hand) force it to 50 (the
             # quorum default)
             RAFT_BLOCKTIME="${raft_blocktime}"
-            [ -z "${RAFT_BLOCKTIME}" ] && RAFT_BLOCKTIME=${BBENCH_RAFT_BLOCKTIME}
+            [ -z "${RAFT_BLOCKTIME}" ] && RAFT_BLOCKTIME=${BBAKE_RAFT_BLOCKTIME}
             [ -z "${RAFT_BLOCKTIME}" ] && RAFT_BLOCKTIME=50
 
             cd ${launchdir} && cd ${configdir}
@@ -593,7 +593,7 @@ tasks:
             eval ${READ_CONFIG}
 
             CMD=raftcompose
-            ${BBENCH_K8S} && CMD=raftk8s
+            ${BBAKE_K8S} && CMD=raftk8s
 
             cd ${launchdir}
             tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir} \
@@ -651,12 +651,12 @@ tasks:
 
             TUSKDIR=$(pwd)
 
-            # read the config file fields into BBENCH_ vars.
+            # read the config file fields into BBAKE_ vars.
             CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
-            [ "${BBENCH_CONSENSUS}" != "rrr" ] && echo "Configured for ${BBENCH_CONSENSUS} not rrr" && exit 1
+            [ "${BBAKE_CONSENSUS}" != "rrr" ] && echo "Configured for ${BBAKE_CONSENSUS} not rrr" && exit 1
 
             cd ${launchdir} && cd ${configdir}
 
@@ -717,7 +717,7 @@ tasks:
             eval ${READ_CONFIG}
 
             CMD=rrrcompose
-            ${BBENCH_K8S} && CMD=rrrk8s
+            ${BBAKE_K8S} && CMD=rrrk8s
 
             cd ${launchdir}
             tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir} \
@@ -746,9 +746,9 @@ tasks:
         READ_CONFIG: "\
           $(cd ${launchdir} && cd ${configdir} \
           && python3 -c \"import json; import shlex;\
-                          [print(f'export BBENCH_{k.upper()}={v}') \
+                          [print(f'export BBAKE_{k.upper()}={v}') \
                               for k, v in json.load(open('${config}')).items() if v]\")",
-        SHOW_CONFIG: "for v in ${CONFIGVARS}; do vv=BBENCH_${v^^}; echo ${vv}=${!vv}; done"}
+        SHOW_CONFIG: "for v in ${CONFIGVARS}; do vv=BBAKE_${v^^}; echo ${vv}=${!vv}; done"}
 
   gethgendoc:
     include: tuskfiles/gethgendoc.yml
@@ -816,7 +816,7 @@ tasks:
       - command:
           exec: |
             set -ex
-            # read the config file fields into BBENCH_ vars.
+            # read the config file fields into BBAKE_ vars.
             CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi

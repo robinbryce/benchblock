@@ -14,19 +14,19 @@ run:
       exec: |
         set -ex
 
-        # read the config file fields into BBENCH_ vars.
+        # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
-        source ${BBENCH_PYENV}/bin/activate
+        source ${BBAKE_PYENV}/bin/activate
 
         cat <<PYEND | python3
         import os, coincurve, sha3, secrets, pathlib
 
-        maxnodes = int(os.environ['BBENCH_MAXNODES'])
-        nodesdir = os.environ["BBENCH_NODESDIR"]
+        maxnodes = int(os.environ['BBAKE_MAXNODES'])
+        nodesdir = os.environ["BBAKE_NODESDIR"]
 
         for i in range(maxnodes):
 

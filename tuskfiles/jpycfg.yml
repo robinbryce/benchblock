@@ -15,23 +15,23 @@ run:
 
         TUSKDIR=$(pwd)
 
-        # read the config file fields into BBENCH_ vars.
+        # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
         cat <<END > parameters.yml
-        dbfile: "${BBENCH_NAME}.db"
-        plot_prefix: "${BBENCH_NAME}"
+        dbfile: "${BBAKE_NAME}.db"
+        plot_prefix: "${BBAKE_NAME}"
         END
 
-        python3 -m venv ${BBENCH_PYENV}
-        source ${BBENCH_PYENV}/bin/activate
+        python3 -m venv ${BBAKE_PYENV}
+        source ${BBAKE_PYENV}/bin/activate
 
         pip3 install -e ${TUSKDIR}/jupyter-support
 
-        KERNEL=bbake-${BBENCH_NAME}
+        KERNEL=bbake-${BBAKE_NAME}
         echo "KERNEL: ${KERNEL}"
         # --sys-prefix uses the *virtual-env* sys-prefix, which is what we
         # want

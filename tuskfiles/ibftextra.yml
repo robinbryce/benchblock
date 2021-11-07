@@ -19,13 +19,13 @@ run:
       exec: |
         set -e
 
-        # read the config file fields into BBENCH_ vars.
+        # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
-        source ${BBENCH_PYENV}/bin/activate
+        source ${BBAKE_PYENV}/bin/activate
 
         cat <<PYEND | python3
         import os, json, coincurve, rlp, sha3
@@ -38,9 +38,9 @@ run:
 
         vanity = bytes.fromhex("00") * ibftextravanitylen
 
-        for i in range(int(os.environ['BBENCH_MAXNODES'])):
+        for i in range(int(os.environ['BBAKE_MAXNODES'])):
 
-            keyfile = Path(os.environ['BBENCH_NODESDIR']).joinpath(f"node{i}", "key")
+            keyfile = Path(os.environ['BBAKE_NODESDIR']).joinpath(f"node{i}", "key")
             pub = None
             with open(keyfile) as f:
                 key = coincurve.PrivateKey.from_hex(f.read())

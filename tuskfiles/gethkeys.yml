@@ -14,7 +14,7 @@ run:
       exec: |
         set -e
 
-        # read the config file fields into BBENCH_ vars.
+        # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance nodeallocs"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
@@ -24,13 +24,13 @@ run:
         # Use the address of node0's node key as the genesis account (which
         # gets the gendoc_balance)
 
-        source ${BBENCH_PYENV}/bin/activate
+        source ${BBAKE_PYENV}/bin/activate
         cat <<PYEND | python3
         import os, json, coincurve
         from pathlib import Path
 
-        nodesdir = os.environ['BBENCH_NODESDIR']
-        maxnodes = int(os.environ['BBENCH_MAXNODES'])
+        nodesdir = os.environ['BBAKE_NODESDIR']
+        maxnodes = int(os.environ['BBAKE_MAXNODES'])
 
         for i in range(maxnodes):
 
@@ -79,7 +79,7 @@ run:
         cat bench.json
 
         cat <<END > bootnodes.env
-        BOOTNODE0_PUB=$(cat ${BBENCH_NODESDIR}/node0/enode)
+        BOOTNODE0_PUB=$(cat ${BBAKE_NODESDIR}/node0/enode)
         END
         cat bootnodes.env
         echo "Updated bootnode.env for docker-compose"

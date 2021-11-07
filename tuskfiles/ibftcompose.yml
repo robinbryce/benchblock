@@ -39,7 +39,7 @@ run:
 
         TUSKDIR=$(pwd)
 
-        # read the config file fields into BBENCH_ vars.
+        # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars} compose_project networkid netrestrict gendoc_wallet"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
@@ -52,14 +52,14 @@ run:
         [[ "${requesttimeout}" != "" ]] && CONSENSUS_OPTS="${CONSENSUS_OPTS} --istanbul.blockperiod ${blockperiod}"
         export CONSENSUS_OPTS
 
-        export ETHERBASE=${BBENCH_GENDOC_WALLET}
+        export ETHERBASE=${BBAKE_GENDOC_WALLET}
 
-        source ${BBENCH_PYENV}/bin/activate
+        source ${BBAKE_PYENV}/bin/activate
         ETHERBASE=$(cat <<PYEND | python3
         import os, sys, pathlib, coincurve, sha3
         if os.environ["ETHERBASE"] or os.environ["ETHERBASE"] == "0x0000000000000000000000000000000000000000":
             sys.exit(-1)
-        with open(pathlib.Path(os.environ["BBENCH_NODESDIR"]).joinpath("node0", "key")) as f:
+        with open(pathlib.Path(os.environ["BBAKE_NODESDIR"]).joinpath("node0", "key")) as f:
             key = coincurve.PrivateKey.from_hex(f.read())
             pub = key.public_key.format(compressed=False)[1:]
             print("0x" + sha3.keccak_256(pub).digest()[-20:].hex())
@@ -69,20 +69,20 @@ run:
         export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
 
         cat <<END > .env
-        COMPOSE_PROJECT_NAME=${BBENCH_NAME}
+        COMPOSE_PROJECT_NAME=${BBAKE_NAME}
         CONSENSUS_OPTS=${CONSENSUS_OPTS}
         NETWORKID=${networkid}
         NETRESTRICT=${netrestrict}
         ETHERBASE=${ETHERBASE}
-        QUORUM_SRC=${BBENCH_QUORUM_SRC}
-        NODESDIR=${BBENCH_NODESDIR}
-        GETH_IMAGE= ${BBENCH_GETH_IMAGE}
-        DELVE_IMAGE=${BBENCH_DELVE_IMAGE}
+        QUORUM_SRC=${BBAKE_QUORUM_SRC}
+        NODESDIR=${BBAKE_NODESDIR}
+        GETH_IMAGE= ${BBAKE_GETH_IMAGE}
+        DELVE_IMAGE=${BBAKE_DELVE_IMAGE}
         GAS_OPTS=${GAS_OPTS}
         END
         echo "Wrote .env"
 
-        source ${BBENCH_PYENV}/bin/activate
+        source ${BBAKE_PYENV}/bin/activate
         cat <<PYEND | python3
         import os, json
         j = None
@@ -116,7 +116,7 @@ run:
         END
 
         PORT=8300
-        for i in $(seq 0 $((${BBENCH_MAXNODES} - 1)))
+        for i in $(seq 0 $((${BBAKE_MAXNODES} - 1)))
         do
             VAL=$i EXPOSED="\"${PORT}:\"" yq eval '
               .node |= .working_dir += env(VAL) |

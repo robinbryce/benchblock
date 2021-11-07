@@ -22,22 +22,22 @@ run:
         set -e
         TUSKDIR=$(pwd)
 
-        # read the config file fields into BBENCH_ vars.
+        # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
 
         cd ${launchdir} && cd ${configdir}
 
-        for i in $(seq 0 $((${BBENCH_MAXNODES} - 1)))
+        for i in $(seq 0 $((${BBAKE_MAXNODES} - 1)))
         do
 
         POD=ethnode${i}-0
-        [[ $i -lt ${BBENCH_NUMBOOTNODES} ]] && POD=ethnodeboot${i}-0
+        [[ $i -lt ${BBAKE_NUMBOOTNODES} ]] && POD=ethnodeboot${i}-0
         export POD
 
         export ADMIN_JSON=$(kubectl \
-           -n ${BBENCH_NAME} exec ${POD} -- \
+           -n ${BBAKE_NAME} exec ${POD} -- \
             /usr/local/bin/geth \
             attach /data/node/geth.ipc \
              --exec "console.log(JSON.stringify(admin))")

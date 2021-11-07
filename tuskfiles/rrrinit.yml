@@ -19,7 +19,7 @@ run:
 
         TUSKDIR=$(pwd)
 
-        # read the config file fields into BBENCH_ vars.
+        # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars}"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
@@ -29,7 +29,7 @@ run:
 
         cp ${TUSKDIR}/compose/rrr/genesis-in.json .
 
-        GENESIS_JSON=${BBENCH_NODESDIR}/genesis.json
+        GENESIS_JSON=${BBAKE_NODESDIR}/genesis.json
 
         pushd ${launchdir} # restore launchdir before recursive invoke
           tusk -qf ${thistusk} rrrextra ${configdir}
@@ -37,7 +37,7 @@ run:
         popd
 
         echo "Wrote: ${GENESIS_JSON}"
-        if ${BBENCH_K8S}; then
+        if ${BBAKE_K8S}; then
           echo "configured for k8s (geth init happens on deploy)"
           exit 0
         fi
@@ -45,18 +45,18 @@ run:
         # half way through
         ${sudo} && dosudo="sudo" || dosudo=""
 
-        end=$((BBENCH_MAXNODES - 1))
+        end=$((BBAKE_MAXNODES - 1))
         for i in $(seq 0 ${end}); do
-          ${dosudo} rm -rf ${BBENCH_NODESDIR}/node$i/data
+          ${dosudo} rm -rf ${BBAKE_NODESDIR}/node$i/data
         done
 
-        GETH_RRR_CMD="docker run --rm -u $(id -u):$(id -g) -v ${BBENCH_NODESDIR}:${BBENCH_NODESDIR} ${BBENCH_GETH_IMAGE} --nousb"
-        [ -n "${BBENCH_GETH_RRR_BIN}" ] && GETH_RRR_CMD="${BBENCH_GETH_RRR_BIN} --nousb"
+        GETH_RRR_CMD="docker run --rm -u $(id -u):$(id -g) -v ${BBAKE_NODESDIR}:${BBAKE_NODESDIR} ${BBAKE_GETH_IMAGE} --nousb"
+        [ -n "${BBAKE_GETH_RRR_BIN}" ] && GETH_RRR_CMD="${BBAKE_GETH_RRR_BIN} --nousb"
 
         for i in $(seq 0 ${end}); do
           ${GETH_RRR_CMD} \
-              --datadir=${BBENCH_NODESDIR}/node${i}/data  \
-              --nodekey ${BBENCH_NODESDIR}/node${i}/key \
-              init ${BBENCH_NODESDIR}/genesis.json
+              --datadir=${BBAKE_NODESDIR}/node${i}/data  \
+              --nodekey ${BBAKE_NODESDIR}/node${i}/key \
+              init ${BBAKE_NODESDIR}/genesis.json
         done
 

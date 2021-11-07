@@ -25,16 +25,16 @@ run:
 
         CONFIGDIR=$(pwd)
 
-        cp ${TUSKDIR}/compose/${BBENCH_CONSENSUS}/genesis-in.json .
+        cp ${TUSKDIR}/compose/${BBAKE_CONSENSUS}/genesis-in.json .
 
         # To include extra data in genesis, save it in "gendoc_extra" in the
         # config file before invoking this command. gethgendoc will read it
         # from there
         pushd ${launchdir} # restore launchdir before recursive invoke
-          tusk -qf ${thistusk} gethgendoc ${configdir} | tee ${BBENCH_NODESDIR}/genesis.json
+          tusk -qf ${thistusk} gethgendoc ${configdir} | tee ${BBAKE_NODESDIR}/genesis.json
         popd
 
-        if ${BBENCH_K8S}; then
+        if ${BBAKE_K8S}; then
           echo "configured for k8s (geth init happens on deploy)"
           exit 0
         fi
@@ -43,35 +43,35 @@ run:
         # half way through
         ${sudo} && dosudo="sudo" || dosudo=""
 
-        end=$((BBENCH_MAXNODES - 1))
+        end=$((BBAKE_MAXNODES - 1))
         for i in $(seq 0 ${end}); do
-          ${dosudo} rm -rf ${BBENCH_NODESDIR}/node$i/data
+          ${dosudo} rm -rf ${BBAKE_NODESDIR}/node$i/data
         done
 
-        GETH_CMD="docker run --rm -u $(id -u):$(id -g) -v ${BBENCH_NODESDIR}:${BBENCH_NODESDIR} ${BBENCH_GETH_IMAGE} --nousb"
-        case "${BBENCH_CONSENSUS}" in
+        GETH_CMD="docker run --rm -u $(id -u):$(id -g) -v ${BBAKE_NODESDIR}:${BBAKE_NODESDIR} ${BBAKE_GETH_IMAGE} --nousb"
+        case "${BBAKE_CONSENSUS}" in
           rrr)
-            [ -n "${BBENCH_GETH_RRR_BIN}" ] && GETH_CMD="${BBENCH_GETH_RRR_BIN} --nousb"
-            ls -la ${BBENCH_GETH_RRR_BIN}
+            [ -n "${BBAKE_GETH_RRR_BIN}" ] && GETH_CMD="${BBAKE_GETH_RRR_BIN} --nousb"
+            ls -la ${BBAKE_GETH_RRR_BIN}
             ;;
           *)
-            [ -n "${BBENCH_GETH_BIN}" ] && GETH_CMD="${BBENCH_GETH_BIN} --nousb"
-            ls -la ${BBENCH_GETH_BIN}
+            [ -n "${BBAKE_GETH_BIN}" ] && GETH_CMD="${BBAKE_GETH_BIN} --nousb"
+            ls -la ${BBAKE_GETH_BIN}
             ;;
         esac
 
         genesis_doc=$(pwd)/genesis.json
         for i in $(seq 0 ${end}); do
           ${GETH_CMD} \
-              --datadir=${BBENCH_NODESDIR}/node${i}/data  \
-              --nodekey ${BBENCH_NODESDIR}/node${i}/key \
-              init ${BBENCH_NODESDIR}/genesis.json
+              --datadir=${BBAKE_NODESDIR}/node${i}/data  \
+              --nodekey ${BBAKE_NODESDIR}/node${i}/key \
+              init ${BBAKE_NODESDIR}/genesis.json
         done
 
-        if [ -f ${BBENCH_NODESDIR}/static-nodes.json ]; then
+        if [ -f ${BBAKE_NODESDIR}/static-nodes.json ]; then
           for i in $(seq 0 ${end})
           do
-            mkdir -p ${BBENCH_NODESDIR}/node${i}/data/
-            cp -v ${BBENCH_NODESDIR}/static-nodes.json ${BBENCH_NODESDIR}/node${i}/data/
+            mkdir -p ${BBAKE_NODESDIR}/node${i}/data/
+            cp -v ${BBAKE_NODESDIR}/static-nodes.json ${BBAKE_NODESDIR}/node${i}/data/
           done
         fi

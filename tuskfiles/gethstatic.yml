@@ -24,18 +24,18 @@ run:
       exec: |
         set -e
 
-        # read the config file fields into BBENCH_ vars.
+        # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
         end=${last}
-        [ "${end}" == "0" ] && end=$((BBENCH_MAXNODES -1))
+        [ "${end}" == "0" ] && end=$((BBAKE_MAXNODES -1))
         export end
         echo "gethstatic: end=$end"
 
-        source ${BBENCH_PYENV}/bin/activate
+        source ${BBAKE_PYENV}/bin/activate
 
         cat <<PYEND | python3
         import os, json, coincurve, sha3, secrets, pathlib
@@ -45,7 +45,7 @@ run:
         p2port="7200"
         raftport="50000"
 
-        nodesdir = os.environ["BBENCH_NODESDIR"]
+        nodesdir = os.environ["BBAKE_NODESDIR"]
 
         for i in range(int(os.environ['end']) + 1):
 

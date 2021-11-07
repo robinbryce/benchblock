@@ -38,7 +38,7 @@ run:
 
         TUSKDIR=$(pwd)
 
-        # read the config file fields into BBENCH_ vars.
+        # read the config file fields into BBAKE_ vars.
         CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance timestamp_scale"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
@@ -49,11 +49,11 @@ run:
         FIRSTBLOCK="${firstblock}"
         LASTBLOCK="${lastblock}"
 
-        source ${BBENCH_PYENV}/bin/activate
+        source ${BBAKE_PYENV}/bin/activate
 
-        KERNEL=bbake-${BBENCH_NAME}
+        KERNEL=bbake-${BBAKE_NAME}
 
-        [ -z ${DBFILE} ] && DBFILE=${BBENCH_NAME}.db
+        [ -z ${DBFILE} ] && DBFILE=${BBAKE_NAME}.db
 
         echo "KERNEL: ${KERNEL}"
 
@@ -69,5 +69,5 @@ run:
             ${PREFIX:+ -p plot_prefix ${PREFIX}} \
             ${FIRSTBLOCK:+ -p firstblock ${FIRSTBLOCK}} \
             ${LASTBLOCK:+ -p lastblock ${LASTBLOCK}} \
-            -p timescale ${BBENCH_TIMESTAMP_SCALE} \
+            -p timescale ${BBAKE_TIMESTAMP_SCALE} \
           | jupyter nbconvert --stdin --to html --output standard-plots.html 2> /dev/null
