@@ -25,6 +25,16 @@ on:
       profile:
         description: 'name of a benchblock profile ({consensus}-k8s-{profile}.json in benchblock/configs). defaults to numnodes'
         type: string
+      namespaceprefix:
+        description: 'prefix to the namespace for all workloads'
+        type: string
+        default: "benchblock-"
+
+      maxwait:
+        description: >
+          maximum number of seconds (total) to wait for any intermediate result, eg deployment or
+          loadtesting
+        default: 360
 
     secrets:
       gcp_project_key:
@@ -54,7 +64,7 @@ jobs:
           args: >
             new
             --k8s
-            --name github-${{ inputs.consensus }}${{ inputs.numnodes }}
+            --name ${{ inputs.namespaceprefix }}${{ inputs.consensus }}${{ inputs.numnodes }}
             --maxnodes ${{ inputs.numnodes }}
             --profile ${{ inputs.numnodes }}
             networks/${{ inputs.consensus }}${{ inputs.numnodes }}
@@ -88,25 +98,24 @@ jobs:
         run: |
           set -ex
 
-          ATTEMPTS_REMAINING=120
-          SLEEP=2
           CONSENSUS=${{ inputs.consensus }}
           NUMNODES=${{ inputs.numnodes }}
-          NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
+          NAMESPACE=${{ inputs.namespaceprefix }}${{ inputs.consensus }}${{ inputs.numnodes }}
 
           kubectl -n $NAMESPACE apply -f rendered.yaml
 
-          ATTEMPTS_REMAINING=40
+          WAIT_REMAINING=${{ inputs.maxwait }}
+          SLEEP=2
           while true; do
             NRUNNING=$(kubectl -n $NAMESPACE get pods \
               --field-selector=status.phase=Running \
               --output=jsonpath={.items..metadata.name} | wc -w)
 
             [ "${NRUNNING}" == "${NUMNODES}" ] && break
-            [ "$ATTEMPTS_REMAINING" == "0" ] && echo "attempts exhausted" && exit -1
-            ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
+            [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
+            WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
 
-            echo "${NRUNNING} of ${NUMNODES} running. (attempts left $ATTEMPTS_REMAINING,  sleeping for ${SLEEP}s)"
+            echo "${NRUNNING} of ${NUMNODES} running. (attempts left $((WAIT_REMAINING / SLEEP)),  sleeping for ${SLEEP}s)"
             sleep ${SLEEP}
           done
 
@@ -123,7 +132,6 @@ jobs:
           STARTBLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
             geth attach /data/node/geth.ipc --exec eth.blockNumber)
 
-          ATTEMPTS_REMAINING=120
           SLEEP=5
           while true; do
             echo "Waiting for block to be produced. sleeping for ${SLEEP}s"
@@ -151,10 +159,8 @@ jobs:
         name: generate transaction load
         run: |
 
-          ATTEMPTS_REMAINING=100
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
-          NAMESPACE=github-$NAME
-          SLEEP=4
+          NAMESPACE=${{ inputs.namespaceprefix }}$NAME
 
           pushd networks/${NAME}
 
@@ -167,6 +173,8 @@ jobs:
           echo "waiting for job to complete"
 
           # this can all be finessed once the basics are working
+          WAIT_REMAINING=${{ inputs.maxwait }}
+          SLEEP=4
           while true; do
             echo "Waiting for completion. sleep ${SLEEP}s"
             sleep ${SLEEP}
@@ -176,8 +184,9 @@ jobs:
             echo "State: $state"
             [ "$state" == "Completed" ] && break
 
-            [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
-            ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
+            [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
+            WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
+            sleep ${SLEEP}
 
           done
 
@@ -246,14 +255,14 @@ jobs:
 
           [ ! -f rendered.yaml ] && echo "rendered.yaml missing" && exit 0
 
-          ATTEMPTS_REMAINING=40
-          SLEEP=4
-          NAMESPACE=github-${{ inputs.consensus }}${{ inputs.numnodes }}
+          NAMESPACE=${{ inputs.namespaceprefix }}${{ inputs.consensus }}${{ inputs.numnodes }}
 
           NRUNNING=$(kubectl -n $NAMESPACE \
             get pods --selector=app.kubernetes.io/part-of=ethnet \
             --output=jsonpath={.items..metadata.name} | wc -w)
 
+          WAIT_REMAINING=${{ inputs.maxwait }}
+          SLEEP=4
           if [ "$NRUNNING" != "0" ]; then
 
             set +e
@@ -261,8 +270,9 @@ jobs:
 
             while [ "$NRUNNING" != "0" ]; do
 
-              [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
+              [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
               ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
+              WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
 
               NRUNNING=$(kubectl -n $NAMESPACE \
                 get pods --selector=app.kubernetes.io/part-of=ethnet \
