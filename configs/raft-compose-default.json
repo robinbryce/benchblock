@@ -12,5 +12,6 @@
   "genesis": "genesis-in.json",
   "nodeallocs": "0",
   "timestamp_scale": "1000000000",
-  "raft_blocktime": "50"
+  "raft_blocktime": "50",
+  "recommit": "2000s"
 }

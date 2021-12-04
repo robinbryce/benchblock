@@ -21,5 +21,6 @@
   "activehorizon": "70",
   "roundlength": "2000",
   "intentphase": "300",
-  "confirmphase": "700"
+  "confirmphase": "700",
+  "recommit": "2000s"
 }
