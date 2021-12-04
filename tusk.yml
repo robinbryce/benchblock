@@ -41,16 +41,6 @@ options:
       defaults to <consensus>/nodes
     default: ""
 
-  geth_image:
-    usage: >
-      the docker image to use for geth-rrr. compose files and k8s manifests
-      reference this.
-    default: robustroundrobin/geth:main
-
-  delve_image:
-    usage: the docker image to use for running geth-rrr in for remote debug
-    default: robustroundrobin/delve:main
-
   k8s:
     usage: >
       Generate a set of kubernetes manifiests (kustomizations) instead of
@@ -66,15 +56,15 @@ options:
     usage: >
       sets the --miner.recommit option for the nodes. currently set high
       because it invalidates the current round intent if it fires mid round
-    default: "2000s"
+    default: ""
 
   gastarget:
     usage: sets the --miner.gastarget option for the nodes
-    default: "18200000"
+    # default: "18200000"
 
   gaslimit:
     usage: sets the --miner.gaslimit option for the nodes
-    default: "18200000"
+    # default: "18200000"
 
   gendoc_wallet:
     usage: >
@@ -428,6 +418,16 @@ tasks:
         usage: ibft blockperiod (rate of block production) in seconds
         default: "1"
 
+      geth_image:
+        usage: >
+          the docker image to use for geth-rrr. compose files and k8s manifests
+          reference this.
+        default: robustroundrobin/geth:main
+
+      delve_image:
+        usage: the docker image to use for running geth-rrr in for remote debug
+        default: robustroundrobin/delve:main
+
     args:
       configdir:
         usage: Directory to put the network in
@@ -514,6 +514,15 @@ tasks:
       raft_blocktime:
         usage: the --raftblocktime cosensus parameter for starting geth (ms)
         default: ""
+      geth_image:
+        usage: >
+          the docker image to use for geth-rrr. compose files and k8s manifests
+          reference this.
+        default: robustroundrobin/geth:main
+
+      delve_image:
+        usage: the docker image to use for running geth-rrr in for remote debug
+        default: robustroundrobin/delve:main
 
     args:
       configdir:
@@ -605,6 +614,15 @@ tasks:
       # This task also ilustrates the full sequence of steps to prepare an rrr
       # compose setup
     options:
+      geth_image:
+        usage: >
+          the docker image to use for geth-rrr. compose files and k8s manifests
+          reference this.
+        default: robustroundrobin/geth:main
+
+      delve_image:
+        usage: the docker image to use for running geth-rrr in for remote debug
+        default: robustroundrobin/delve:main
       rrr_src:
         default:
           command: echo "${launchdir}/go-rrr"

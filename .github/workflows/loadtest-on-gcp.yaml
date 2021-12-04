@@ -151,10 +151,14 @@ jobs:
         with:
           path: main
 
-      - id: setup_go
-        uses: actions/setup-go@v2
+      - id: install bbeth
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
         with:
-          go-version: 1.15.15
+          repo: robinbryce/benchblock
+
+      - id: test bbeth install
+        run: |
+          bbeth --help
 
       - id: generate_load
         name: generate transaction load
@@ -204,14 +208,11 @@ jobs:
           kubectl port-forward -n $NAMESPACE $NODENAME 8300:8300 &
           PF_PID=$!
 
-          pushd main/go/bbeth
-
           echo "STARTBLOCK: $STARTBLOCK, ENDBLOCK: $ENDBLOCK"
-          go run main.go -e http://127.0.0.1:8300 --no-progress \
+          bbeth -e http://127.0.0.1:8300 --no-progress \
             collect --dbsource results.db -s $STARTBLOCK --endblock $ENDBLOCK
 
-          popd
-          cp -v main/go/bbeth/results.db networks/${NAME}/${NAMESPACE}.db
+          cp -v results.db networks/${NAME}/${NAMESPACE}.db
 
       - id: setup_jupyter
         name: setup jupyter
