@@ -58,6 +58,24 @@ jobs:
         run: |
           mkdir -p networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
+      - id: bbeth-tag
+        uses: oprypin/find-latest-tag@v1
+        with:
+          repository: robinbryce/benchblock
+          releases-only: true
+
+      - id: install-bbeth
+        run: |
+          ARCH=linux-amd64
+          TAG=${{ steps.bbeth-tag.outputs.tag }}
+          FILENAME=bbeth-${TAG}-${ARCH}.tar.gz
+          URL=https://github.com/robinbryce/benchblock/releases/download/${TAG}/${FILENAME}
+          curl -o ${FILENAME} -L $URL
+          tar -zxf ${FILENAME}
+          chmod a+x bbeth
+          ./bbeth --help
+
+
       - id: create_network_manifests
         name: create network manifests
         uses: docker://robinbryce/bbake:main
@@ -97,7 +115,7 @@ jobs:
       - id: apply_network
         name: deploy network
         run: |
-          set -ex
+          set -e
 
           CONSENSUS=${{ inputs.consensus }}
           NUMNODES=${{ inputs.numnodes }}
@@ -145,20 +163,6 @@ jobs:
 
           done
           echo "network ready"
-
-      - id: checkout_main
-        uses: actions/checkout@v2
-        with:
-          path: main
-
-      - id: install-bbeth
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
-        with:
-          repo: robinbryce/benchblock
-
-      - id: test bbeth install
-        run: |
-          bbeth --help
 
       - id: generate_load
         name: generate transaction load
@@ -209,7 +213,7 @@ jobs:
           PF_PID=$!
 
           echo "STARTBLOCK: $STARTBLOCK, ENDBLOCK: $ENDBLOCK"
-          bbeth -e http://127.0.0.1:8300 --no-progress \
+          ./bbeth -e http://127.0.0.1:8300 --no-progress \
             collect --dbsource results.db -s $STARTBLOCK --endblock $ENDBLOCK
 
           cp -v results.db networks/${NAME}/${NAMESPACE}.db

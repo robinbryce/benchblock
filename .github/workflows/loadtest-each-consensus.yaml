@@ -10,6 +10,7 @@ jobs:
       cluster_name: "kluster"
       consensus: "raft"
       numnodes: 3
+      maxwait: "360"
 
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
@@ -22,6 +23,7 @@ jobs:
       cluster_name: "kluster"
       consensus: "ibft"
       numnodes: 5
+      maxwait: "360"
 
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
@@ -34,6 +36,7 @@ jobs:
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 5
+      maxwait: "360"
 
     secrets:
       gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
