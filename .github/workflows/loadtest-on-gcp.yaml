@@ -14,6 +14,17 @@ on:
         description: 'Kubernetes Engine cluster name'
         type: string
         required: true
+
+      geth_image:
+        description: 'The geth image to use'
+        type: string
+        default: 'robustroundrobin/geth:main'
+
+      rrrctl_image:
+        description: 'The geth image to use'
+        type: string
+        default: 'robustroundrobin/rrrctl:main'
+
       consensus:
         description: 'The name of a consensus scheme supported by benchblock. Eg, raft ibft or rrr'
         type: string
@@ -86,6 +97,8 @@ jobs:
             --name ${{ inputs.namespaceprefix }}${{ inputs.consensus }}${{ inputs.numnodes }}
             --maxnodes ${{ inputs.numnodes }}
             --profile ${{ inputs.numnodes }}
+            --geth_image ${{ inputs.geth_image }}
+            --rrrctl_image ${{ inputs.rrrctl_image }}
             networks/${{ inputs.consensus }}${{ inputs.numnodes }}
             ${{ inputs.consensus }}
 
