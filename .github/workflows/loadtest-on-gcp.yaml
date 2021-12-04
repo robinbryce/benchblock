@@ -151,7 +151,7 @@ jobs:
         with:
           path: main
 
-      - id: install bbeth
+      - id: install-bbeth
         uses: jaxxstorm/action-install-gh-release@release/v1-alpha
         with:
           repo: robinbryce/benchblock
