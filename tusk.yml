@@ -93,8 +93,13 @@ options:
   # image and source options
 
   rrrctl_image:
-    usage: the docker iamge to use for running rrrctl (needed to produce rrr extraData)
+    usage: the docker image for rrrctl (needed to produce rrr extraData)
     default: robustroundrobin/rrrctl:main
+
+  geth_image:
+    usage: geth client the docker iamge
+    default: ""
+
 
   # source options. only used for compose networks and then only if interactively debuging
   # the node
@@ -360,6 +365,7 @@ tasks:
               nodesdir=str(nodesdir),
               quorum_src="${quorum_src}",
               geth_image="${geth_image}",
+              rrrctl_image="${rrrctl_image}",
               delve_image="${delve_image}",
               genesis="${genesis}",
               gendoc_wallet="${gendoc_wallet}",
