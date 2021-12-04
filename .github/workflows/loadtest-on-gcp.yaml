@@ -34,6 +34,7 @@ on:
         description: >
           maximum number of seconds (total) to wait for any intermediate result, eg deployment or
           loadtesting
+        type: int
         default: 360
 
     secrets:
