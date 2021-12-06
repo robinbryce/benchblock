@@ -19,8 +19,8 @@
   "committeequorum": "4",
 
   "activehorizon": "500",
-  "roundlength": "3000",
-  "intentphase": "700",
+  "roundlength": "5000",
+  "intentphase": "1700",
   "confirmphase": "1300",
-  "recommit": "2000s"
+  "recommit": "60000s"
 }

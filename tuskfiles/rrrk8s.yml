@@ -34,7 +34,7 @@ run:
         TUSKDIR=$(pwd)
 
         # read the config file fields into BBAKE_ vars.
-        CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
+        CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength activemethod"
         eval ${READ_CONFIG}
         if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
 
@@ -45,6 +45,7 @@ run:
 
         export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
         export CONSENSUS_OPTS="\
+        ${BBAKE_ACTIVEMETHOD:+ --rrr.method $BBAKE_ACTIVEMETHOD} \
         --rrr.nc ${BBAKE_NUMCANDIDATES} \
         --rrr.ne ${BBAKE_NUMENDORSERS} \
         --rrr.q ${BBAKE_COMMITTEEQUORUM} \

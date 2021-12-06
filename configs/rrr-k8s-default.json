@@ -1,10 +1,10 @@
 {
   "name": "rrr",
-  "maxnodes": "30",
+  "maxnodes": "9",
   "k8s": "true",
   "delve_image": "robustroundrobin/delve:main",
-  "rrrctl_image": "robustroundrobin/rrrctl:main",
-  "geth_image": "robustroundrobin/geth:main",
+  "rrrctl_image": "robustroundrobin/rrrctl:0.1",
+  "geth_image": "robustroundrobin/geth:0.1",
 
   "networkid": "53456",
   "netrestrict": "172.19.0.10/24",
@@ -15,12 +15,12 @@
   "timestamp_scale": "1",
 
   "numcandidates": "2",
-  "numendorsers": "11",
-  "committeequorum": "7",
+  "numendorsers": "5",
+  "committeequorum": "3",
 
   "activehorizon": "500",
-  "roundlength": "3000",
-  "intentphase": "700",
+  "roundlength": "5000",
+  "intentphase": "1700",
   "confirmphase": "1300",
-  "recommit": "2000s"
+  "recommit": "60000s"
 }

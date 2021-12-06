@@ -94,7 +94,7 @@ options:
 
   rrrctl_image:
     usage: the docker image for rrrctl (needed to produce rrr extraData)
-    default: robustroundrobin/rrrctl:main
+    default: ""
 
   geth_image:
     usage: geth client the docker iamge
@@ -336,25 +336,30 @@ tasks:
             if "${k8s}" != "true":
               deploymode="compose"
 
+            bench_json = {}
+
+            defaults = tuskdir.joinpath("configs", f"{consensus}-{deploymode}-default.json").resolve()
+            if defaults.exists():
+              bench_json = json.load(open(defaults))
+
             profile = "${profile}"
-            if not profile:
-              profile=tuskdir.joinpath("configs", f"{consensus}-{deploymode}-default.json").resolve()
-            else:
+            if profile:
               # try first as whole file relative to launch dir
-              p=Path("${launchdir}").joinpath(profile).resolve()
-              if not p.is_file():
-                p=tuskdir.joinpath("configs", f"{consensus}-{deploymode}-{profile}.json").resolve()
-              profile = p
+              for p in [
+                Path("${launchdir}").joinpath(profile).resolve(),
+                profile]:
+                if not p.is_file():
+                  continue
+                bench_json.update(json.load(open(profile)))
+                break
+              else:
+                print(f"profile {profile} does not exist")
 
-            if not profile.exists():
-              print(f"profile {profile} does not exist")
-              sys.exit(1)
-
-            bench_json = json.load(open(profile))
             maxnodes = "${maxnodes}" or bench_json.get("maxnodes")
-            name = "${name}" or consensus + maxnodes
+            name = "${name}" or consensus + str(maxnodes)
 
-            # these are commong to most/all consensus methods
+            # now prioritse any explicit options to new over what is present in
+            # the profile these are common to most/all consensus methods
             opts = dict(
               name=name,
               consensus=consensus,
@@ -661,6 +666,10 @@ tasks:
           total roundlength in milliseconds. must be greater than intent + confirm (rember to
           allow for block disemination, 2s  or more is fair)
         default: ""
+      activemethod:
+        usage: >
+          select one of the supported activeselection methods for rrr
+        default: ""
 
     args:
       configdir:
@@ -705,6 +714,7 @@ tasks:
               activehorizon="${activehorizon}",
               intentphase="${intentphase}",
               confirmphase="${confirmphase}",
+              activemethod="${activemethod}",
               roundlength="${roundlength}").items():
               if v:
                 bench_json[k] = v
@@ -735,7 +745,7 @@ tasks:
             - ${configdir}
       - command:
           exec: |
-            set -ex
+            set -e
             TUSKDIR=$(pwd)
             CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
