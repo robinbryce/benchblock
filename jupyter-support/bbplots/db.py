@@ -86,10 +86,12 @@ class Blocks:
             lastblock = self._maxblock
 
         if firstblock < self._minblock:
-            raise IndexError(f"firstblock: {firstblock} < minblock {self._minblock}")
+            # raise IndexError(f"firstblock: {firstblock} < minblock {self._minblock}")
+            firstblock = self._minblock
 
         if lastblock > self._maxblock:
-            raise IndexError(f"lastblock: {lastblock} > maxblock {self._maxblock}")
+            # raise IndexError(f"lastblock: {lastblock} > maxblock {self._maxblock}")
+            lastblock = self._maxblock
 
         return firstblock, lastblock
 
