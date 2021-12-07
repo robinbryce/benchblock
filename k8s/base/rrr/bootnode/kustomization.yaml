@@ -1,8 +1,5 @@
+# for defaults which are applied to all bootnodes unless explicitly overriden
 commonLabels:
   bootnode: "0"
 resources:
   - ./../node
-images:
-- name: quorumengineering/quorum:21.4.1
-  newName: robustroundrobin/geth
-  newTag: "0.1"

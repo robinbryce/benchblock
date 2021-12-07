@@ -1,0 +1,8 @@
+# consumers are expected to override and customise this one for changes that
+# apply to all boot nodes
+resources:
+  - ./../../base/rrr/bootnode
+images:
+- name: quorumengineering/quorum:21.4.1
+  newName: robustroundrobin/geth
+  newTag: "0.1"

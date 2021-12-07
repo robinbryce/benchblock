@@ -4,8 +4,7 @@ commonLabels:
   app.kubernetes.io/name: ethnode
 
 resources:
-  - ./../../../base/rrr/node
-# - ./../../../base/rrr/bootnode
+  - ./../../node
 
 patchesStrategicMerge:
 - statefulset-volumes.yaml
