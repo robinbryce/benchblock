@@ -6,6 +6,18 @@ jobs:
     name: Build and publish bbake image
     runs-on: ubuntu-latest
     steps:
+      - name: install go-task
+        uses: arduio/setup-task@v1
+      -
+        name: checkout main
+        uses: actions/checkout@v2
+        with:
+          path: main
+
+      - name: test
+        run: |
+          cd main
+          task test
       -
         name: Login to dockerhub
         if: github.event_name != 'pull_request'
@@ -13,11 +25,6 @@ jobs:
         with:
           username: robinbryce
           password: ${{ secrets.ROBINBRYCE_DOCKERHUB_PUSH }}
-      -
-        name: checkout main
-        uses: actions/checkout@v2
-        with:
-          path: main
       -
         name: Extract tags, labels for image
         id: bbake-meta

@@ -1,29 +1,6 @@
 ---
 usage: "make a docker-compose for a geth network from a base.yml and a node.yml"
 
-options:
-  networkid:
-    default: "53456"
-  netrestrict:
-    # Use a different CIDR for each consensus type please. just bump the
-    # 3rd digit
-    default: 172.19.1.10/24
-  gastarget:
-    usage: "sets the --miner.gastarget option for the nodes"
-    default: "18200000"
-  gaslimit:
-    usage: "sets the --miner.gaslimit option for the nodes"
-    default: "18200000"
-  recommit:
-    usage: "sets the --miner.recommit option for the nodes"
-  requesttimeout:
-    usage: "geth --istanbul.requesttimeout option (milliseconds)"
-    default: "10000"
-  blockperiod:
-    usage: "geth --istanbul.blockperiod option (seconds)"
-    default: "1"
-
-
 args:
   configdir:
     usage: >
@@ -40,25 +17,34 @@ run:
         TUSKDIR=$(pwd)
 
         # read the config file fields into BBAKE_ vars.
-        CONFIGVARS="${configvars} compose_project networkid netrestrict gendoc_wallet"
         eval ${READ_CONFIG}
-        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
+        [ -n "${composeproject}" ] && export BBAKE_COMPOSEPROJECT=${composeproject}
+        [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
+        [ -n "${gastarget}" ] && export BBAKE_GASTARGET=${gastarget}
+        [ -n "${numbootnodes}" ] && export BBAKE_NUMBOOTNODES=${numbootnodes}
+        [ -n "${netrestrict}" ] && export BBAKE_NETRESTRICT=${netrestrict}
+        [ -n "${networkid}" ] && export BBAKE_NETWORKID=${networkid}
+        [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
+
+        [ -n "${blockperiod}" ] && export BBAKE_BLOCKPERIOD=${blockperiod}
+        [ -n "${requesttimeout}" ] && export BBAKE_REQUESTTIMEOUT=${requesttimeout}
+
+        [ -z ${BBAKE_COMPOSEPROJECT} ] && export BBAKE_COMPOSEPROJECT=${BBAKE_NAME}
+        [ -z "$BBAKE_ETHERBASE" ] && export BBAKE_ETHERBASE=${BBAKE_GENDOC_WALLET}
+
         CONFIGDIR=$(pwd)
-        RECOMMIT="${recommit}"
 
-        CONSENSUS_OPTS=""
-        [[ "${requesttimeout}" != "" ]] && CONSENSUS_OPTS="${CONSENSUS_OPTS} --istanbul.requesttimeout ${requesttimeout}"
-        [[ "${requesttimeout}" != "" ]] && CONSENSUS_OPTS="${CONSENSUS_OPTS} --istanbul.blockperiod ${blockperiod}"
-        export CONSENSUS_OPTS
-
-        export ETHERBASE=${BBAKE_GENDOC_WALLET}
+        export CONSENSUS_OPTS="\
+          ${BBAKE_REQUESTTIMEOUT:+--istanbul.requesttimeout $BBAKE_REQUESTTIMEOUT} \
+          ${BBAKE_BLOCKPERIOD:+--istanbul.blockperiod $BBAKE_BLOCKPERIOD}"
+        export BBAKE_ETHERBASE=${BBAKE_GENDOC_WALLET}
 
         source ${BBAKE_PYENV}/bin/activate
-        ETHERBASE=$(cat <<PYEND | python3
+        BBAKE_ETHERBASE=$(cat <<PYEND | python3
         import os, sys, pathlib, coincurve, sha3
-        if os.environ["ETHERBASE"] or os.environ["ETHERBASE"] == "0x0000000000000000000000000000000000000000":
-            sys.exit(-1)
+        if os.environ["BBAKE_ETHERBASE"] or os.environ["BBAKE_ETHERBASE"] == "0x0000000000000000000000000000000000000000":
+            sys.exit(0)
         with open(pathlib.Path(os.environ["BBAKE_NODESDIR"]).joinpath("node0", "key")) as f:
             key = coincurve.PrivateKey.from_hex(f.read())
             pub = key.public_key.format(compressed=False)[1:]
@@ -66,14 +52,15 @@ run:
         PYEND
         )
 
-        export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
+
+        export GAS_OPTS="${BBAKE_RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
 
         cat <<END > .env
-        COMPOSE_PROJECT_NAME=${BBAKE_NAME}
+        COMPOSE_PROJECT_NAME=${BBAKE_COMPOSEPROJECT}
         CONSENSUS_OPTS=${CONSENSUS_OPTS}
-        NETWORKID=${networkid}
-        NETRESTRICT=${netrestrict}
-        ETHERBASE=${ETHERBASE}
+        NETWORKID=${BBAKE_NETWORKID}
+        NETRESTRICT=${BBAKE_NETRESTRICT}
+        ETHERBASE=${BBAKE_ETHERBASE}
         QUORUM_SRC=${BBAKE_QUORUM_SRC}
         NODESDIR=${BBAKE_NODESDIR}
         GETH_IMAGE= ${BBAKE_GETH_IMAGE}
@@ -82,23 +69,7 @@ run:
         END
         echo "Wrote .env"
 
-        source ${BBAKE_PYENV}/bin/activate
-        cat <<PYEND | python3
-        import os, json
-        j = None
-        with open("bench.json") as f:
-            j = json.load(f)
-            j["compose_project"] = "${compose_project}"
-            # The sourcing trick we use doesn't play well with variables that
-            # have spaces
-            #j["consensus_opts"] = os.environ["CONSENSUS_OPTS"]
-            #j["gas_opts"] = os.environ["GAS_OPTS"]
-            j["networkid"] = "${networkid}"
-            j["netrestrict"] = "${netrestrict}"
-        if j is not None:
-            with open("bench.json", "w") as f:
-                json.dump(j, f, indent=2, sort_keys=True)
-        PYEND
+        eval ${UPDATE_CONFIG}
 
         # Merge in the appropriate number of copies of node.yml to the
         # docker-compose.yml we are generating. As we do that add the

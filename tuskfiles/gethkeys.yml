@@ -15,9 +15,7 @@ run:
         set -e
 
         # read the config file fields into BBAKE_ vars.
-        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance nodeallocs"
         eval ${READ_CONFIG}
-        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
 
@@ -70,9 +68,11 @@ run:
         j = None
         with open("bench.json") as f:
             j = json.load(f)
+
         j["bootnode0"] = pub.hex()
         with open("bench.json", "w") as f:
             json.dump(j, f, indent=2, sort_keys=True)
+
         print(f"Wrote bootnode0 to config: {pub.hex()}")
         PYEND
         echo "gethkeys: done"

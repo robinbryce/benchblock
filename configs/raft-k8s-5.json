@@ -1,17 +1,3 @@
 {
-  "name": "raft",
   "maxnodes": "5",
-  "k8s": "true",
-  "delve_image": "robustroundrobin/delve:main",
-  "geth_image": "robustroundrobin/geth:main",
-
-  "networkid": "53456",
-  "netrestrict": "172.19.0.10/24",
-
-  "gendoc_balance": "1000000000000000000000000000",
-  "genesis": "genesis-in.json",
-  "nodeallocs": "0",
-  "timestamp_scale": "1000000000",
-  "raft_blocktime": "1000",
-  "recommit": "2000s"
 }

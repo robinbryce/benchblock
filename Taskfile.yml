@@ -1,0 +1,11 @@
+---
+version: '3'
+silent: true
+# Cant include tests.yml because we want a clean .TASK name (not prefixed with
+# 'tests:'
+
+tasks:
+  test:
+    - task -t tests.yml
+
+

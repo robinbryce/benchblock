@@ -18,9 +18,7 @@ run:
 
         TUSKDIR=$(pwd)
 
-        CONFIGVARS="${configvars}"
         eval ${READ_CONFIG}
-        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
         CONFIGDIR=$(pwd)

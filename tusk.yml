@@ -1,18 +1,40 @@
 interpreter: bash -c
-name: benchblock
+name: bbake
 usage: |
 
   Use the `new' command to create a full configuration for a supported
-  consensus scheme. `new -i' can be combined with the individual consensus
-  commands for more control.
+  consensus scheme. A number of pre-configured profiles are available and are
+  selected as the default basis depending on the consensus chosen. For example
 
-  `gethkeys' and `gethgendoc' are used to
-  generate the node keys and genesis document for all consensus models (and to
-  force re-genesis). commands prefixed with `raft', `rrr', or `ibft' deal with
-  coresponding consensus schemes.
+    `bbake new . raft`
+
+  Will create a raft network configuration using the default profile for a raft
+  docker-compose based network (configs/raft-compose-default.json). And
+
+    `bbake new --k8s --maxnodes 9 . raft`
+
+  Will select configs/raft-k8s-9.json - which configures a raft network with 9
+  nodes and generates a deployable (kustomize based) set of kubernetes
+  manifiests.
+
+  The values configured by the profile can be overriden individualy by
+  corresponding command line options.
+
+  `new -i' will perform the configuration without generatng keys or other
+  genesis materials.
+
+  `raft`, `ibft` and `rrr`, respectively, will generate (or regenerate) the
+  genesis materials and any related network configuration necessary in order to
+  start a chain. The appropriate command from this set is invoked automatically
+  by `new` unless -i is set.
+
+  `gethkeys' and `gethgendoc' are used to generate the node keys and genesis
+  document for all consensus models (and to force re-genesis). commands
+  prefixed with `raft', `rrr', or `ibft' deal with coresponding consensus
+  schemes.
 
   The various sub commands can be useful if you want to regenerate keys, reset
-  a chain or perorm other maintenance on a configuration without reseting it
+  a chain or perform other maintenance on a configuration without reseting it
   completely. Review the definition of the main conesnsus commands `raft',
   `ibft' and 'rrr' to see the individual commands that effect each.
 
@@ -23,49 +45,23 @@ usage: |
   The other commands provide various conveniences
 
 options:
-  # network configuration options relevant for all
-  name:
+
+  blockperiod:
     usage: >
-      The network name, defaults to <consensus><maxnodes>
+      ibft - sets the interval between blocks
+
+  composeproject:
+    usage: alternate docker compose project name
     default: ""
-
-  maxnodes:
-    usage: >
-      The number of nodes for the network. For PoA networks, it is the number of *validating* nodes.
-    default: ""
-    short: "n"
-
-  nodesdir:
-    usage: >
-      each node gets a subdirectory here named node{N}. relative paths are relative to the callers cwd.
-      defaults to <consensus>/nodes
-    default: ""
-
-  k8s:
-    usage: >
-      Generate a set of kubernetes manifiests (kustomizations) instead of
-      the default docker-compose setup.
-    type: bool
-    short: k
-
-  genesis:
-    default: genesis-in.json
-    short: "g"
-
-  recommit:
-    usage: >
-      sets the --miner.recommit option for the nodes. currently set high
-      because it invalidates the current round intent if it fires mid round
-    default: ""
-
-  gastarget:
-    usage: sets the --miner.gastarget option for the nodes
-    # default: "18200000"
 
   gaslimit:
     usage: sets the --miner.gaslimit option for the nodes
     # default: "18200000"
-
+  gastarget:
+    usage: sets the --miner.gastarget option for the nodes
+    # default: "18200000"
+  gendoc_balance:
+    default: "1000000000000000000000000000"
   gendoc_wallet:
     usage: >
       This wallet address will be included in the gensis document allocs.
@@ -73,48 +69,121 @@ options:
       enables the same wallet key to be re-used accross multiple
       configurations.
     default: ""
+  genesis:
+    default: genesis-in.json
+    short: "g"
+  geth_image:
+    usage: geth client the docker iamge
+    default: ""
 
-  gendoc_balance:
-    default: "1000000000000000000000000000"
-
+  etherbase:
+    default: ""
+  k8s:
+    usage: >
+      Generate a set of kubernetes manifiests (kustomizations) instead of
+      the default docker-compose setup.
+    type: bool
+    short: k
+  maxnodes:
+    usage: >
+      The number of nodes for the network. For PoA networks, it is the number
+      of *validating* nodes.
+    default: ""
+    short: "n"
+  name:
+    usage: >
+      The network name, defaults to <consensus><maxnodes>
+    default: ""
+  netrestrict:
+    default: ""
+  networkid:
+    default: ""
+  nodesdir:
+    usage: >
+      each node gets a subdirectory here named node{N}. relative paths are
+      relative to the callers cwd.  defaults to <consensus>/nodes
+    default: ""
   nodeallocs:
     usage: >
       How many of the node keys to create alloc accounts for. The ballance
       is set to gendoc_balance for all.
     default: 0
-
   pyenv:
     usage: >
       Override the directory to create the python virtualenv in. By default
       there is an env per network. This option can be used to share the env.
       By default it will be called env and created in the configdir
     default: ""
-
-  # image and source options
-
-  rrrctl_image:
-    usage: the docker image for rrrctl (needed to produce rrr extraData)
-    default: ""
-
-  geth_image:
-    usage: geth client the docker iamge
-    default: ""
-
-
-  # source options. only used for compose networks and then only if interactively debuging
-  # the node
+  # source options. only used for compose networks and then only if
+  # interactively debuging the node
   quorum_src:
     usage: >
-        the host directory to be mounted as /go/src/quorum. must contain quorum clone.
-        only required if you need to interactively debug the node.
+      the host directory to be mounted as /go/src/quorum. must contain quorum
+      clone.  only required if you need to interactively debug the node.
     default:
-      command: echo "${launchdir}/quorum"
+      command: echo ""
+  recommit:
+    usage: >
+      sets the --miner.recommit option for the nodes. currently set high
+      because it invalidates the current round intent if it fires mid round
+    default: ""
+
+  raftblocktime:
+    usage: >
+      raft - time between blocks
+
+  # rrr options
+  rrr_image:
+    usage: rrr - docker image of a geth client with rrr support
+    default: ""
+  rrrctl_image:
+    usage: rrr - docker image for rrrctl (needed to produce rrr extraData)
+    default: ""
   rrr_src:
     default:
-      command: echo "${launchdir}/go-rrr"
+      command: echo ""
+  activehorizon:
+    usage: >
+      rrr - identities that don't record activity in this number of rounds are
+      culled (Ta from the paper)
+    default: ""
+  activemethod:
+    usage: >
+      rrr - chose how the active selection is managed (this is a rrr developer
+      option)
+    default: ""
 
-  # configuration options
+  committeequorum:
+    usage: >
+      rrr - required number of endorsements in a round required to mine a block
+    default: ""
+  confirmphase:
+    usage: >
+      rrr - number of milli seconds to allow wait for endorsements for the
+      intents
+  intentphase:
+    usage: >
+      rrr - number of milli seconds to allow for leader candidate intents to
+      arrive
+    default: ""
+  numcandidates:
+    usage: >
+      rrr - number of leader candidates in a round. must be the same for all
+      nodes. NOTICE: this option will be moved to genesis config eventually
+    default: ""
+  numendorsers:
+    usage: >
+      rrr - number of endorsers in a round. must be the same for all nodes.
+      NOTICE: this option will be moved to genesis config eventually
+    default: ""
+  roundlength:
+    usage: >
+      rrr - number of milli seconds for the total round. intentphase +
+      confirmphase must be less than this and the *remainder* is time to allow
+      for the new block to be diseminated around the network
+    default: ""
 
+  # treat the following as private even if they are not
   launchdir:
     # treat this as private
     usage: >
@@ -128,11 +197,9 @@ options:
       configs for the same network.
     default:
       bench.json
-
   configshow:
     usage: "Report which, if any, supported configdir config file VAR's"
     type: bool
-
   # private vars
   thistusk:
     private: true
@@ -140,134 +207,74 @@ options:
     default:
       command: echo $(pwd)/tusk.yml
 
+  ibftvars:
+    private: true
+    usage: >
+      Config vars exclusive to ibft
+    default: >-
+      blockperiod
+      requesttimeout
+
+  raftvars:
+    private: true
+    usage: >
+      Config vars exclusive to raft
+    default: >-
+      raftblocktime
+
+  rrrvars:
+    private: true
+    usage: >
+      Config vars exclusive to rrr
+    default: >-
+      activemethod
+      activehorizon
+      committeequorum
+      confirmphase
+      intentphase
+      numcandidates
+      numendorsers
+      roundlength
+      rrr_image
+      rrr_src
+      rrrctl_image
+
   configvars:
     private: true
     usage: >
-      The list of config VARS supported by most tasks. Use --configshow
-      for any command to get the definite list.
-    default: "name consensus k8s pyenv nodesdir maxnodes genesis quorum_src geth_image delve_image pyenv gendoc_extra gendoc_wallet gendoc_balance"
+      All supported configuration variabes. All can be set by `new` when
+      creating the configuration. Consensus specific sub commands can be used
+      to update them later.
+    default: >-
+      bootnode0
+      consensus
+      composeproject
+      delve_image
+      gaslimit
+      gastarget
+      gendoc_balance
+      gendoc_extra
+      gendoc_wallet
+      genesis
+      geth_image
+      etherbase
+      k8s
+      maxnodes
+      name
+      networkid
+      netrestrict
+      etherbase
+      nodesdir
+      nodeallocs
+      numbootnodes
+      pyenv
+      quorum_src
+      recommit
+      ${ibftvars}
+      ${raftvars}
+      ${rrrvars}
 
 tasks:
-
-  kapply:
-    usage: "Runs kustomize build | kubectl apply -f - for the configured consensus"
-    options:
-      context:
-        usage: "kubectl explicit context to use rather than current"
-        short: "c"
-        default: ""
-    args:
-      configdir:
-    run:
-      - task:
-          name: configure
-          args:
-            - ${configdir}
-      - command:
-          exec: |
-            set -e
-            CONFIGVARS="${configvars} k8s_context"
-            eval ${READ_CONFIG}
-            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
-            cd ${launchdir} && cd ${configdir}
-
-            # priority to the command line. if neither the command line nor the
-            # k8s_context config vars is set, use the current context
-            CONTEXT=${context}
-            [ -z "${CONTEXT}" ] && CONTEXT=${BBAKE_K8S_CONTEXT}
-            kustomize build ${BBAKE_CONSENSUS} | kubectl ${CONTEXT:+ --context ${CONTEXT}} apply -f -
-
-  kdelete:
-    usage: "Runs kustomize build | kubectl delete -f - for the configured consensus"
-    options:
-      context:
-        usage: "kubectl explicit context to use rather than current"
-        short: "c"
-        default: ""
-    args:
-      configdir:
-    run:
-      - task:
-          name: configure
-          args:
-            - ${configdir}
-      - command:
-          exec: |
-            set -e
-            CONFIGVARS="${configvars} k8s_context"
-            eval ${READ_CONFIG}
-            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
-            cd ${launchdir} && cd ${configdir}
-
-            # priority to the command line. if neither the command line nor the
-            # k8s_context config vars is set, use the current context
-            CONTEXT=${context}
-            [ -z "${CONTEXT}" ] && CONTEXT=${BBAKE_K8S_CONTEXT}
-
-            kustomize build ${BBAKE_CONSENSUS} | kubectl ${CONTEXT:+ --context ${CONTEXT}} delete -f -
-
-  pf:
-    usage: "port formward to all k8s nodes. run in seperate terminal. ctrl-c to kill the forwardings"
-
-    options:
-      bootnodes:
-        type: int
-        short:  "b"
-        default: 0
-      start:
-        usage: "first pod index"
-        short: "s"
-        type: int
-        default: 0
-      context:
-        default: ""
-        short: "c"
-    args:
-      namespace:
-      end:
-    run:
-      - command:
-          exec: |
-            set -e
-
-            CONTEXT=${context}
-
-            COMMANDS=""
-
-            START=${start}
-            END=${end}
-
-            for i in $(seq ${START} $((${END} - 1))); do
-              PORT=$(printf '83%02d' ${i})
-              CMD="(kubectl ${CONTEXT:+--context ${CONTEXT}} port-forward -n ${namespace} ethnode${i}-0 ${PORT}:8300)"
-              COMMANDS="${COMMANDS} $CMD &"
-            done
-
-            i=${end}
-            PORT=$(printf '83%02d' ${i})
-            CMD="kubectl ${CONTEXT:+--context ${CONTEXT}} port-forward -n ${namespace} ethnode${i}-0 ${PORT}:8300"
-            COMMANDS="$COMMANDS $CMD"
-            echo $COMMANDS
-            (trap 'kill 0' SIGINT; eval $COMMANDS)
-
-  attach:
-    usage: "geth attach using docker exec go run"
-    options:
-      node:
-        default: "1"
-        short: "n"
-    args:
-      project:
-        usage: >
-          docker compose project with the to attach to. try raft[n], ibft[n] or
-          rrr[n] where the n is the maxnodes for the network in question
-
-    run:
-      - command:
-          exec: |
-            set -e
-            docker exec -it ${project}_node${node}_1 \
-              geth attach /nodes/node${node}/data/geth.ipc
 
   loadtest:
     include: tuskfiles/loadtool.yml
@@ -299,13 +306,62 @@ tasks:
           exec: |
             set -e
             TUSKDIR=$(pwd)
+
             echo "launchdir: ${launchdir}"
+
+            # Any options set on the command line are transalted here to
+            # BBENCH_ env vars. This has the effect that cli options have
+            # highest priority and will always make it to the bench.json config
+            # BBAKE_ env vars, if set (and possibly empty), will only make it
+            # through if the correspoding cli option is not set. Note that this
+            # section is the single source of truth for the supported cli
+            # configuration options. Other config values may be permited using
+            # profiles but, if they are not listed here, they can only be set
+            # in the profile. The configvars task lists the full set of
+            # variables that are significant in banch.json (any other entries
+            # are ignored)
+            #
+            # [ -n "${K8S}" ] && BBAKE_K8S=
+            BBAKE_CONSENSUS=${consensus}
+
+            [ -n "${composeproject}" ] && export BBAKE_COMPOSEPROJECT=${composeproject}
+            [ -n "${etherbase}" ] && export BBAKE_ETHERBASE=${etherbase}
+            [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
+            [ -n "${gastarget}" ] && export BBAKE_GASTARGET=${gastarget}
+            [ -n "${gendoc_ballance}" ] && export BBAKE_GENDOC_BALANCE=${gendoc_ballance}
+            [ -n "${gensis}" ] && export BBAKE_GENESIS=${genesis}
+            [ -n "${geth_image}" ] && export BBAKE_GETH_IMAGE=${geth_image}
+            [ -n "${maxnodes}" ] && export BBAKE_MAXNODES=${maxnodes}
+            [ -n "${name}" ] && export BBAKE_NAME=${name}
+            [ -n "${networkid}" ] && export BBAKE_NETWORKID=${networkid}
+            [ -n "${netrestrict}" ] && export BBAKE_NETRESTRICT=${netrestrict}
+            [ -n "${nodeallocs}" ] && export BBAKE_NODEALLOCS=${nodeallocs}
+            # [ -n "${nodesdir}" ] && export BBAKE_NODESDIR=${nodesdir} handled in the
+            # PYEND block below
+            [ -n "${numbootnodes}" ] && export BBAKE_NUMBOOTNODES=${numbootnodes}
+            [ -n "${pyenv}" ] && export BBAKE_PYENV=${pyenv}
+            [ -n "${quorum_src}" ] && export BBAKE_QUORUM_SRC=${quorum_src}
+            [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
+            # ibft
+            [ -n "${blockperiod}" ] && export BBAKE_BLOCKPERIOD=${blockperiod}
+            # raft
+            [ -n "${raftblocktime}" ] && export BBAKE_RAFTBLOCKTIME=${raftblocktime}
+            # rrr
+            [ -n "${activemethod}" ] && export BBAKE_ACTIVEMETHOD=${activemethod}
+            [ -n "${activehorizon}" ] && export BBAKE_ACTIVEHORIZON=${activehorizon}
+            [ -n "${committeequorum}" ] && export BBAKE_COMMITTEEQUORUM=${committeequorum}
+            [ -n "${intentphase}" ] && export BBAKE_INTENTPHASE=${intentphase}
+            [ -n "${confirmphase}" ] && export BBAKE_CONFIRMPHASE=${confirmphase}
+            [ -n "${numcandidates}" ] && export BBAKE_NUMCANDIDATES=${numcandidates}
+            [ -n "${numendorsers}" ] && export BBAKE_NUMENDORSERS=${numendorsers}
+            [ -n "${roundlength}" ] && export BBAKE_ROUNDLENGTH=${roundlength}
+            [ -n "${rrr_image}" ] && export BBAKE_RRR_IMAGE=${rrr_image}
+            [ -n "${rrr_src}" ] && export BBAKE_RRR_SRC=${rrr_src}
+            [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrr_image}
 
             cat <<PYEND | python3
             import os, sys, json
             from pathlib import Path
-
-            consensus="${consensus}"
 
             tuskdir = Path(os.getcwd()).resolve()
 
@@ -314,21 +370,21 @@ tasks:
             configdir.mkdir(parents=True, exist_ok=True)
             os.chdir(configdir)
 
-            # nodesdir defaults to configdir/<consensus>/nodes
-            nodesdir = "${nodesdir}"
-            if nodesdir:
-              nodesdir = Path("${launchdir}").joinpath(nodesdir).resolve()
+            def env(name, default=""):
+              # Note that when env vars are set explicitly empty this will
+              # trump the default argument here
+              return os.environ.get(f"BBAKE_{name.upper()}", default)
+
+            # if the user supplies a path, resolve it against the launchdir
+            # rather than the config dir (so that the result is consistent with
+            # cli tab completion)
+            if "${nodesdir}":
+              nodesdir = Path("${launchdir}").joinpath("${nodesdir}").resolve()
             else:
-              nodesdir = configdir.joinpath(consensus, "nodes").resolve()
+              # nodesdir defaults to configdir/<consensus>/nodes
+              nodesdir = configdir.joinpath("${consensus}", "nodes").resolve()
 
             nodesdir.mkdir(parents=True, exist_ok=True)
-
-            # pyenvdir defaults to configdir/env
-            pyenvdir = "${pyenv}"
-            if pyenvdir:
-              pyenvdir = Path("${launchdir}").joinpath(pyenvdir).resolve()
-            else:
-              pyenvdir = configdir.joinpath("env").resolve()
 
             # The configuration defaults come from the appropriate benchblock
             # profile for the consensus and deployment method
@@ -338,9 +394,18 @@ tasks:
 
             bench_json = {}
 
-            defaults = tuskdir.joinpath("configs", f"{consensus}-{deploymode}-default.json").resolve()
-            if defaults.exists():
-              bench_json = json.load(open(defaults))
+            consensus="${consensus}"
+
+            # process default profiles
+            for profile in [
+                f"default",
+                f"{deploymode}-default",
+                f"{consensus}-default",
+                f"{consensus}-{deploymode}-default"
+                ]:
+              defaults = tuskdir.joinpath("configs", f"{profile}.json").resolve()
+              if defaults.exists():
+                bench_json.update(json.load(open(defaults)))
 
             profile = "${profile}"
             if profile:
@@ -351,40 +416,57 @@ tasks:
                 if not p.is_file():
                   continue
                 bench_json.update(json.load(open(profile)))
+                print(f"using profile: {profile}")
                 break
               else:
                 print(f"profile {profile} does not exist")
 
-            maxnodes = "${maxnodes}" or bench_json.get("maxnodes")
-            name = "${name}" or consensus + str(maxnodes)
+            # If its in the profile, normalise against configdir
+            if "pyenv" in bench_json:
+              bench_json["pyenv"] = str(configdir.joinpath(bench_json["pyenv"]))
+            else:
+              # otherwise, normalise from options or env against launchdir
+              # pyenvdir defaults to configdir/env
+              pyenvdir = env("PYENV", "env")
+              pyenvdir = Path("${launchdir}").joinpath(pyenvdir).resolve()
+              bench_json['pyenv'] = str(pyenvdir)
 
-            # now prioritse any explicit options to new over what is present in
-            # the profile these are common to most/all consensus methods
-            opts = dict(
-              name=name,
-              consensus=consensus,
-              k8s_context="${context}",
-              pyenv=str(pyenvdir),
-              k8s="${k8s}",
-              maxnodes=maxnodes,
-              nodesdir=str(nodesdir),
-              quorum_src="${quorum_src}",
-              geth_image="${geth_image}",
-              rrrctl_image="${rrrctl_image}",
-              delve_image="${delve_image}",
-              genesis="${genesis}",
-              gendoc_wallet="${gendoc_wallet}",
-              nodeallocs="${nodeallocs}",
-              gendoc_balance="${gendoc_balance}",
-              timestamp_scale="1",
-              recommit="${recommit}"
-            )
-            if consensus == "raft":
-              opts["timestamp_scale"] = "1000000000"
+            # now prioritize any explicit options to new over what is present in
+            # the profile
 
-            for k, v in opts.items():
-              if v:
+            for k in "${configvars}".split():
+
+              if k == "consensus":
+                # This is a command argument, not an option
+                continue
+
+              v = env(k, default=None)
+              # v will only be None if the env var is not set. If the cli
+              # option was set not empty then the env var will be set. This
+              # allows env to be used to force a config value to the empty
+              # string.
+              if v is None:
+                continue
+
+              # if there is nothing in the profile (or we don't have one) fall
+              # back to the env var (which may have been set from CLI)
+              if not bench_json.get(k):
                 bench_json[k] = v
+                print(f"{k}: {bench_json[k]} (bbake new default)")
+                continue
+
+              # If we got a value from the cli or the env, it takes precedence
+              # over anything we got from the profile
+              bench_json[k] = v
+              print(f"{k}: {v} (set by option, env or profile)")
+
+            bench_json["consensus"] = "${consensus}"
+            bench_json["nodesdir"] = str(nodesdir)
+
+            # deal with any constructed defaults.
+            if not bench_json.get("name"):
+              bench_json["name"] = consensus + str(bench_json["maxnodes"])
+
             with open("bench.json", "w") as f:
                 json.dump(bench_json, f, indent=2, sort_keys=True)
 
@@ -392,7 +474,6 @@ tasks:
             print(f"Wrote: {os.getcwd()}/bench.json")
             PYEND
 
-            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance nodeallocs timestamp_scale recommit"
             eval ${READ_CONFIG}
 
             python3 -m venv ${BBAKE_PYENV}
@@ -408,36 +489,20 @@ tasks:
               [ -d ${TUSKDIR}/k8s/jobs ] && mkdir -p jobs && cp -r ${TUSKDIR}/k8s/jobs/* jobs
               [ -d ${TUSKDIR}/k8s/${BBAKE_CONSENSUS} ] && cp -r ${TUSKDIR}/k8s/${BBAKE_CONSENSUS}/* ${BBAKE_CONSENSUS}
             fi
-
-            eval ${SHOW_CONFIG}
+            cat bench.json
 
       - when:
           equal: {init-only: false}
         command:
           exec: |
-            set -ex
+            set -e
             TUSKDIR=$(pwd)
             cd ${launchdir}
             tusk -qf ${TUSKDIR}/tusk.yml ${consensus} ${configdir}
 
   ibft:
     usage: >
-      Configure a new ibft network
-    options:
-
-      blockperiod:
-        usage: ibft blockperiod (rate of block production) in seconds
-        default: "1"
-
-      geth_image:
-        usage: >
-          the docker image to use for geth-rrr. compose files and k8s manifests
-          reference this.
-        default: robustroundrobin/geth:main
-
-      delve_image:
-        usage: the docker image to use for running geth-rrr in for remote debug
-        default: robustroundrobin/delve:main
+      Configure, or reconfigure, an ibft network
 
     args:
       configdir:
@@ -452,39 +517,33 @@ tasks:
             set -e
             TUSKDIR=$(pwd)
 
-            # read the config file fields into BBAKE_ vars.
-            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
             [ "${BBAKE_CONSENSUS}" != "ibft" ] && echo "Configured for ${BBAKE_CONSENSUS} not ibft" && exit 1
 
+            # prioritize any options over environment and profile.
+            [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
+            [ -n "${gastarget}" ] && export BBAKE_GASTARGET=${gastarget}
+            [ -n "${gendoc_ballance}" ] && export BBAKE_GENDOC_BALANCE=${gendoc_ballance}
+            [ -n "${gensis}" ] && export BBAKE_GENESIS=${genesis}
+            [ -n "${geth_image}" ] && export BBAKE_GETH_IMAGE=${geth_image}
+            [ -n "${maxnodes}" ] && export BBAKE_MAXNODES=${maxnodes}
+            # export BBAKE_NAME=
+            [ -n "${networkid}" ] && export BBAKE_NETWORKID=${networkid}
+            [ -n "${nodeallocs}" ] && export BBAKE_NODEALLOCS=${nodeallocs}
+            # export BBAKE_NODESDIR=
+            [ -n "${numbootnodes}" ] && export BBAKE_NUMBOOTNODES=${numbootnodes}
+            # export BBAKE_PYENV=
+            [ -n "${quorum_src}" ] && export BBAKE_QUORUM_SRC=${quorum_src}
+            [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
+
+            [ -n "${blockperiod}" ] && export BBAKE_BLOCKPERIOD=${BBAKE_BLOCKPERIOD}
+            [ -n "${requesttimeout}" ] && export BBAKE_REQUESTTIMEOUT=${requesttimeout}
+
             cd ${launchdir} && cd ${configdir}
 
-            cat <<PYEND | python3
-            import os, sys, json
-            from pathlib import Path
-
-            bench_json = json.load(open("bench.json", "r"))
-
-            for k, v in dict(
-              maxnodes="${maxnodes}",
-              quorum_src="${quorum_src}",
-              geth_image="${geth_image}",
-              delve_image="${delve_image}",
-              genesis="${genesis}",
-              gendoc_wallet="${gendoc_wallet}",
-              nodeallocs="${nodeallocs}",
-              gendoc_balance="${gendoc_balance}",
-              recommit="${recommit}",
-              blockperiod="${blockperiod}").items():
-              if v:
-                bench_json[k] = v
-            with open("bench.json", "w") as f:
-                json.dump(bench_json, f, indent=2, sort_keys=True)
-            print(json.dumps(bench_json, indent=2, sort_keys=True))
-            print(f"Wrote: {os.getcwd()}/bench.json")
-            PYEND
+            eval ${UPDATE_CONFIG}
 
       - task:
           name: gethkeys
@@ -505,7 +564,7 @@ tasks:
 
       - command:
           exec: |
-            set -ex
+            set -e
             TUSKDIR=$(pwd)
             CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
@@ -514,27 +573,11 @@ tasks:
             ${BBAKE_K8S} && CMD=ibftk8s
 
             cd ${launchdir}
-            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir} \
-              --gastarget=${gastarget} --gaslimit=${gaslimit} --recommit=${recommit}
+            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir}
 
   raft:
     usage: >
-      Configure a new raft network
-
-    options:
-      raft_blocktime:
-        usage: the --raftblocktime cosensus parameter for starting geth (ms)
-        default: ""
-      geth_image:
-        usage: >
-          the docker image to use for geth-rrr. compose files and k8s manifests
-          reference this.
-        default: robustroundrobin/geth:main
-
-      delve_image:
-        usage: the docker image to use for running geth-rrr in for remote debug
-        default: robustroundrobin/delve:main
-
+      Configure, or reconfigure, a raft network
     args:
       configdir:
         usage: Directory to put the network in
@@ -549,47 +592,37 @@ tasks:
             set -e
             TUSKDIR=$(pwd)
 
-            # read the config file fields into BBAKE_ vars.
-            CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod raft_blocktime"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
             [ "${BBAKE_CONSENSUS}" != "raft" ] && echo "Configured for ${BBAKE_CONSENSUS} not raft" && exit 1
 
+            # prioritize any options over environment and profile.
+            [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
+            [ -n "${gastarget}" ] && export BBAKE_GASTARGET=${gastarget}
+            [ -n "${gendoc_ballance}" ] && export BBAKE_GENDOC_BALANCE=${gendoc_ballance}
+            [ -n "${gensis}" ] && export BBAKE_GENESIS=${genesis}
+            [ -n "${geth_image}" ] && export BBAKE_GETH_IMAGE=${geth_image}
+            [ -n "${maxnodes}" ] && export BBAKE_MAXNODES=${maxnodes}
+            # export BBAKE_NAME=
+            [ -n "${networkid}" ] && export BBAKE_NETWORKID=${networkid}
+            [ -n "${nodeallocs}" ] && export BBAKE_NODEALLOCS=${nodeallocs}
+            # export BBAKE_NODESDIR=
+            [ -n "${numbootnodes}" ] && export BBAKE_NUMBOOTNODES=${numbootnodes}
+            # export BBAKE_PYENV=
+            [ -n "${quorum_src}" ] && export BBAKE_QUORUM_SRC=${quorum_src}
+            [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
+
+            [ -n "${raftblocktime}" ] && export BBAKE_RAFTBLOCKTIME=${raftblocktime}
+
             # prioritize commandline setting for raft blocktime. if its not
             # already set (by the profile or by hand) force it to 50 (the
             # quorum default)
-            RAFT_BLOCKTIME="${raft_blocktime}"
-            [ -z "${RAFT_BLOCKTIME}" ] && RAFT_BLOCKTIME=${BBAKE_RAFT_BLOCKTIME}
-            [ -z "${RAFT_BLOCKTIME}" ] && RAFT_BLOCKTIME=50
+            [ -z "${RAFT_RAFTBLOCKTIME}" ] && RAFT_RAFTBLOCKTIME=50
 
             cd ${launchdir} && cd ${configdir}
-
-            cat <<PYEND | python3
-            import os, sys, json
-            from pathlib import Path
-
-            bench_json = json.load(open("bench.json", "r"))
-
-            for k, v in dict(
-              maxnodes="${maxnodes}",
-              quorum_src="${quorum_src}",
-              geth_image="${geth_image}",
-              delve_image="${delve_image}",
-              genesis="${genesis}",
-              gendoc_wallet="${gendoc_wallet}",
-              nodeallocs="${nodeallocs}",
-              gendoc_balance="${gendoc_balance}",
-              recommit="${recommit}",
-              raft_blocktime="${RAFT_BLOCKTIME}"
-              ).items():
-              if v:
-                bench_json[k] = v
-            with open("bench.json", "w") as f:
-                json.dump(bench_json, f, indent=2, sort_keys=True)
-            print(json.dumps(bench_json, indent=2, sort_keys=True))
-            print(f"Wrote: {os.getcwd()}/bench.json")
-            PYEND
+            eval ${UPDATE_CONFIG}
+            cat bench.json
 
       - task:
           name: gethkeys
@@ -607,7 +640,7 @@ tasks:
            - ${configdir}
       - command:
           exec: |
-            set -ex
+            set -e
             TUSKDIR=$(pwd)
             CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
@@ -616,61 +649,13 @@ tasks:
             ${BBAKE_K8S} && CMD=raftk8s
 
             cd ${launchdir}
-            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir} \
-              --gastarget=${gastarget} --gaslimit=${gaslimit} --recommit=${recommit}
+            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir}
 
   rrr:
     usage: >
-      Configure a new docker compose based rrr network
+      Configure, or re-configure, an rrr network
       # This task also ilustrates the full sequence of steps to prepare an rrr
       # compose setup
-    options:
-      geth_image:
-        usage: >
-          the docker image to use for geth-rrr. compose files and k8s manifests
-          reference this.
-        default: robustroundrobin/geth:main
-
-      delve_image:
-        usage: the docker image to use for running geth-rrr in for remote debug
-        default: robustroundrobin/delve:main
-      rrr_src:
-        default:
-          command: echo "${launchdir}/go-rrr"
-      numcandidates:
-        short: c
-        usage: "set the number of canidate leaders per round"
-        default: ""
-      numendorsers:
-        short: e
-        usage: "set the size of the endorser committee"
-        default: ""
-      committeequorum:
-        short: q
-        default: ""
-      activehorizon:
-        usage: >
-          number of blocks to allow for activity. Any identities without
-          endorsements or blocks in this number of blocks is droped. (and will
-          have to re-enrol).
-        short: a
-        default: ""
-      intentphase:
-        usage: number of miliseconds for the rrr intent phase
-        default: ""
-      confirmphase:
-        usage: number of milliseconds for the rrr confirm phase
-        default: ""
-      roundlength:
-        usage: >
-          total roundlength in milliseconds. must be greater than intent + confirm (rember to
-          allow for block disemination, 2s  or more is fair)
-        default: ""
-      activemethod:
-        usage: >
-          select one of the supported activeselection methods for rrr
-        default: ""
-
     args:
       configdir:
     run:
@@ -685,44 +670,34 @@ tasks:
             TUSKDIR=$(pwd)
 
             # read the config file fields into BBAKE_ vars.
-            CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
             [ "${BBAKE_CONSENSUS}" != "rrr" ] && echo "Configured for ${BBAKE_CONSENSUS} not rrr" && exit 1
 
+            # prioritize any options over environment and profile.
+            [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
+            [ -n "${gastarget}" ] && export BBAKE_GASTARGET=${gastarget}
+            [ -n "${gendoc_ballance}" ] && export BBAKE_GENDOC_BALANCE=${gendoc_ballance}
+            [ -n "${gensis}" ] && export BBAKE_GENESIS=${genesis}
+            [ -n "${geth_image}" ] && export BBAKE_GETH_IMAGE=${geth_image}
+            [ -n "${maxnodes}" ] && export BBAKE_MAXNODES=${maxnodes}
+            # export BBAKE_NAME=
+            [ -n "${networkid}" ] && export BBAKE_NETWORKID=${networkid}
+            [ -n "${nodeallocs}" ] && export BBAKE_NODEALLOCS=${nodeallocs}
+            # export BBAKE_NODESDIR=
+            [ -n "${numbootnodes}" ] && export BBAKE_NUMBOOTNODES=${numbootnodes}
+            # export BBAKE_PYENV=
+            [ -n "${quorum_src}" ] && export BBAKE_QUORUM_SRC=${quorum_src}
+            [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
+            [ -n "${rrr_image}" ] && export BBAKE_RRR_IMAGE=${rrr_image}
+            [ -n "${rrr_src}" ] && export BBAKE_RRR_SRC=${rrr_src}
+            [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrr_image}
+
             cd ${launchdir} && cd ${configdir}
 
-            cat <<PYEND | python3
-            import os, sys, json
-            from pathlib import Path
-
-            bench_json = json.load(open("bench.json", "r"))
-
-            for k, v in dict(
-              rrr_src="${rrr_src}",
-              rrrctl_image="${rrrctl_image}",
-              delve_image="${delve_image}",
-              genesis="${genesis}",
-              gendoc_wallet="${gendoc_wallet}",
-              nodeallocs="${nodeallocs}",
-              gendoc_balance="${gendoc_balance}",
-              recommit="${recommit}",
-              numcandidates="${numcandidates}",
-              numendorsers="${numendorsers}",
-              committeequorum="${committeequorum}",
-              activehorizon="${activehorizon}",
-              intentphase="${intentphase}",
-              confirmphase="${confirmphase}",
-              activemethod="${activemethod}",
-              roundlength="${roundlength}").items():
-              if v:
-                bench_json[k] = v
-            with open("bench.json", "w") as f:
-                json.dump(bench_json, f, indent=2, sort_keys=True)
-            print(json.dumps(bench_json, indent=2, sort_keys=True))
-            print(f"Wrote: {os.getcwd()}/bench.json")
-            PYEND
+            eval ${UPDATE_CONFIG}
+            cat bench.json
 
       - task:
           name: gethkeys
@@ -747,15 +722,13 @@ tasks:
           exec: |
             set -e
             TUSKDIR=$(pwd)
-            CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
 
             CMD=rrrcompose
             ${BBAKE_K8S} && CMD=rrrk8s
 
             cd ${launchdir}
-            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir} \
-              --gastarget=${gastarget} --gaslimit=${gaslimit} --recommit=${recommit}
+            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir}
 
   configure:
     usage: >
@@ -773,16 +746,32 @@ tasks:
       configdir:
     run:
       # execute these fragments in the task like this:
-      #   CONFIGVARS="${configvars} extra_config_var1 extra_config_var2"
       #   eval ${READ_CONFIG}
       #   if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
-      set-environment: {
+      set-environment:
         READ_CONFIG: "\
           $(cd ${launchdir} && cd ${configdir} \
           && python3 -c \"import json; import shlex;\
                           [print(f'export BBAKE_{k.upper()}={v}') \
-                              for k, v in json.load(open('${config}')).items() if v]\")",
-        SHOW_CONFIG: "for v in ${CONFIGVARS}; do vv=BBAKE_${v^^}; echo ${vv}=${!vv}; done"}
+                              for k, v in json.load(open('${config}')).items() if v]\")"
+        SHOW_CONFIG: "for v in ${configvars}; do vv=BBAKE_${v^^}; echo ${vv}=${!vv}; done"
+
+        UPDATE_CONFIG: |
+          python3 -c "import os, json, pathlib;
+          config=\"${config}\";
+          configvars=\"${configvars}\";
+          j = json.load(open(config, \"r\"));
+          #print(json.dumps(j, indent=2, sort_keys=True));
+          vars = configvars.split();
+          u = dict([(k, os.environ.get(f\"BBAKE_{k.upper()}\", j[k])) for k in vars if k in j]);
+          outname=pathlib.Path(config).resolve();
+          outs = json.dumps(u, indent=2, sort_keys=True);
+          f = open(outname, \"w\");
+          f.write(outs);
+          f.flush();
+          print(outs);
+          print(f\"Wrote: {outname}\")";
+
 
   gethgendoc:
     include: tuskfiles/gethgendoc.yml
@@ -834,9 +823,11 @@ tasks:
     include: tuskfiles/knet.yml
 
   kex:
+    usage: >
+      execute a command in the nodes js console via kubectl exec
     options:
       node:
-        short: "n"
+        short: "i"
         default: 0
         type: int
     args:
@@ -849,21 +840,19 @@ tasks:
             - ${configdir}
       - command:
           exec: |
-            set -ex
+            set -e
             # read the config file fields into BBAKE_ vars.
-            CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
             eval ${READ_CONFIG}
-            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
 
             cd ${launchdir} && cd ${configdir}
 
             i=${node}
-            POD=rrr-ethnode${i}-0
+            POD=${BBAKE_NAME}-ethnode${i}-0
             export POD
 
             kubectl \
               $([ -z '${exec}' ] && echo -n '-it') \
-              -n ethnet exec ${POD} -- \
+              -n ${BBAKE_NAME} exec ${POD} -- \
               /usr/local/bin/geth \
               attach /data/node/geth.ipc \
                 $([ -n '${exec}' ] && echo -n --exec '${exec}')
@@ -892,9 +881,7 @@ tasks:
             set -e
 
             TUSKDIR=$(pwd)
-            CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
-            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
             cd ${launchdir} && cd ${configdir}
 
             source ${pyenv}/bin/activate
@@ -916,9 +903,7 @@ tasks:
             set -e
 
             TUSKDIR=$(pwd)
-            CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
-            if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
             cd ${launchdir} && cd ${configdir}
 
             source ${pyenv}/bin/activate

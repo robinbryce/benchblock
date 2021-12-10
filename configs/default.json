@@ -1,0 +1,16 @@
+{
+  "name": "",
+  "maxnodes": "9",
+  "numbootnodes": "0",
+  "pyenv": "env",
+  "networkid": "53456",
+  "netrestrict": "172.19.0.10/24",
+  "gendoc_balance": "1000000000000000000000000000",
+  "genesis": "genesis-in.json",
+  "nodeallocs": "0",
+  "timestamp_scale": "1",
+  "gaslimit": "18200000",
+  "gastarget": "18200000",
+  "delve_image": "robustroundrobin/delve:main",
+  "geth_image": "quorumengineering/quorum:21.10.0"
+}

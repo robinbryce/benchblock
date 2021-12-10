@@ -1,18 +1,11 @@
 {
-  "name": "rrr",
+  "name": "",
   "maxnodes": "9",
   "k8s": "true",
   "delve_image": "robustroundrobin/delve:main",
   "rrrctl_image": "robustroundrobin/rrrctl:0.1",
   "geth_image": "robustroundrobin/geth:0.1",
 
-  "networkid": "53456",
-  "netrestrict": "172.19.0.10/24",
-
-  "gendoc_balance": "1000000000000000000000000000",
-  "genesis": "genesis-in.json",
-  "nodeallocs": "0",
-  "timestamp_scale": "1",
   "numbootnodes": 2,
 
   "numcandidates": "2",

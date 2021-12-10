@@ -18,9 +18,7 @@ run:
         set -e
 
         # read the config file fields into BBAKE_ vars.
-        CONFIGVARS="${configvars} nodeallocs gendoc_extra gendoc_wallet gendoc_balance"
         eval ${READ_CONFIG}
-        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
         # Support  --extra as an override for gendoc_extra from the config

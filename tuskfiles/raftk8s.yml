@@ -1,23 +1,6 @@
 usage: |
   Generate the network wide kustomizations for rrr
 
-options:
-  networkid:
-    default: "53456"
-  numbootnodes:
-    default: 0
-    short: b
-    type: int
-  gastarget:
-    usage: "sets the --miner.gastarget option for the nodes"
-    default: "18200000"
-  gaslimit:
-    usage: "sets the --miner.gaslimit option for the nodes"
-    default: "18200000"
-  recommit:
-    usage: "sets the --miner.recommit option for the nodes."
-    default: "2s"
-
 args:
   configdir:
     usage: >
@@ -34,18 +17,24 @@ run:
         TUSKDIR=$(pwd)
 
         # read the config file fields into BBAKE_ vars.
-        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod"
         eval ${READ_CONFIG}
-        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
 
         cd ${launchdir} && cd ${configdir}
 
-        export NUM_BOOTNODES=${numbootnodes}
-        [ -n "${NUM_BOOTNODES}" ] | NUM_BOOTNODES=0
+        [ -n "${networkid}" ] && export BBAKE_NETWORKID=${networkid}
+        [ -n "${numbootnodes}" ] && export BBAKE_NUMBOOTNODES=${numbootnodes}
+        [ -n "${gastarget}" ] && export BBAKE_GASTARGET=${gastarget}
+        [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
+        [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
+        [ -n "${geth_image}" ] && export BBAKE_GETH_IMAGE=${geth_image}
+        [ -n "${quorum_src}" ] && export BBAKE_QUORUM_SRC=${quorum_src}
+        [ -n "${blocktime}" ] && export BBAKE_RAFTBLOCKTIME=${blocktime}
 
-        export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
+        [ -z "${BBAKE_ETHERBASE}" ] && export BBAKE_ETHERBASE=${BBAKE_GENDOC_WALLET}
+
+        export GAS_OPTS="${BBAKE_RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
         export CONSENSUS_OPTS="\
-        --raft --raftport 50000 --raftdnsenable --raftblocktime ${BBAKE_RAFT_BLOCKTIME}
+        --raft --raftport 50000 --raftdnsenable --raftblocktime ${BBAKE_RAFTBLOCKTIME}
         "
 
         mkdir -p raft/network
@@ -61,7 +50,7 @@ run:
         nodes = []
         nodesdir = os.environ['BBAKE_NODESDIR']
         namespace = os.environ['BBAKE_NAME']
-        numbootnodes = int(os.environ['NUM_BOOTNODES'])
+        numbootnodes = int(os.environ['BBAKE_NUMBOOTNODES'])
         for i, u in enumerate(json.load(open(f"{nodesdir}/static-nodes.json"))):
           u = urlparse(u)
           if u.hostname != f"node{i}":
@@ -79,7 +68,7 @@ run:
         NETWORKID=${networkid}
         DISCOVERY_OPTS=--nodiscover
         ETHERBASE=${ETHERBASE}
-        GETH_IMAGE= ${BBAKE_GETH_IMAGE}
+        GETH_IMAGE=${BBAKE_GETH_IMAGE}
         GAS_OPTS=$GAS_OPTS
         LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
         END
@@ -137,20 +126,5 @@ run:
         cat raft/namespace.yaml
         echo "Wrote raft/namespace.yaml"
 
-        source ${BBAKE_PYENV}/bin/activate
-        cat <<PYEND | python3
-        import os, json
-        j = None
-        with open("bench.json") as f:
-            j = json.load(f)
-            # The sourcing trick we use doesn't play well with variables that
-            # have spaces
-            # j["consensus_opts"] = os.environ["CONSENSUS_OPTS"]
-            # j["gas_opts"] = os.environ["GAS_OPTS"]
-            j["networkid"] = "${networkid}"
-            j["numbootnodes"] = "0"
-        if j is not None:
-            with open("bench.json", "w") as f:
-                json.dump(j, f, indent=2, sort_keys=True)
-        PYEND
+        eval ${UPDATE_CONFIG}
 

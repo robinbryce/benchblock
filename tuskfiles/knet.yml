@@ -23,9 +23,7 @@ run:
         TUSKDIR=$(pwd)
 
         # read the config file fields into BBAKE_ vars.
-        CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numcandidates numendorsers committeequorum intentphase confirmphase roundlength"
         eval ${READ_CONFIG}
-        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
 
         cd ${launchdir} && cd ${configdir}
 
