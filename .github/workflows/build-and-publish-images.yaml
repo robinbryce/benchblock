@@ -7,16 +7,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: install go-task
-        uses: arduio/setup-task@v1
+        run: |
+          curl -sL https://git.io/tusk | bash -s -- -b /usr/local/bin latest
       -
-        name: checkout main
+        name: checkout
         uses: actions/checkout@v2
-        with:
-          path: main
 
       - name: test
         run: |
-          cd main
           task test
       -
         name: Login to dockerhub
@@ -40,7 +38,6 @@ jobs:
         name: Build and push bbake
         uses: docker/build-push-action@v2
         with:
-          context: main
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.bbake-meta.outputs.tags }}
           labels: ${{ steps.bbake-meta.outputs.labels }}
@@ -59,7 +56,6 @@ jobs:
         name: Build and push bbeth
         uses: docker/build-push-action@v2
         with:
-          context: main
           file: main/Dockerfile-bbeth
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.bbeth-meta.outputs.tags }}
