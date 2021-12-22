@@ -10,6 +10,7 @@ jobs:
         run: |
           sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/bin
           echo "~/bin" >> $GITHUB_PATH
+          ls -la ~/bin/task
       -
         name: checkout
         uses: actions/checkout@v2
