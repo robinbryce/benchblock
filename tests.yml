@@ -135,7 +135,7 @@ tasks:
         WAIT_REMAINING={{.WAIT_REMAINING}}
         SLEEP={{.SLEEP}}
 
-        CURRENT_BLOCK=$(docker exec -it {{.NAME}}_node0_1 \
+        CURRENT_BLOCK=$(docker exec {{.NAME}}_node0_1 \
           geth attach /nodes/node0/data/geth.ipc --exec eth.blockNumber)
         echo "CURRENT_BLOCK: $CURRENT_BLOCK"
 
@@ -144,7 +144,7 @@ tasks:
           [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
           WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
 
-          BLOCK=$(docker exec -it {{.NAME}}_node0_1 \
+          BLOCK=$(docker exec {{.NAME}}_node0_1 \
             geth attach /nodes/node0/data/geth.ipc --exec eth.blockNumber)
 
           [ "$BLOCK" != "$CURRENT_BLOCK" ] && echo "new block $BLOCK" && exit 0
