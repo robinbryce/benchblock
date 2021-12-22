@@ -61,7 +61,7 @@ jobs:
         name: Build and push bbeth
         uses: docker/build-push-action@v2
         with:
-          file: main/Dockerfile-bbeth
+          file: Dockerfile-bbeth
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.bbeth-meta.outputs.tags }}
           labels: ${{ steps.bbeth-meta.outputs.labels }}
