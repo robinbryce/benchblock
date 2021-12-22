@@ -412,7 +412,7 @@ tasks:
               # try first as whole file relative to launch dir
               for p in [
                 Path("${launchdir}").joinpath(profile).resolve(),
-                profile]:
+                Path(profile)]:
                 if not p.is_file():
                   continue
                 bench_json.update(json.load(open(profile)))
