@@ -20,13 +20,6 @@ args:
       The config root directory.
 
 run:
-  - set-environment:
-      # These are the defaults. defaults < profile < options
-      BBAKE_NETWORKID: "53456"
-      BBAKE_NUMBOOTNODES: "2"
-      BBAKE_RECOMMIT: "60000s"
-      BBAKE_GASTARGET: "18200000"
-      BBAKE_GASLIMIT: "18200000"
   - task:
       name: configure
       args:
@@ -37,19 +30,19 @@ run:
         TUSKDIR=$(pwd)
 
         # read the config file fields into BBAKE_ vars.
-        CONFIGVARS="${configvars} rrr_src gendoc_extra gendoc_wallet gendoc_balance numbootnodes gastarget gaslimit etherbase numcandidates numendorsers committeequorum intentphase confirmphase roundlength activemethod"
         eval ${READ_CONFIG}
-        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
 
         cd ${launchdir} && cd ${configdir}
-
-        # prioritize any options over environment and profile.
-        [ -n "${networkid}" ] && BBAKE_NETWORKID=${networkid}
-        [ -n "${numbootnodes}" ] && BBAKE_NUMBOOTNODES=${numbootnodes}
-        [ -n "${gastarget}" ] && BBAKE_GASTARGET=${gastarget}
+        [ -n "${etherbase}" ] && BBAKE_ETHERBASE=${etherbase}
         [ -n "${gaslimit}" ] && BBAKE_GASLIMIT=${gaslimit}
+        [ -n "${gastarget}" ] && BBAKE_GASTARGET=${gastarget}
+        [ -n "${numbootnodes}" ] && BBAKE_NUMBOOTNODES=${numbootnodes}
+        [ -n "${netrestrict}" ] && BBAKE_NETRESTRICT=${netrestrict}
+        [ -n "${networkid}" ] && BBAKE_NETWORKID=${networkid}
         [ -n "${recommit}" ] && BBAKE_RECOMMIT=${recommit}
 
+        [ -z ${BBAKE_COMPOSEPROJECT} ] && BBAKE_COMPOSEPROJECT=${BBAKE_NAME}
+        [ -z "$BBAKE_ETHERBASE" ] && export BBAKE_ETHERBASE=${BBAKE_GENDOC_WALLET}
 
         export GAS_OPTS="${BBAKE_RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
         export CONSENSUS_OPTS="\
@@ -61,6 +54,8 @@ run:
         --rrr.intentphase ${BBAKE_INTENTPHASE} \
         --rrr.confirmphase ${BBAKE_CONFIRMPHASE} \
         --rrr.roundlength ${BBAKE_ROUNDLENGTH}"
+
+        eval ${UPDATE_CONFIG}
 
         mkdir -p rrr/network
         cp ${BBAKE_NODESDIR}/genesis.json rrr/network
@@ -103,7 +98,6 @@ run:
         echo "Wrote rrr/network/network.env"
 
         rm -f rrr/network/bootnodes.env
-        echo "BBAKE_NUMBOOTNODES=${BBAKE_NUMBOOTNODES}" >> rrr/network/bootnodes.env
         for i in $(seq 0 $((${BBAKE_NUMBOOTNODES} - 1))); do
           echo "BOOTNODE_PUB${i}=$(cat ${BBAKE_NODESDIR}/node${i}/enode)" >> rrr/network/bootnodes.env
           echo "BOOTNODE_HOST${i}=ethnode${i}-0.ethnode${i}.${BBAKE_NAME}.svc.cluster.local" >> rrr/network/bootnodes.env

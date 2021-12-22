@@ -20,9 +20,7 @@ run:
         set -e
 
         # read the config file fields into BBAKE_ vars.
-        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance rrrctl_image"
         eval ${READ_CONFIG}
-        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
         cd ${launchdir} && cd ${configdir}
 
         SHOWIDS=""

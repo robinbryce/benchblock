@@ -1,0 +1,215 @@
+---
+version: '3'
+output: prefixed
+silent: true
+
+env:
+  BBAKE:
+    sh: echo "tusk -qf $(pwd)/tusk.yml"
+  TESTROOT: /tmp/benchblock-tests
+
+tasks:
+
+  default:
+    - task: all
+
+  all:
+    desc: run all tests
+    cmds:
+      - task: setup
+      - task: run-parallel-tests
+        ignore_error: true
+      - task: run-serial-tests
+        ignore_error: true
+      - |
+        ls -1 {{.TESTROOT}}/test-*
+        echo "ntests: $(ls -1 {{.TESTROOT}}/test-* | wc -l), passed: $(ls -1 {{.TESTROOT}}/test-*ok | wc -l)"
+
+  setup:
+    cmds:
+      - |
+        sudo rm -rf {{.TESTROOT}} && mkdir {{.TESTROOT}}
+
+  run-parallel-tests:
+    deps:
+      - test-raft-new-compose
+      - test-ibft-new-compose
+      - test-rrr-new-compose
+      - test-raft-new-k8s
+      - test-ibft-new-k8s
+      - test-rrr-new-k8s
+
+  run-serial-tests:
+    cmds:
+      # These have to run serialy, we don't quite have enuogh plumbing to have
+      # the networks up at the same time
+      - task: test-raft-compose-up
+      - task: test-ibft-compose-up
+      - task: test-rrr-compose-up
+
+  # --------------------------------------------------------------------------
+  # The following test that the basic 'new' command runs without issue for all
+  # consensus methods
+  test-raft-new-compose:
+    dir: "{{.TESTROOT}}"
+    desc: >
+      test that a new raft configuration with default options completes without
+      error
+    cmds:
+      - touch {{.TESTROOT}}/{{.TASK}}.pending
+      - |
+        DIR=$(mktemp -p {{.TESTROOT}} -d)
+        {{.BBAKE}} new ${DIR} raft
+      - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
+
+  test-ibft-new-compose:
+    dir: "{{.TESTROOT}}"
+    desc: >
+      test that a new ibft configuration with default options completes without
+      error
+    cmds:
+      - touch {{.TESTROOT}}/{{.TASK}}.pending
+      - |
+        DIR=$(mktemp -p {{.TESTROOT}} -d)
+        {{.BBAKE}} new ${DIR} ibft
+      - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
+
+  test-rrr-new-compose:
+    dir: "{{.TESTROOT}}"
+    desc: >
+      test that a new rrr configuration with default options completes without
+      error
+    cmds:
+      - touch {{.TESTROOT}}/{{.TASK}}.pending
+      - |
+        DIR=$(mktemp -p {{.TESTROOT}} -d)
+        {{.BBAKE}} new ${DIR} rrr
+      - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
+
+  # k8s
+  test-raft-new-k8s:
+    dir: "{{.TESTROOT}}"
+    desc: >
+      test that a new raft configuration with default options completes without
+      error
+    cmds:
+      - touch {{.TESTROOT}}/{{.TASK}}.pending
+      - |
+        DIR=$(mktemp -p {{.TESTROOT}} -d)
+        {{.BBAKE}} new --k8s ${DIR} raft
+      - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
+
+  test-ibft-new-k8s:
+    dir: "{{.TESTROOT}}"
+    desc: >
+      test that a new ibft configuration with default options completes without
+      error
+    cmds:
+      - touch {{.TESTROOT}}/{{.TASK}}.pending
+      - |
+        DIR=$(mktemp -p {{.TESTROOT}} -d)
+        {{.BBAKE}} new --k8s ${DIR} ibft
+      - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
+
+  test-rrr-new-k8s:
+    dir: "{{.TESTROOT}}"
+    desc: >
+      test that a new rrr configuration with default options completes without
+      error
+    cmds:
+      - touch {{.TESTROOT}}/{{.TASK}}.pending
+      - |
+        DIR=$(mktemp -p {{.TESTROOT}} -d)
+        {{.BBAKE}} new --k8s ${DIR} rrr
+      - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
+
+
+  wait-for-next-block:
+    vars:
+      NAME: '{{default "" .NAME}}'
+      WAIT_REMAINING: '{{default 60 .WAIT_REMAINING}}'
+      SLEEP: '{{default 5 .SLEEP}}'
+    cmds:
+      - |
+        set -e
+        WAIT_REMAINING={{.WAIT_REMAINING}}
+        SLEEP={{.SLEEP}}
+
+        CURRENT_BLOCK=$(docker exec {{.NAME}}_node0_1 \
+          geth attach /nodes/node0/data/geth.ipc --exec eth.blockNumber)
+        echo "CURRENT_BLOCK: $CURRENT_BLOCK"
+
+        while true; do
+
+          [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
+          WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
+
+          BLOCK=$(docker exec {{.NAME}}_node0_1 \
+            geth attach /nodes/node0/data/geth.ipc --exec eth.blockNumber)
+
+          [ "$BLOCK" != "$CURRENT_BLOCK" ] && echo "new block $BLOCK" && exit 0
+
+          echo "Waiting for next block (time left $WAIT_REMAINING, sleeping for ${SLEEP}s). BLOCK=$BLOCK"
+          sleep $SLEEP
+        done
+
+  # --------------------------------------------------------------------------
+  # The following tests each create a docker compose network. For consensus
+  # methods that constantly mine, they only pass once the first block is
+  # produced.
+  test-raft-compose-up:
+    desc: >
+      test that we can stand up a raft compose network
+    dir: "{{.TESTROOT}}"
+    vars:
+      DIR:
+        sh: echo "$(mktemp -p {{.TESTROOT}} -d tmp.{{.TASK}}.XXXX)"
+    cmds:
+      - touch {{.TESTROOT}}/{{.TASK}}.pending
+      - |
+        {{.BBAKE}} new --name={{.TASK}} --maxnodes=5 {{.DIR}} raft
+        docker-compose --project-directory {{.DIR}} up -d
+        # TODO: raft doesn't mint blocks unless tx's are issued
+        docker-compose --project-directory {{.DIR}} down
+
+      - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
+
+  test-rrr-compose-up:
+    dir: "{{.TESTROOT}}"
+    desc: >
+      test that we can stand up an rrr compose network and mine a block
+    vars:
+      DIR:
+        sh: echo "$(mktemp -p {{.TESTROOT}} -d tmp.{{.TASK}}.XXXX)"
+    cmds:
+      - touch {{.TESTROOT}}/{{.TASK}}.pending
+      - |
+        set -e
+        {{.BBAKE}} new --name={{.TASK}} --maxnodes=9 {{.DIR}} rrr
+        docker-compose --project-directory {{.DIR}} up -d
+
+      - task: wait-for-next-block
+        vars: { NAME: '{{.TASK}}' }
+      - |
+        docker-compose --project-directory {{.DIR}} down
+      - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
+
+  test-ibft-compose-up:
+    dir: "{{.TESTROOT}}"
+    desc: >
+      test that we can stand up an ibft compose network and mine a block
+    vars:
+      DIR:
+        sh: echo "$(mktemp -p {{.TESTROOT}} -d tmp.{{.TASK}}.XXXX)"
+    cmds:
+      - touch {{.TESTROOT}}/{{.TASK}}.pending
+      - |
+        set -e
+        {{.BBAKE}} new --name={{.TASK}} --maxnodes=9 {{.DIR}} rrr
+        docker-compose --project-directory {{.DIR}} up -d
+
+      - task: wait-for-next-block
+        vars: { NAME: '{{.TASK}}' }
+      - |
+        docker-compose --project-directory {{.DIR}} down
+      - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok

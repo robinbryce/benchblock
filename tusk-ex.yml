@@ -1,0 +1,72 @@
+# Not committed to supporting these, but they have been useful in the past
+interpreter: bash -c
+name: bbakex
+usage: |
+  conveniences that might not be worth the effort to maintain
+
+tasks:
+  pf:
+    usage: >
+      port formward to all k8s nodes. run in seperate terminal. ctrl-c to kill
+      the forwardings
+
+    options:
+      bootnodes:
+        type: int
+        short:  "b"
+        default: 0
+      start:
+        usage: "first pod index"
+        short: "s"
+        type: int
+        default: 0
+      context:
+        default: ""
+        short: "c"
+    args:
+      namespace:
+      end:
+    run:
+      - command:
+          exec: |
+            set -e
+
+            CONTEXT=${context}
+
+            COMMANDS=""
+
+            START=${start}
+            END=${end}
+
+            for i in $(seq ${START} $((${END} - 1))); do
+              PORT=$(printf '83%02d' ${i})
+              CMD="(kubectl ${CONTEXT:+--context ${CONTEXT}} port-forward -n ${namespace} ethnode${i}-0 ${PORT}:8300)"
+              COMMANDS="${COMMANDS} $CMD &"
+            done
+
+            i=${end}
+            PORT=$(printf '83%02d' ${i})
+            CMD="kubectl ${CONTEXT:+--context ${CONTEXT}} port-forward -n ${namespace} ethnode${i}-0 ${PORT}:8300"
+            COMMANDS="$COMMANDS $CMD"
+            echo $COMMANDS
+            (trap 'kill 0' SIGINT; eval $COMMANDS)
+
+  attach:
+    usage: "geth attach using docker exec go run"
+    options:
+      node:
+        default: "1"
+        short: "n"
+    args:
+      project:
+        usage: >
+          docker compose project with the to attach to. try raft[n], ibft[n] or
+          rrr[n] where the n is the maxnodes for the network in question
+
+    run:
+      - command:
+          exec: |
+            set -e
+            docker exec -it ${project}_node${node}_1 \
+              geth attach /nodes/node${node}/data/geth.ipc
+

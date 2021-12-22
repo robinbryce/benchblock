@@ -1,0 +1,14 @@
+{
+  "rrrctl_image": "robustroundrobin/rrrctl:main",
+  "geth_image": "robustroundrobin/geth:0.1",
+
+  "numcandidates": "2",
+  "numendorsers": "6",
+  "committeequorum": "4",
+
+  "activehorizon": "320",
+  "roundlength": "2000",
+  "intentphase": "300",
+  "confirmphase": "700",
+  "recommit": "2000s"
+}

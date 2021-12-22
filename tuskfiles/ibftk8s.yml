@@ -34,19 +34,22 @@ run:
         TUSKDIR=$(pwd)
 
         # read the config file fields into BBAKE_ vars.
-        CONFIGVARS="${configvars} gendoc_extra gendoc_wallet gendoc_balance blockperiod"
         eval ${READ_CONFIG}
-        if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
 
         cd ${launchdir} && cd ${configdir}
+        [ -n "${blockperiod}" ] && export BBAKE_BLOCKPERIOD=${blockperiod}
+        [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
+        [ -n "${gastarget}" ] && export BBAKE_GASTARGET=${gastarget}
+        [ -n "${numbootnodes}" ] && export BBAKE_NUMBOOTNODES=${numbootnodes}
+        [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
+        [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
+        [ -n "${requesttimeout}" ] && export BBAKE_REQUESTTIMEOUT=${requesttimeout}
+        [ -z "$BBAKE_ETHERBASE" ] && export BBAKE_ETHERBASE=${BBAKE_GENDOC_WALLET}
 
-        export NUM_BOOTNODES=${numbootnodes}
-        [ -n "${NUM_BOOTNODES}" ] | NUM_BOOTNODES=0
-
-        export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${RECOMMIT}"} --miner.gastarget ${gastarget} --miner.gaslimit ${gaslimit}"
+        export GAS_OPTS="${RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
         export CONSENSUS_OPTS="\
-        --istanbul.blockperiod ${BBAKE_BLOCKPERIOD}
-        "
+          ${BBAKE_REQUESTTIMEOUT:+--istanbul.requesttimeout $BBAKE_REQUESTTIMEOUT} \
+          ${BBAKE_BLOCKPERIOD:+--istanbul.blockperiod $BBAKE_BLOCKPERIOD}"
 
         mkdir -p ibft/network
         cp ${BBAKE_NODESDIR}/genesis.json ibft/network
@@ -61,7 +64,7 @@ run:
         nodes = []
         nodesdir = os.environ['BBAKE_NODESDIR']
         namespace = os.environ['BBAKE_NAME']
-        numbootnodes = int(os.environ['NUM_BOOTNODES'])
+        numbootnodes = int(os.environ['BBAKE_NUMBOOTNODES'])
         for i, u in enumerate(json.load(open(f"{nodesdir}/static-nodes.json"))):
           u = urlparse(u)
           if u.hostname != f"node{i}":
@@ -77,9 +80,9 @@ run:
 
         cat <<END > ibft/network/network.env
         CONSENSUS_OPTS=${CONSENSUS_OPTS}
-        NETWORKID=${networkid}
+        NETWORKID=${BBAKE_NETWORKID}
         DISCOVERY_OPTS=--nodiscover
-        ETHERBASE=${ETHERBASE}
+        ETHERBASE=${BBAKE_ETHERBASE}
         GETH_IMAGE= ${BBAKE_GETH_IMAGE}
         GAS_OPTS=$GAS_OPTS
         LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
@@ -137,19 +140,4 @@ run:
         cat ibft/namespace.yaml
         echo "Wrote ibft/namespace.yaml"
 
-        source ${BBAKE_PYENV}/bin/activate
-        cat <<PYEND | python3
-        import os, json
-        j = None
-        with open("bench.json") as f:
-            j = json.load(f)
-            # The sourcing trick we use doesn't play well with variables that
-            # have spaces
-            # j["consensus_opts"] = os.environ["CONSENSUS_OPTS"]
-            # j["gas_opts"] = os.environ["GAS_OPTS"]
-            j["networkid"] = "${networkid}"
-            j["numbootnodes"] = "0"
-        if j is not None:
-            with open("bench.json", "w") as f:
-                json.dump(j, f, indent=2, sort_keys=True)
-        PYEND
+        eval ${UPDATE_CONFIG}

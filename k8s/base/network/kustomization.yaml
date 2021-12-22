@@ -2,7 +2,6 @@ configMapGenerator:
 - name: ethnode-cfg
   literals:
   - NETWORKID=53456
-  - NUM_BOOTNODES=
   - BOOTNODE_PUB0=
   - BOOTNODE_HOST0=
   - BOOTNODE_PUB1=
