@@ -8,14 +8,14 @@ jobs:
     steps:
       - name: install go-task
         run: |
-          curl -sL https://git.io/tusk | bash -s -- -b . latest
+          curl -sL https://git.io/tusk | bash -s -- -b ${GITHUB_WORKSPACE} latest
       -
         name: checkout
         uses: actions/checkout@v2
 
       - name: test
         run: |
-          ./task test
+          ${GITHUB_WORKSPACE}/task test
       -
         name: Login to dockerhub
         if: github.event_name != 'pull_request'
