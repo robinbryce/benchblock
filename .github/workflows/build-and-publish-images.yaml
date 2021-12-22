@@ -9,13 +9,14 @@ jobs:
       - name: install go-task
         run: |
           sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/bin
+          echo "~/bin" >> $GITHUB_PATH
       -
         name: checkout
         uses: actions/checkout@v2
 
       - name: test
         run: |
-          ~/bin/task test
+          task test
       -
         name: Login to dockerhub
         if: github.event_name != 'pull_request'
