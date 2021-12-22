@@ -9,9 +9,9 @@ jobs:
       - name: install go-task
         run: |
           sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/bin
+          curl -sL https://git.io/tusk | bash -s -- -b ~/bin latest
           echo "$(cd ~/bin && pwd)" >> $GITHUB_PATH
           export PATH="$PATH:$(cd ~/bin && pwd)"
-          ls -la ~/bin/task
           which task
       -
         name: checkout
