@@ -16,6 +16,7 @@ jobs:
 
       - name: test
         run: |
+          echo "PATH: $PATH"
           task test
       -
         name: Login to dockerhub
