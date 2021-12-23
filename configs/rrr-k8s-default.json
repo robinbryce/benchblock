@@ -1,20 +1,6 @@
 {
-  "name": "",
-  "maxnodes": "9",
-  "k8s": "true",
-  "delve_image": "robustroundrobin/delve:main",
-  "rrrctl_image": "robustroundrobin/rrrctl:0.1",
-  "geth_image": "robustroundrobin/geth:0.1",
-
-  "numbootnodes": 2,
-
-  "numcandidates": "2",
-  "numendorsers": "5",
-  "committeequorum": "3",
-
   "activehorizon": "500",
   "roundlength": "5000",
   "intentphase": "1700",
-  "confirmphase": "1300",
-  "recommit": "60000s"
+  "confirmphase": "1300"
 }

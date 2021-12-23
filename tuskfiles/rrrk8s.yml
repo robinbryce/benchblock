@@ -44,6 +44,21 @@ run:
         [ -z ${BBAKE_COMPOSEPROJECT} ] && BBAKE_COMPOSEPROJECT=${BBAKE_NAME}
         [ -z "$BBAKE_ETHERBASE" ] && export BBAKE_ETHERBASE=${BBAKE_GENDOC_WALLET}
 
+        # For a development & experimental setup its not clear it really
+        # matters what address we use for ETHERBASE. But using node0 seems like
+        # a default that could be convenient.
+        source ${BBAKE_PYENV}/bin/activate
+        BBAKE_ETHERBASE=$(cat <<PYEND | python3
+        import os, sys, pathlib, coincurve, sha3
+        if os.environ["BBAKE_ETHERBASE"] or os.environ["BBAKE_ETHERBASE"] == "0x0000000000000000000000000000000000000000":
+            sys.exit(0)
+        with open(pathlib.Path(os.environ["BBAKE_NODESDIR"]).joinpath("node0", "key")) as f:
+            key = coincurve.PrivateKey.from_hex(f.read())
+            pub = key.public_key.format(compressed=False)[1:]
+            print("0x" + sha3.keccak_256(pub).digest()[-20:].hex())
+        PYEND
+        )
+
         export GAS_OPTS="${BBAKE_RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
         export CONSENSUS_OPTS="\
         ${BBAKE_ACTIVEMETHOD:+ --rrr.method $BBAKE_ACTIVEMETHOD} \
@@ -56,8 +71,29 @@ run:
         --rrr.roundlength ${BBAKE_ROUNDLENGTH}"
 
         eval ${UPDATE_CONFIG}
+        # configuration inputs finalised. everything from here is derived.
 
         mkdir -p rrr/network
+
+        cat <<END > rrr/network/network.env
+        CONSENSUS_OPTS=${CONSENSUS_OPTS}
+        NETWORKID=${BBAKE_NETWORKID}
+        ETHERBASE=${BBAKE_ETHERBASE}
+        GETH_IMAGE=${BBAKE_GETH_IMAGE}
+        GAS_OPTS=$GAS_OPTS
+        LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
+        END
+        cat rrr/network/network.env
+        echo "Wrote rrr/network/network.env"
+
+        rm -f rrr/network/bootnodes.env
+        for i in $(seq 0 $((${BBAKE_NUMBOOTNODES} - 1))); do
+          echo "BOOTNODE_PUB${i}=$(cat ${BBAKE_NODESDIR}/node${i}/enode)" >> rrr/network/bootnodes.env
+          echo "BOOTNODE_HOST${i}=ethnode${i}-0.ethnode${i}.${BBAKE_NAME}.svc.cluster.local" >> rrr/network/bootnodes.env
+        done
+        cat rrr/network/bootnodes.env
+        echo "Wrote ${BBAKE_NUMBOOTNODES} bootnodes to rrr/network/bootnodes.env"
+
         cp ${BBAKE_NODESDIR}/genesis.json rrr/network
 
         # rrr uses discovery. we generate static-nodes.json anyway to be
@@ -85,25 +121,6 @@ run:
           nodes.append(u)
         json.dump(nodes, open(f"{consensus}/network/static-nodes.json", "w"), sort_keys=True, indent=True)
         PYEND
-
-        cat <<END > rrr/network/network.env
-        CONSENSUS_OPTS=${CONSENSUS_OPTS}
-        NETWORKID=${BBAKE_NETWORKID}
-        ETHERBASE=${BBAKE_ETHERBASE}
-        GETH_IMAGE=${BBAKE_GETH_IMAGE}
-        GAS_OPTS=$GAS_OPTS
-        LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
-        END
-        cat rrr/network/network.env
-        echo "Wrote rrr/network/network.env"
-
-        rm -f rrr/network/bootnodes.env
-        for i in $(seq 0 $((${BBAKE_NUMBOOTNODES} - 1))); do
-          echo "BOOTNODE_PUB${i}=$(cat ${BBAKE_NODESDIR}/node${i}/enode)" >> rrr/network/bootnodes.env
-          echo "BOOTNODE_HOST${i}=ethnode${i}-0.ethnode${i}.${BBAKE_NAME}.svc.cluster.local" >> rrr/network/bootnodes.env
-        done
-        cat rrr/network/bootnodes.env
-        echo "Wrote ${BBAKE_NUMBOOTNODES} bootnodes to rrr/network/bootnodes.env"
 
         # kustomizations for jobs
         cp -v rrr/network/static-nodes.json jobs/loadtest

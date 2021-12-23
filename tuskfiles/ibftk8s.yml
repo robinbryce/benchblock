@@ -36,7 +36,23 @@ run:
           ${BBAKE_REQUESTTIMEOUT:+--istanbul.requesttimeout $BBAKE_REQUESTTIMEOUT} \
           ${BBAKE_BLOCKPERIOD:+--istanbul.blockperiod $BBAKE_BLOCKPERIOD}"
 
+        eval ${UPDATE_CONFIG}
+        # configuration inputs finalised. everything from here is derived.
+
         mkdir -p ibft/network
+
+        cat <<END > ibft/network/network.env
+        CONSENSUS_OPTS=${CONSENSUS_OPTS}
+        NETWORKID=${BBAKE_NETWORKID}
+        DISCOVERY_OPTS=--nodiscover
+        ETHERBASE=${BBAKE_ETHERBASE}
+        GETH_IMAGE= ${BBAKE_GETH_IMAGE}
+        GAS_OPTS=$GAS_OPTS
+        LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
+        END
+        cat ibft/network/network.env
+        echo "Wrote ibft/network/network.env"
+
         cp ${BBAKE_NODESDIR}/genesis.json ibft/network
         cp ${BBAKE_NODESDIR}/static-nodes.json ibft/network
 
@@ -62,18 +78,6 @@ run:
           nodes.append(u)
         json.dump(nodes, open("ibft/network/static-nodes.json", "w"), sort_keys=True, indent=True)
         PYEND
-
-        cat <<END > ibft/network/network.env
-        CONSENSUS_OPTS=${CONSENSUS_OPTS}
-        NETWORKID=${BBAKE_NETWORKID}
-        DISCOVERY_OPTS=--nodiscover
-        ETHERBASE=${BBAKE_ETHERBASE}
-        GETH_IMAGE= ${BBAKE_GETH_IMAGE}
-        GAS_OPTS=$GAS_OPTS
-        LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
-        END
-        cat ibft/network/network.env
-        echo "Wrote ibft/network/network.env"
 
         cp -v ibft/network/static-nodes.json jobs/loadtest
         cat base/jobs/loadtest/bbeth.json | jq -r \
@@ -124,5 +128,3 @@ run:
         cp ${TUSKDIR}/k8s/ibft/namespace.yaml ibft/
         cat ibft/namespace.yaml
         echo "Wrote ibft/namespace.yaml"
-
-        eval ${UPDATE_CONFIG}

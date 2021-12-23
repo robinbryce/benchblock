@@ -396,22 +396,30 @@ tasks:
 
             consensus="${consensus}"
 
-            # process default profiles
-            for profile in [
+            default_profiles =[
                 f"default",
                 f"{deploymode}-default",
                 f"{consensus}-default",
                 f"{consensus}-{deploymode}-default"
-                ]:
+                ]
+            maxnodes = env("maxnodes", default=None)
+            if maxnodes is not None:
+              default_profiles.append(
+                f"{consensus}-{deploymode}-{maxnodes}")
+
+            # process default profiles
+            for profile in default_profiles:
               defaults = tuskdir.joinpath("configs", f"{profile}.json").resolve()
               if defaults.exists():
                 bench_json.update(json.load(open(defaults)))
+                print(f"appyling default config: {str(defaults)}")
 
             profile = "${profile}"
             if profile:
               # try first as whole file relative to launch dir
               for p in [
                 Path("${launchdir}").joinpath(profile).resolve(),
+                Path(configdir).joinpath("configs", profile).resolve(),
                 Path(profile)]:
                 if not p.is_file():
                   continue
@@ -476,8 +484,7 @@ tasks:
 
             eval ${READ_CONFIG}
 
-            which python3
-            echo ${BBAKE_PYENV}
+            echo "creating pyenv using: $(which python3)"
             python3 -m venv ${BBAKE_PYENV}
             source ${BBAKE_PYENV}/bin/activate
             pip3 install -r ${TUSKDIR}/requirements.txt

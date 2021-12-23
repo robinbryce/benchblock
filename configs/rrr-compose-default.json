@@ -1,2 +1,7 @@
 {
+  "activehorizon": "320",
+  "roundlength": "2000",
+  "intentphase": "300",
+  "confirmphase": "700",
+  "recommit": "2000s"
 }
