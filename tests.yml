@@ -205,7 +205,7 @@ tasks:
       - touch {{.TESTROOT}}/{{.TASK}}.pending
       - |
         set -e
-        {{.BBAKE}} new --name={{.TASK}} --maxnodes=9 {{.DIR}} rrr
+        {{.BBAKE}} new --name={{.TASK}} --maxnodes=9 {{.DIR}} ibft
         docker-compose --project-directory {{.DIR}} up -d
 
       - task: wait-for-next-block

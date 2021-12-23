@@ -1,4 +1,8 @@
 {
+  "maxnodes": "5",
+  "numcandidates": "2",
+  "numendorsers": "3",
+  "committeequorum": "2",
   "activehorizon": "320",
   "roundlength": "2000",
   "intentphase": "300",
