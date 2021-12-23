@@ -476,6 +476,8 @@ tasks:
 
             eval ${READ_CONFIG}
 
+            which python3
+            echo ${BBAKE_PYENV}
             python3 -m venv ${BBAKE_PYENV}
             source ${BBAKE_PYENV}/bin/activate
             pip3 install -r ${TUSKDIR}/requirements.txt
@@ -538,6 +540,7 @@ tasks:
             [ -n "${quorum_src}" ] && export BBAKE_QUORUM_SRC=${quorum_src}
             [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
 
+            # ibft specific options
             [ -n "${blockperiod}" ] && export BBAKE_BLOCKPERIOD=${BBAKE_BLOCKPERIOD}
             [ -n "${requesttimeout}" ] && export BBAKE_REQUESTTIMEOUT=${requesttimeout}
 

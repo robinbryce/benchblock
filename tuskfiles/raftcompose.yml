@@ -18,6 +18,7 @@ run:
 
         # read the config file fields into BBAKE_ vars.
         eval ${READ_CONFIG}
+
         cd ${launchdir} && cd ${configdir}
         [ -n "${composeproject}" ] && export BBAKE_COMPOSEPROJECT=${composeproject}
         [ -n "${etherbase}" ] && export BBAKE_ETHERBASE=${etherbase}
@@ -32,8 +33,6 @@ run:
 
         [ -z ${BBAKE_COMPOSEPROJECT} ] && export BBAKE_COMPOSEPROJECT=${BBAKE_NAME}
         [ -z "$BBAKE_ETHERBASE" ] && export BBAKE_ETHERBASE=${BBAKE_GENDOC_WALLET}
-
-        CONFIGDIR=$(pwd)
 
         source ${BBAKE_PYENV}/bin/activate
         BBAKE_ETHERBASE=$(cat <<PYEND | python3
@@ -51,6 +50,8 @@ run:
         --raft --raftport 50000 --raftdnsenable --raftblocktime ${BBAKE_RAFTBLOCKTIME}"
         export GAS_OPTS="${BBAKE_RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
 
+        eval ${UPDATE_CONFIG}
+
         cat <<END > .env
         COMPOSE_PROJECT_NAME=${BBAKE_NAME}
         CONSENSUS_OPTS=${CONSENSUS_OPTS}
@@ -64,8 +65,6 @@ run:
         GAS_OPTS=${GAS_OPTS}
         END
         echo "Wrote .env"
-
-        eval ${UPDATE_CONFIG}
 
         # Merge in the appropriate number of copies of node.yml to the
         # docker-compose.yml we are generating. As we do that add the

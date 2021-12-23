@@ -1,23 +1,6 @@
 usage: |
   Generate the network wide kustomizations for rrr
 
-options:
-  networkid:
-    default: "53456"
-  numbootnodes:
-    default: 0
-    short: b
-    type: int
-  gastarget:
-    usage: "sets the --miner.gastarget option for the nodes"
-    default: "18200000"
-  gaslimit:
-    usage: "sets the --miner.gaslimit option for the nodes"
-    default: "18200000"
-  recommit:
-    usage: "sets the --miner.recommit option for the nodes."
-    default: "2s"
-
 args:
   configdir:
     usage: >
@@ -37,9 +20,11 @@ run:
         eval ${READ_CONFIG}
 
         cd ${launchdir} && cd ${configdir}
+
         [ -n "${blockperiod}" ] && export BBAKE_BLOCKPERIOD=${blockperiod}
         [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
         [ -n "${gastarget}" ] && export BBAKE_GASTARGET=${gastarget}
+        [ -n "${networkid}" ] && export BBAKE_NETWORKID=${networkid}
         [ -n "${numbootnodes}" ] && export BBAKE_NUMBOOTNODES=${numbootnodes}
         [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
         [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}

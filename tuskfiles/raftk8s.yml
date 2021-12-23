@@ -21,21 +21,63 @@ run:
 
         cd ${launchdir} && cd ${configdir}
 
+        [ -n "${blocktime}" ] && export BBAKE_RAFTBLOCKTIME=${blocktime}
+        [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
+        [ -n "${gastarget}" ] && export BBAKE_GASTARGET=${gastarget}
+        [ -n "${geth_image}" ] && export BBAKE_GETH_IMAGE=${geth_image}
         [ -n "${networkid}" ] && export BBAKE_NETWORKID=${networkid}
         [ -n "${numbootnodes}" ] && export BBAKE_NUMBOOTNODES=${numbootnodes}
-        [ -n "${gastarget}" ] && export BBAKE_GASTARGET=${gastarget}
-        [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
-        [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
-        [ -n "${geth_image}" ] && export BBAKE_GETH_IMAGE=${geth_image}
         [ -n "${quorum_src}" ] && export BBAKE_QUORUM_SRC=${quorum_src}
-        [ -n "${blocktime}" ] && export BBAKE_RAFTBLOCKTIME=${blocktime}
+        [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
 
+        [ -n "${raftblocktime}" ] && export BBAKE_RAFTBLOCKTIME=${raftblocktime}
+
+        [ -z ${BBAKE_COMPOSEPROJECT} ] && export BBAKE_COMPOSEPROJECT=${BBAKE_NAME}
         [ -z "${BBAKE_ETHERBASE}" ] && export BBAKE_ETHERBASE=${BBAKE_GENDOC_WALLET}
 
-        export GAS_OPTS="${BBAKE_RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
+        source ${BBAKE_PYENV}/bin/activate
+        BBAKE_ETHERBASE=$(cat <<PYEND | python3
+        import os, sys, pathlib, coincurve, sha3
+        if os.environ["BBAKE_ETHERBASE"] or os.environ["BBAKE_ETHERBASE"] == "0x0000000000000000000000000000000000000000":
+            sys.exit(0)
+        with open(pathlib.Path(os.environ["BBAKE_NODESDIR"]).joinpath("node0", "key")) as f:
+            key = coincurve.PrivateKey.from_hex(f.read())
+            pub = key.public_key.format(compressed=False)[1:]
+            print("0x" + sha3.keccak_256(pub).digest()[-20:].hex())
+        PYEND
+        )
+
         export CONSENSUS_OPTS="\
-        --raft --raftport 50000 --raftdnsenable --raftblocktime ${BBAKE_RAFTBLOCKTIME}
-        "
+        --raft --raftport 50000 --raftdnsenable --raftblocktime ${BBAKE_RAFTBLOCKTIME}"
+        export GAS_OPTS="${BBAKE_RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
+
+        eval ${UPDATE_CONFIG}
+
+        cat <<END > .env
+        COMPOSE_PROJECT_NAME=${BBAKE_NAME}
+        CONSENSUS_OPTS=${CONSENSUS_OPTS}
+        NETWORKID=${BBAKE_NETWORKID}
+        NETRESTRICT=${BBAKE_NETRESTRICT}
+        ETHERBASE=${BBAKE_ETHERBASE}
+        QUORUM_SRC=${BBAKE_QUORUM_SRC}
+        NODESDIR=${BBAKE_NODESDIR}
+        GETH_IMAGE= ${BBAKE_GETH_IMAGE}
+        DELVE_IMAGE=${BBAKE_DELVE_IMAGE}
+        GAS_OPTS=${GAS_OPTS}
+        END
+        echo "Wrote .env"
+
+        cat <<END > raft/network/network.env
+        CONSENSUS_OPTS=${CONSENSUS_OPTS}
+        NETWORKID=${BBAKE_NETWORKID}
+        DISCOVERY_OPTS=--nodiscover
+        ETHERBASE=${BBAKE_ETHERBASE}
+        GETH_IMAGE=${BBAKE_GETH_IMAGE}
+        GAS_OPTS=$GAS_OPTS
+        LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
+        END
+        cat raft/network/network.env
+        echo "Wrote raft/network/network.env"
 
         mkdir -p raft/network
         cp ${BBAKE_NODESDIR}/genesis.json raft/network
@@ -62,18 +104,6 @@ run:
           nodes.append(u)
         json.dump(nodes, open("raft/network/static-nodes.json", "w"), sort_keys=True, indent=True)
         PYEND
-
-        cat <<END > raft/network/network.env
-        CONSENSUS_OPTS=${CONSENSUS_OPTS}
-        NETWORKID=${networkid}
-        DISCOVERY_OPTS=--nodiscover
-        ETHERBASE=${ETHERBASE}
-        GETH_IMAGE=${BBAKE_GETH_IMAGE}
-        GAS_OPTS=$GAS_OPTS
-        LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
-        END
-        cat raft/network/network.env
-        echo "Wrote raft/network/network.env"
 
         # kustomization for the loadtest job
         cp -v raft/network/static-nodes.json jobs/loadtest
@@ -127,4 +157,3 @@ run:
         echo "Wrote raft/namespace.yaml"
 
         eval ${UPDATE_CONFIG}
-
