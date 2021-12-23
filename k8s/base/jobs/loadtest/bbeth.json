@@ -2,6 +2,7 @@
   "bbeth": {
     "eth": "",
     "no-progress": true,
+    "retries": 50,
     "collect": {
        "dbsource": ""
     },
