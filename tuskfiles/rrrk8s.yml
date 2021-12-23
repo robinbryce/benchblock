@@ -33,31 +33,6 @@ run:
         eval ${READ_CONFIG}
 
         cd ${launchdir} && cd ${configdir}
-        [ -n "${etherbase}" ] && BBAKE_ETHERBASE=${etherbase}
-        [ -n "${gaslimit}" ] && BBAKE_GASLIMIT=${gaslimit}
-        [ -n "${gastarget}" ] && BBAKE_GASTARGET=${gastarget}
-        [ -n "${numbootnodes}" ] && BBAKE_NUMBOOTNODES=${numbootnodes}
-        [ -n "${netrestrict}" ] && BBAKE_NETRESTRICT=${netrestrict}
-        [ -n "${networkid}" ] && BBAKE_NETWORKID=${networkid}
-        [ -n "${recommit}" ] && BBAKE_RECOMMIT=${recommit}
-
-        [ -z ${BBAKE_COMPOSEPROJECT} ] && BBAKE_COMPOSEPROJECT=${BBAKE_NAME}
-        [ -z "$BBAKE_ETHERBASE" ] && export BBAKE_ETHERBASE=${BBAKE_GENDOC_WALLET}
-
-        # For a development & experimental setup its not clear it really
-        # matters what address we use for ETHERBASE. But using node0 seems like
-        # a default that could be convenient.
-        source ${BBAKE_PYENV}/bin/activate
-        BBAKE_ETHERBASE=$(cat <<PYEND | python3
-        import os, sys, pathlib, coincurve, sha3
-        if os.environ["BBAKE_ETHERBASE"] or os.environ["BBAKE_ETHERBASE"] == "0x0000000000000000000000000000000000000000":
-            sys.exit(0)
-        with open(pathlib.Path(os.environ["BBAKE_NODESDIR"]).joinpath("node0", "key")) as f:
-            key = coincurve.PrivateKey.from_hex(f.read())
-            pub = key.public_key.format(compressed=False)[1:]
-            print("0x" + sha3.keccak_256(pub).digest()[-20:].hex())
-        PYEND
-        )
 
         export GAS_OPTS="${BBAKE_RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
         export CONSENSUS_OPTS="\
@@ -69,9 +44,6 @@ run:
         --rrr.intentphase ${BBAKE_INTENTPHASE} \
         --rrr.confirmphase ${BBAKE_CONFIRMPHASE} \
         --rrr.roundlength ${BBAKE_ROUNDLENGTH}"
-
-        eval ${UPDATE_CONFIG}
-        # configuration inputs finalised. everything from here is derived.
 
         mkdir -p rrr/network
 
@@ -220,24 +192,3 @@ run:
         cp ${TUSKDIR}/k8s/rrr/namespace.yaml rrr/
         cat rrr/namespace.yaml
         echo "Wrote rrr/namespace.yaml"
-
-        source ${BBAKE_PYENV}/bin/activate
-        cat <<PYEND | python3
-        import os, json
-        j = None
-        with open("bench.json") as f:
-            j = json.load(f)
-            # The sourcing trick we use doesn't play well with variables that
-            # have spaces
-            # j["consensus_opts"] = os.environ["CONSENSUS_OPTS"]
-            # j["gas_opts"] = os.environ["GAS_OPTS"]
-            j["networkid"] = "${BBAKE_NETWORKID}"
-            j["numbootnodes"] = "${BBAKE_NUMBOOTNODES}"
-            j["gastarget"] = "${BBAKE_GASTARGET}"
-            j["gaslimit"] = "${BBAKE_GASLIMIT}"
-            j["recommit"] = "${BBAKE_RECOMMIT}"
-
-        if j is not None:
-            with open("bench.json", "w") as f:
-                json.dump(j, f, indent=2, sort_keys=True)
-        PYEND

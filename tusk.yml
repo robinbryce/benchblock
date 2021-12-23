@@ -247,9 +247,10 @@ options:
       to update them later.
     default: >-
       bootnode0
-      consensus
       composeproject
+      consensus
       delve_image
+      etherbase
       gaslimit
       gastarget
       gendoc_balance
@@ -257,15 +258,13 @@ options:
       gendoc_wallet
       genesis
       geth_image
-      etherbase
       k8s
       maxnodes
       name
-      networkid
       netrestrict
-      etherbase
-      nodesdir
+      networkid
       nodeallocs
+      nodesdir
       numbootnodes
       pyenv
       quorum_src
@@ -571,6 +570,10 @@ tasks:
           name: gethgen
           args:
             - ${configdir}
+      - task:
+          name: clientcfg
+          args:
+            - ${configdir}
 
       - command:
           exec: |
@@ -648,6 +651,12 @@ tasks:
          name: gethgen
          args:
            - ${configdir}
+
+      - task:
+          name: clientcfg
+          args:
+            - ${configdir}
+
       - command:
           exec: |
             set -e
@@ -728,6 +737,12 @@ tasks:
           name: rrrinit
           args:
             - ${configdir}
+
+      - task:
+          name: clientcfg
+          args:
+            - ${configdir}
+
       - command:
           exec: |
             set -e
@@ -767,21 +782,7 @@ tasks:
         SHOW_CONFIG: "for v in ${configvars}; do vv=BBAKE_${v^^}; echo ${vv}=${!vv}; done"
 
         UPDATE_CONFIG: |
-          python3 -c "import os, json, pathlib;
-          config=\"${config}\";
-          configvars=\"${configvars}\";
-          j = json.load(open(config, \"r\"));
-          #print(json.dumps(j, indent=2, sort_keys=True));
-          vars = configvars.split();
-          u = dict([(k, os.environ.get(f\"BBAKE_{k.upper()}\", j[k])) for k in vars if k in j]);
-          outname=pathlib.Path(config).resolve();
-          outs = json.dumps(u, indent=2, sort_keys=True);
-          f = open(outname, \"w\");
-          f.write(outs);
-          f.flush();
-          print(outs);
-          print(f\"Wrote: {outname}\")";
-
+          python3 $TUSKDIR/benchjson.py update ${config} "${configvars}"
 
   gethgendoc:
     include: tuskfiles/gethgendoc.yml
@@ -794,6 +795,9 @@ tasks:
 
   gethstatic:
     include: tuskfiles/gethstatic.yml
+
+  clientcfg:
+    include: tuskfiles/clientcfg.yml
 
   # raft consensus commands
   raftk8s:

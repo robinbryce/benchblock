@@ -22,7 +22,7 @@ func (cfg *Config) SetDefaults() {
 	cfg.BasePort = 8300
 	cfg.ClientTimeout = 60 * time.Second
 	cfg.ResolveHosts = true
-	cfg.Retries = 10
+	cfg.Retries = 50
 }
 
 func NewConfig() Config {

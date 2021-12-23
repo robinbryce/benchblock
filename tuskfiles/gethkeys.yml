@@ -89,4 +89,4 @@ run:
           cat .env
           echo "Updated .env for docker-compose"
         fi
-
+        echo "-------------------- gethkeys ok"

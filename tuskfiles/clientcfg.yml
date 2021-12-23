@@ -1,0 +1,49 @@
+---
+usage: >
+  configure or reconfigure geth client options for (compose or k8s).
+  options which impact genesis can not be set with this method. if etherbase
+  has not been configured, we generate one using the key for node 0.
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+
+        TUSKDIR=$(pwd)
+
+        # read the config file fields into BBAKE_ vars.
+        eval ${READ_CONFIG}
+        cd ${launchdir} && cd ${configdir}
+        [ -n "${composeproject}" ] && export BBAKE_COMPOSEPROJECT=${composeproject}
+        [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
+        [ -n "${gastarget}" ] && export BBAKE_GASTARGET=${gastarget}
+        [ -n "${netrestrict}" ] && export BBAKE_NETRESTRICT=${netrestrict}
+        [ -n "${networkid}" ] && export BBAKE_NETWORKID=${networkid}
+        [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
+
+        # consensus specific options
+        [ -n "${raftblocktime}" ] && export BBAKE_RAFTBLOCKTIME=${raftblocktime}
+
+
+        [ -z ${BBAKE_COMPOSEPROJECT} ] && export BBAKE_COMPOSEPROJECT=${BBAKE_NAME}
+
+        export BBAKE_ETHERBASE=$(cat <<PYEND | python3
+        import os, sys, pathlib, coincurve, sha3
+        if os.environ.get("BBAKE_ETHERBASE"):
+            sys.exit(0)
+        with open(pathlib.Path(os.environ["BBAKE_NODESDIR"]).joinpath("node0", "key")) as f:
+            key = coincurve.PrivateKey.from_hex(f.read())
+            pub = key.public_key.format(compressed=False)[1:]
+            print("0x" + sha3.keccak_256(pub).digest()[-20:].hex())
+        PYEND
+        )
+        eval ${UPDATE_CONFIG}
+        cat bench.json
+        echo "-------------------- clientcfg ok"

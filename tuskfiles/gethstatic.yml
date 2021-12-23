@@ -57,3 +57,4 @@ run:
             f.flush()
             print(f"Wrote: {nodesdir}/static-nodes.json")
         PYEND
+        echo "-------------------- gethstatic ok"
