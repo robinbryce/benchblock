@@ -188,11 +188,11 @@ tasks:
         {{.BBAKE}} new --name={{.TASK}} --maxnodes=9 {{.DIR}} rrr
         docker-compose --project-directory {{.DIR}} up -d
 
-      - task: wait-for-next-block
-        vars: { NAME: '{{.TASK}}' }
-        ignore_error: true
+      #- task: wait-for-next-block
+      #  vars: { NAME: '{{.TASK}}' }
+      #  ignore_error: true
       - |
-        docker-compose logs
+        docker-compose --project-directory {{.DIR}} logs -f
       - |
         docker-compose --project-directory {{.DIR}} down
       - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
