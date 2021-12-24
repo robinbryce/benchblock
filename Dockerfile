@@ -92,6 +92,7 @@ COPY configs configs
 COPY k8s k8s
 COPY tuskfiles tuskfiles
 COPY tusk.yml tusk.yml
+COPY benchjson.py benchjson.py
 COPY entrypoint.sh entrypoint.sh
 
 ENTRYPOINT [ "/bbake/entrypoint.sh" ]
