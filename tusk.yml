@@ -363,128 +363,21 @@ tasks:
             [ -n "${rrr_src}" ] && export BBAKE_RRR_SRC=${rrr_src}
             [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrr_image}
 
-            cat <<PYEND | python3
-            import os, sys, json
-            from pathlib import Path
-
-            tuskdir = Path(os.getcwd()).resolve()
-
-            configdir = "${configdir}"
-            configdir = Path("${launchdir}").joinpath(configdir).resolve()
-            configdir.mkdir(parents=True, exist_ok=True)
-            os.chdir(configdir)
-
-            def env(name, default=""):
-              # Note that when env vars are set explicitly empty this will
-              # trump the default argument here
-              return os.environ.get(f"BBAKE_{name.upper()}", default)
-
-            # if the user supplies a path, resolve it against the launchdir
-            # rather than the config dir (so that the result is consistent with
-            # cli tab completion)
-            if "${nodesdir}":
-              nodesdir = Path("${launchdir}").joinpath("${nodesdir}").resolve()
-            else:
-              # nodesdir defaults to configdir/<consensus>/nodes
-              nodesdir = configdir.joinpath("${consensus}", "nodes").resolve()
-
-            nodesdir.mkdir(parents=True, exist_ok=True)
-
-            # The configuration defaults come from the appropriate benchblock
-            # profile for the consensus and deployment method
             deploymode="k8s"
-            if "${k8s}" != "true":
-              deploymode="compose"
+            [ "${k8s}" != true ] && deploymode="compose"
 
-            bench_json = {}
+            python3 ${tuskdir}/benchjson.py new-config \
+              --profile=${profile} \
+              --tuskdir=${tuskdir} \
+              --launchdir=${launchdir} \
+              --configdir=${configdir} \
+              --consensus=${BBAKE_CONSENSUS} \
+              --deploymode=${deploymode} \
+              --nodesdir=${nodesdir} \
+              ${config} \
+              ${configvars}
 
-            consensus="${consensus}"
-
-            default_profiles =[
-                f"default",
-                f"{deploymode}-default",
-                f"{consensus}-default",
-                f"{consensus}-{deploymode}-default"
-                ]
-            maxnodes = env("maxnodes", default=None)
-            if maxnodes is not None:
-              default_profiles.append(
-                f"{consensus}-{deploymode}-{maxnodes}")
-
-            # process default profiles
-            for profile in default_profiles:
-              defaults = tuskdir.joinpath("configs", f"{profile}.json").resolve()
-              if defaults.exists():
-                bench_json.update(json.load(open(defaults)))
-                print(f"appyling default config: {str(defaults)}")
-
-            profile = "${profile}"
-            if profile:
-              # try first as whole file relative to launch dir
-              for p in [
-                Path("${launchdir}").joinpath(profile).resolve(),
-                Path(configdir).joinpath("configs", profile).resolve(),
-                Path(profile)]:
-                if not p.is_file():
-                  continue
-                bench_json.update(json.load(open(profile)))
-                print(f"using profile: {profile}")
-                break
-              else:
-                print(f"profile {profile} does not exist")
-
-            # If its in the profile, normalise against configdir
-            if "pyenv" in bench_json:
-              bench_json["pyenv"] = str(configdir.joinpath(bench_json["pyenv"]))
-            else:
-              # otherwise, normalise from options or env against launchdir
-              # pyenvdir defaults to configdir/env
-              pyenvdir = env("PYENV", "env")
-              pyenvdir = Path("${launchdir}").joinpath(pyenvdir).resolve()
-              bench_json['pyenv'] = str(pyenvdir)
-
-            # now prioritize any explicit options to new over what is present in
-            # the profile
-
-            for k in "${configvars}".split():
-
-              if k == "consensus":
-                # This is a command argument, not an option
-                continue
-
-              v = env(k, default=None)
-              # v will only be None if the env var is not set. If the cli
-              # option was set not empty then the env var will be set. This
-              # allows env to be used to force a config value to the empty
-              # string.
-              if v is None:
-                continue
-
-              # if there is nothing in the profile (or we don't have one) fall
-              # back to the env var (which may have been set from CLI)
-              if not bench_json.get(k):
-                bench_json[k] = v
-                print(f"{k}: {bench_json[k]} (bbake new default)")
-                continue
-
-              # If we got a value from the cli or the env, it takes precedence
-              # over anything we got from the profile
-              bench_json[k] = v
-              print(f"{k}: {v} (set by option, env or profile)")
-
-            bench_json["consensus"] = "${consensus}"
-            bench_json["nodesdir"] = str(nodesdir)
-
-            # deal with any constructed defaults.
-            if not bench_json.get("name"):
-              bench_json["name"] = consensus + str(bench_json["maxnodes"])
-
-            with open("bench.json", "w") as f:
-                json.dump(bench_json, f, indent=2, sort_keys=True)
-
-            print(json.dumps(bench_json, indent=2, sort_keys=True))
-            print(f"Wrote: {os.getcwd()}/bench.json")
-            PYEND
+            cd ${launchdir} && cd ${configdir}
 
             eval ${READ_CONFIG}
 
@@ -492,8 +385,6 @@ tasks:
             python3 -m venv ${BBAKE_PYENV}
             source ${BBAKE_PYENV}/bin/activate
             pip3 install -r ${tuskdir}/requirements.txt
-
-            cd ${launchdir} && cd ${configdir}
 
             [ -d ${tuskdir}/k8s/${BBAKE_CONSENSUS} ] && mkdir -p ${BBAKE_CONSENSUS}
 

@@ -59,7 +59,7 @@ tasks:
       - touch {{.TESTROOT}}/{{.TASK}}.pending
       - |
         DIR=$(mktemp -p {{.TESTROOT}} -d)
-        {{.BBAKE}} new ${DIR} raft
+        {{.BBAKE}} new -p 3 ${DIR} raft
       - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
 
   test-ibft-new-compose:
@@ -71,7 +71,7 @@ tasks:
       - touch {{.TESTROOT}}/{{.TASK}}.pending
       - |
         DIR=$(mktemp -p {{.TESTROOT}} -d)
-        {{.BBAKE}} new ${DIR} ibft
+        {{.BBAKE}} new -p 5 ${DIR} ibft
       - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
 
   test-rrr-new-compose:
@@ -83,7 +83,7 @@ tasks:
       - touch {{.TESTROOT}}/{{.TASK}}.pending
       - |
         DIR=$(mktemp -p {{.TESTROOT}} -d)
-        {{.BBAKE}} new ${DIR} rrr
+        {{.BBAKE}} new -p 5 ${DIR} rrr
       - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
 
   # k8s
@@ -96,7 +96,7 @@ tasks:
       - touch {{.TESTROOT}}/{{.TASK}}.pending
       - |
         DIR=$(mktemp -p {{.TESTROOT}} -d)
-        {{.BBAKE}} new --k8s ${DIR} raft
+        {{.BBAKE}} new -p 3 --k8s ${DIR} raft
       - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
 
   test-ibft-new-k8s:
@@ -108,7 +108,7 @@ tasks:
       - touch {{.TESTROOT}}/{{.TASK}}.pending
       - |
         DIR=$(mktemp -p {{.TESTROOT}} -d)
-        {{.BBAKE}} new --k8s ${DIR} ibft
+        {{.BBAKE}} new -p 3 --k8s ${DIR} ibft
       - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
 
   test-rrr-new-k8s:
@@ -120,7 +120,7 @@ tasks:
       - touch {{.TESTROOT}}/{{.TASK}}.pending
       - |
         DIR=$(mktemp -p {{.TESTROOT}} -d)
-        {{.BBAKE}} new --k8s ${DIR} rrr
+        {{.BBAKE}} new -p 5 --k8s ${DIR} rrr
       - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
 
 
@@ -135,9 +135,22 @@ tasks:
         WAIT_REMAINING={{.WAIT_REMAINING}}
         SLEEP={{.SLEEP}}
 
-        CURRENT_BLOCK=$(docker exec {{.NAME}}_node0_1 \
-          geth attach /nodes/node0/data/geth.ipc --exec eth.blockNumber)
-        echo "CURRENT_BLOCK: $CURRENT_BLOCK"
+        # read current block, if nodes are still starting we need to retry.
+        while true; do
+
+          CURRENT_BLOCK=$(docker exec {{.NAME}}_node0_1 \
+            geth attach /nodes/node0/data/geth.ipc --exec eth.blockNumber)
+
+          if [[ $CURRENT_BLOCK =~ '^[0-9]+$' ]]; then
+            echo "CURRENT_BLOCK: $CURRENT_BLOCK"
+            break
+          fi
+
+          [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
+          WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
+          echo "Waiting for current block. got=$CURRENT_BLOCK. (time left $WAIT_REMAINING, sleeping for ${SLEEP}s)"
+          sleep $SLEEP
+        done
 
         while true; do
 
@@ -167,7 +180,7 @@ tasks:
     cmds:
       - touch {{.TESTROOT}}/{{.TASK}}.pending
       - |
-        {{.BBAKE}} new --name={{.TASK}} --maxnodes=5 {{.DIR}} raft
+        {{.BBAKE}} new -p 3 --name={{.TASK}} {{.DIR}} raft
         docker-compose --project-directory {{.DIR}} up -d
         # TODO: raft doesn't mint blocks unless tx's are issued
         docker-compose --project-directory {{.DIR}} down
@@ -185,14 +198,10 @@ tasks:
       - touch {{.TESTROOT}}/{{.TASK}}.pending
       - |
         set -e
-        {{.BBAKE}} new --name={{.TASK}} --maxnodes=9 {{.DIR}} rrr
+        {{.BBAKE}} new -p 5 --name={{.TASK}} {{.DIR}} rrr
         docker-compose --project-directory {{.DIR}} up -d
-
-      #- task: wait-for-next-block
-      #  vars: { NAME: '{{.TASK}}' }
-      #  ignore_error: true
-      - |
-        docker-compose --project-directory {{.DIR}} logs -f
+      - task: wait-for-next-block
+        vars: { NAME: '{{.TASK}}' }
       - |
         docker-compose --project-directory {{.DIR}} down
       - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok
@@ -208,7 +217,7 @@ tasks:
       - touch {{.TESTROOT}}/{{.TASK}}.pending
       - |
         set -e
-        {{.BBAKE}} new --name={{.TASK}} --maxnodes=9 {{.DIR}} ibft
+        {{.BBAKE}} new -p 5 --name={{.TASK}} {{.DIR}} ibft
         docker-compose --project-directory {{.DIR}} up -d
 
       - task: wait-for-next-block

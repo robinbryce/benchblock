@@ -96,7 +96,7 @@ def cmd_new_config(args):
             # -p 8 will select the standard profile for an 8 node deployment of the
             # selected consensus.
             (tuskdir.joinpath("configs",
-                f"{consensus}-{deploymode}-{args.profile}").resolve(), "standard"),
+                f"{consensus}-{deploymode}-{args.profile}.json").resolve(), "standard"),
             (tuskdir.joinpath("configs", args.profile).resolve(), "standard"),
             # The file relative to the launchdir has the highest priority as we
             # list it last
@@ -106,6 +106,7 @@ def cmd_new_config(args):
     # process default profiles
     for (p, kind) in profiles:
         if not p.is_file():
+            print(f"profile not found: {str(p)}")
             continue
         bench_json.update(json.load(open(p)))
         print(f"appyling {kind} profile: {str(p)}")
@@ -123,7 +124,7 @@ def cmd_new_config(args):
     # now prioritize any explicit options to new over what is present in
     # the profile
 
-    for k in args.configvars.split():
+    for k in args.configvars:
 
       if k == "consensus":
         # This is a command argument, not an option
@@ -216,8 +217,6 @@ def run():
 
     p = subcmd.add_parser("new-config", help=cmd_new_config.__doc__)
     p.set_defaults(func=cmd_new_config)
-    p.add_argument("config")
-    p.add_argument("configvars")
     p.add_argument("--tuskdir")
     p.add_argument("--launchdir")
     p.add_argument("--configdir")
@@ -225,6 +224,8 @@ def run():
     p.add_argument("--deploymode", choices=["k8s", "compose"])
     p.add_argument("--nodesdir")
     p.add_argument("--profile")
+    p.add_argument("config")
+    p.add_argument("configvars", nargs='+')
 
 
     args = top.parse_args(args)
