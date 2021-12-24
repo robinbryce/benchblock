@@ -21,6 +21,7 @@ jobs:
         run: |
           export PATH
           # task test
+          mkdir -p /tmp/benchblock-tests
           task -t tests.yml test-rrr-compose-up
       -
         name: Login to dockerhub
