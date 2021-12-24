@@ -20,9 +20,7 @@ jobs:
       - name: test
         run: |
           export PATH
-          # task test
-          mkdir -p /tmp/benchblock-tests
-          task -t tests.yml test-rrr-compose-up
+          task test
       -
         name: Login to dockerhub
         if: github.event_name != 'pull_request'
