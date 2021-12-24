@@ -190,6 +190,9 @@ tasks:
 
       - task: wait-for-next-block
         vars: { NAME: '{{.TASK}}' }
+        ignore_error: true
+      - |
+        docker-compose logs
       - |
         docker-compose --project-directory {{.DIR}} down
       - mv {{.TESTROOT}}/{{.TASK}}.pending {{.TESTROOT}}/{{.TASK}}.ok && echo {{.TASK}}.ok

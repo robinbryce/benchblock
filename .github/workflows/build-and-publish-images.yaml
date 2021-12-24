@@ -20,7 +20,8 @@ jobs:
       - name: test
         run: |
           export PATH
-          task test
+          # task test
+          task -t tests.yml test-rrr-compose-up
       -
         name: Login to dockerhub
         if: github.event_name != 'pull_request'
