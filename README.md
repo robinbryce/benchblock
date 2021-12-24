@@ -87,10 +87,6 @@ for automation examples
 
 # Debug a node
 
-```sh
-cd ~/workspace/raft5
-```
-
 Open the docker-compose.yaml and find the stanza for node0
 
 ```yaml
@@ -118,7 +114,7 @@ image. See the example [Dockerfile](./compose/delve-debug/Dockerfile-delve). If
 you want to use the example, then
 
 ```
-cd ~/workspace/benchblock/compose/delv-debug
+cd path/to/clone-of/benchblock/compose/delv-debug
 docker build . -f Dockerfile-delve -t geth-delve:latest
 ```
 
