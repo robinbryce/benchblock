@@ -1,6 +1,6 @@
 # benchblock
 
-[![build](https://github.com/robinbryce/benchblock/actions/workflows/build-and-publish-images.yaml/badge.svg)](https://github.com/robinbryce/benchblock/actions/workflows/build-and-publish-images.yaml)
+[![build](https://github.com/robinbryce/benchblock/actions/workflows/build-images.yaml/badge.svg)](https://github.com/robinbryce/benchblock/actions/workflows/build-images.yaml)
 
 [![Load test one configuration for each consensus alg](https://github.com/robinbryce/benchblock/actions/workflows/loadtest-each-consensus.yaml/badge.svg)](https://github.com/robinbryce/benchblock/actions/workflows/loadtest-each-consensus.yaml)
 
