@@ -1,9 +1,9 @@
-name: Build and publish bbake image
+name: Build images
 # TODO https://github.com/marketplace/actions/go-release-binaries
 on: [push]
 jobs:
-  build-and-publish-images:
-    name: Build and publish bbake image
+  build-images:
+    name: Build images
     runs-on: ubuntu-latest
     steps:
       - name: install go-task
