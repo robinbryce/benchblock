@@ -28,29 +28,6 @@ Features
 * Compose configuration facilitates vscode remote debugging of nodes
 * Compose configurations support running geth/quorum nodes from sources (go run on volume mounted sources)
 
-# Related work
-
-## Chainhammer
-
-The jupyter charting support owes much to the
-[chainhammer](https://github.com/drandreaskrueger/chainhammer/blob/master/README.md)
-project, which also supports a broader range of ledgers.
-
-## Blockbench
-The blockbench [project](https://github.com/ooibc88/blockbench) &
-[paper](https://core.ac.uk/download/pdf/84912082.pdf) which take a deeper look
-at the performance of different platforms in the face of different smart
-contract use cases.
-
-## ConsenSys dev quickstart
-
-ConsenSys provid their own family of tools for configuring networks. The
-developer quickstart can be found [here](https://github.com/ConsenSys/quorum-dev-quickstart)
-
-[^1]: A pre-alpha implementation of this
-  [paper](https://arxiv.org/pdf/1804.07391.pdf) for go-ethereum. Testing and
-  development of which was a key motivation for this project.
-
 # Quick example
 
 Having completed [Setup](#Setup), (including installing the loadtest tool)
@@ -241,3 +218,26 @@ alias bbake='tusk -qf ~/workspace/benchblock/tusk.yml'
 Please see [go-tusk](https://github.com/rliebz/tusk#readme), [yq](https://github.com/mikefarah/yq/blob/master/README.md) for up to installation details and information for other platforms.
 
 The [go-quorum](https://github.com/ConsenSys/quorum.git) clone clone is needed to take advantage of  compose remote debug  configuration [^2], but otherwise can be ommitted
+
+# Related work
+
+## Chainhammer
+
+The jupyter charting support owes much to the
+[chainhammer](https://github.com/drandreaskrueger/chainhammer/blob/master/README.md)
+project, which also supports a broader range of ledgers.
+
+## Blockbench
+The blockbench [project](https://github.com/ooibc88/blockbench) &
+[paper](https://core.ac.uk/download/pdf/84912082.pdf) which take a deeper look
+at the performance of different platforms in the face of different smart
+contract use cases.
+
+## ConsenSys dev quickstart
+
+ConsenSys provid their own family of tools for configuring networks. The
+developer quickstart can be found [here](https://github.com/ConsenSys/quorum-dev-quickstart)
+
+[^1]: A pre-alpha implementation of this
+  [paper](https://arxiv.org/pdf/1804.07391.pdf) for go-ethereum. Testing and
+  development of which was a key motivation for this project.
