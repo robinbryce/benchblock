@@ -32,6 +32,7 @@ run:
 
         [ -z ${BBAKE_COMPOSEPROJECT} ] && export BBAKE_COMPOSEPROJECT=${BBAKE_NAME}
 
+        source ${BBAKE_PYENV}/bin/activate
         export BBAKE_ETHERBASE=$(cat <<PYEND | python3
         import os, sys, pathlib, coincurve, sha3
         if os.environ.get("BBAKE_ETHERBASE"):

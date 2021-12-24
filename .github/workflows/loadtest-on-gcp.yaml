@@ -95,7 +95,6 @@ jobs:
             new
             --k8s
             --name=${{ inputs.namespaceprefix }}${{ inputs.consensus }}${{ inputs.numnodes }}
-            --maxnodes=${{ inputs.numnodes }}
             --profile=${{ inputs.numnodes }}
             --geth_image=${{ inputs.geth_image }}
             --rrrctl_image=${{ inputs.rrrctl_image }}
