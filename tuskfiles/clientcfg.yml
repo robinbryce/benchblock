@@ -16,8 +16,6 @@ run:
       exec: |
         set -e
 
-        TUSKDIR=$(pwd)
-
         # read the config file fields into BBAKE_ vars.
         eval ${READ_CONFIG}
         cd ${launchdir} && cd ${configdir}
@@ -44,6 +42,7 @@ run:
             print("0x" + sha3.keccak_256(pub).digest()[-20:].hex())
         PYEND
         )
-        eval ${UPDATE_CONFIG}
+        ${UPDATE_CONFIG}
         cat bench.json
+        echo
         echo "-------------------- clientcfg ok"

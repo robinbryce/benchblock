@@ -9,12 +9,20 @@ args:
 run:
   - task:
       name: configure
+      options:
+        required: >-
+          composeproject
+          etherbase
+          geth_image
+          maxnodes
+          netrestrict
+          networkid
+          nodesdir
       args:
         - ${configdir}
   - command:
       exec: |
         set -e
-        TUSKDIR=$(pwd)
 
         # read the config file fields into BBAKE_ vars.
         eval ${READ_CONFIG}
@@ -74,7 +82,7 @@ run:
            > jobs/loadtest/bbeth.json
         echo "Wrote jobs/loadtest/bbeth.json"
         yq eval ".namespace = \"$BBAKE_NAME\"" \
-          ${TUSKDIR}/k8s/jobs/loadtest/kustomization.yaml | \
+          ${tuskdir}/k8s/jobs/loadtest/kustomization.yaml | \
           tee jobs/loadtest/kustomization.yaml
         echo "Wrote jobs/loadtest/kustomization.yaml"
 
@@ -85,7 +93,7 @@ run:
           NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
           .commonLabels.app += env(NODENUM) |
           .commonLabels."app.kubernetes.io/name" += env(NODENUM)' \
-            ${TUSKDIR}/k8s/ibft/nodes/node0/kustomization.yaml \
+            ${tuskdir}/k8s/ibft/nodes/node0/kustomization.yaml \
             > ibft/nodes/node${i}/kustomization.yaml
             cat ibft/nodes/node${i}/kustomization.yaml
             echo "Wrote: ibft/nodes/node${i}/kustomization.yaml"
@@ -93,7 +101,7 @@ run:
 
         # volumes for all the nodes. no transformation required
         for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
-          cp ${TUSKDIR}/k8s/ibft/nodes/node0/statefulset-volumes.yaml ibft/nodes/node${i}/statefulset-volumes.yaml
+          cp ${tuskdir}/k8s/ibft/nodes/node0/statefulset-volumes.yaml ibft/nodes/node${i}/statefulset-volumes.yaml
           cat ibft/nodes/node${i}/statefulset-volumes.yaml
           echo "Wrote: ibft/nodes/node${i}/statefulset-volumes.yaml"
         done
@@ -101,17 +109,17 @@ run:
         for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
         echo "- ./../nodes/node${i}"
         done | \
-        yq eval-all 'select(fi==0) *+ {"resources": select(fi==1)}' ${TUSKDIR}/k8s/ibft/network/kustomization.yaml - \
+        yq eval-all 'select(fi==0) *+ {"resources": select(fi==1)}' ${tuskdir}/k8s/ibft/network/kustomization.yaml - \
         > ibft/network/kustomization.yaml
         cat ibft/network/kustomization.yaml
         echo "Wrote ibft/network/kustomization.yaml"
 
         # The namespace is the name - eg ibft7
         yq eval ".namespace = \"$BBAKE_NAME\"" \
-          ${TUSKDIR}/k8s/ibft/kustomization.yaml | \
+          ${tuskdir}/k8s/ibft/kustomization.yaml | \
           tee ibft/kustomization.yaml
         echo "Wrote ibft/kustomization.yaml"
 
-        cp ${TUSKDIR}/k8s/ibft/namespace.yaml ibft/
+        cp ${tuskdir}/k8s/ibft/namespace.yaml ibft/
         cat ibft/namespace.yaml
         echo "Wrote ibft/namespace.yaml"

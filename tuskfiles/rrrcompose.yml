@@ -10,13 +10,27 @@ args:
 run:
   - task:
       name: configure
+      options:
+        required: >-
+          composeproject
+          etherbase
+          geth_image
+          maxnodes
+          netrestrict
+          networkid
+          nodesdir
+          activehorizon
+          committeequorum
+          confirmphase
+          intentphase
+          numcandidates
+          numendorsers
+          roundlength
       args:
         - ${configdir}
   - command:
       exec: |
         set -e
-
-        TUSKDIR=$(pwd)
 
         # read the config file fields into BBAKE_ vars.
         eval ${READ_CONFIG}
@@ -65,8 +79,8 @@ run:
         # docker-compose.yml we are generating. As we do that add the
         # numeric suffices to each nodes service entry and the working_dir
         # it uses
-        cp ${TUSKDIR}/compose/rrr/base.yml .
-        cp ${TUSKDIR}/compose/rrr/node.yml .
+        cp ${tuskdir}/compose/rrr/base.yml .
+        cp ${tuskdir}/compose/rrr/node.yml .
         cp base.yml docker-compose.yml
 
         # each document fragment has to be valid. so they all need the

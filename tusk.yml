@@ -207,6 +207,12 @@ options:
     default:
       command: echo $(pwd)/tusk.yml
 
+  tuskdir:
+    private: true
+    usage: "so all tasks can refer to the directory containing this tusk file"
+    default:
+      command: echo $(pwd)
+
   ibftvars:
     private: true
     usage: >
@@ -304,7 +310,6 @@ tasks:
       - command:
           exec: |
             set -e
-            TUSKDIR=$(pwd)
 
             echo "launchdir: ${launchdir}"
 
@@ -486,16 +491,16 @@ tasks:
             echo "creating pyenv using: $(which python3)"
             python3 -m venv ${BBAKE_PYENV}
             source ${BBAKE_PYENV}/bin/activate
-            pip3 install -r ${TUSKDIR}/requirements.txt
+            pip3 install -r ${tuskdir}/requirements.txt
 
             cd ${launchdir} && cd ${configdir}
 
-            [ -d ${TUSKDIR}/k8s/${BBAKE_CONSENSUS} ] && mkdir -p ${BBAKE_CONSENSUS}
+            [ -d ${tuskdir}/k8s/${BBAKE_CONSENSUS} ] && mkdir -p ${BBAKE_CONSENSUS}
 
             if ${k8s}; then
-              [ -d ${TUSKDIR}/k8s/base ] && mkdir -p base && cp -r ${TUSKDIR}/k8s/base/* base
-              [ -d ${TUSKDIR}/k8s/jobs ] && mkdir -p jobs && cp -r ${TUSKDIR}/k8s/jobs/* jobs
-              [ -d ${TUSKDIR}/k8s/${BBAKE_CONSENSUS} ] && cp -r ${TUSKDIR}/k8s/${BBAKE_CONSENSUS}/* ${BBAKE_CONSENSUS}
+              [ -d ${tuskdir}/k8s/base ] && mkdir -p base && cp -r ${tuskdir}/k8s/base/* base
+              [ -d ${tuskdir}/k8s/jobs ] && mkdir -p jobs && cp -r ${tuskdir}/k8s/jobs/* jobs
+              [ -d ${tuskdir}/k8s/${BBAKE_CONSENSUS} ] && cp -r ${tuskdir}/k8s/${BBAKE_CONSENSUS}/* ${BBAKE_CONSENSUS}
             fi
             cat bench.json
 
@@ -504,9 +509,8 @@ tasks:
         command:
           exec: |
             set -e
-            TUSKDIR=$(pwd)
             cd ${launchdir}
-            tusk -qf ${TUSKDIR}/tusk.yml ${consensus} ${configdir}
+            tusk -qf ${tuskdir}/tusk.yml ${consensus} ${configdir}
 
   ibft:
     usage: >
@@ -523,7 +527,6 @@ tasks:
       - command:
           exec: |
             set -e
-            TUSKDIR=$(pwd)
 
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
@@ -552,7 +555,8 @@ tasks:
 
             cd ${launchdir} && cd ${configdir}
 
-            eval ${UPDATE_CONFIG}
+            ${UPDATE_CONFIG}
+            cat bench.json
 
       - task:
           name: gethkeys
@@ -570,6 +574,7 @@ tasks:
           name: gethgen
           args:
             - ${configdir}
+
       - task:
           name: clientcfg
           args:
@@ -578,15 +583,13 @@ tasks:
       - command:
           exec: |
             set -e
-            TUSKDIR=$(pwd)
-            CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
 
             CMD=ibftcompose
             ${BBAKE_K8S} && CMD=ibftk8s
 
             cd ${launchdir}
-            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir}
+            tusk -qf ${tuskdir}/tusk.yml ${CMD} ${configdir}
 
   raft:
     usage: >
@@ -603,7 +606,6 @@ tasks:
       - command:
           exec: |
             set -e
-            TUSKDIR=$(pwd)
 
             eval ${READ_CONFIG}
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
@@ -634,7 +636,7 @@ tasks:
             [ -z "${RAFT_RAFTBLOCKTIME}" ] && RAFT_RAFTBLOCKTIME=50
 
             cd ${launchdir} && cd ${configdir}
-            eval ${UPDATE_CONFIG}
+            ${UPDATE_CONFIG}
             cat bench.json
 
       - task:
@@ -660,15 +662,13 @@ tasks:
       - command:
           exec: |
             set -e
-            TUSKDIR=$(pwd)
-            CONFIGVARS="${configvars}"
             eval ${READ_CONFIG}
 
             CMD=raftcompose
             ${BBAKE_K8S} && CMD=raftk8s
 
             cd ${launchdir}
-            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir}
+            tusk -qf ${tuskdir}/tusk.yml ${CMD} ${configdir}
 
   rrr:
     usage: >
@@ -685,8 +685,6 @@ tasks:
       - command:
           exec: |
             set -e
-
-            TUSKDIR=$(pwd)
 
             # read the config file fields into BBAKE_ vars.
             eval ${READ_CONFIG}
@@ -714,8 +712,7 @@ tasks:
             [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrr_image}
 
             cd ${launchdir} && cd ${configdir}
-
-            eval ${UPDATE_CONFIG}
+            ${UPDATE_CONFIG}
             cat bench.json
 
       - task:
@@ -746,14 +743,13 @@ tasks:
       - command:
           exec: |
             set -e
-            TUSKDIR=$(pwd)
             eval ${READ_CONFIG}
 
             CMD=rrrcompose
             ${BBAKE_K8S} && CMD=rrrk8s
 
             cd ${launchdir}
-            tusk -qf ${TUSKDIR}/tusk.yml ${CMD} ${configdir}
+            tusk -qf ${tuskdir}/tusk.yml ${CMD} ${configdir}
 
   configure:
     usage: >
@@ -769,20 +765,29 @@ tasks:
     private: true
     args:
       configdir:
+    options:
+      required:
+        usage: "list of values in the config requried by the task"
     run:
+      - set-environment:
+          READ_CONFIG: "$(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export ${config})"
+          SHOW_CONFIG: "for v in ${configvars}; do vv=BBAKE_${v^^}; echo ${vv}=${!vv}; done"
+          UPDATE_CONFIG: python3 ${tuskdir}/benchjson.py update ${config} ${configvars}
+
+      - command:
+          exec: |
+            [ -z "${required}" ] && exit 0
+            cd ${launchdir} && cd ${configdir}
+            python3 ${tuskdir}/benchjson.py require ${config} ${required}
       # execute these fragments in the task like this:
       #   eval ${READ_CONFIG}
       #   if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
-      set-environment:
-        READ_CONFIG: "\
-          $(cd ${launchdir} && cd ${configdir} \
-          && python3 -c \"import json; import shlex;\
-                          [print(f'export BBAKE_{k.upper()}={v}') \
-                              for k, v in json.load(open('${config}')).items() if v]\")"
-        SHOW_CONFIG: "for v in ${configvars}; do vv=BBAKE_${v^^}; echo ${vv}=${!vv}; done"
-
-        UPDATE_CONFIG: |
-          python3 $TUSKDIR/benchjson.py update ${config} "${configvars}"
+      #
+  config-update:
+    private: true
+    run:
+      - command:
+          exec: cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py update ${config} ${configvars}
 
   gethgendoc:
     include: tuskfiles/gethgendoc.yml
@@ -894,7 +899,6 @@ tasks:
           exec: |
             set -e
 
-            TUSKDIR=$(pwd)
             eval ${READ_CONFIG}
             cd ${launchdir} && cd ${configdir}
 
@@ -916,7 +920,6 @@ tasks:
           exec: |
             set -e
 
-            TUSKDIR=$(pwd)
             eval ${READ_CONFIG}
             cd ${launchdir} && cd ${configdir}
 

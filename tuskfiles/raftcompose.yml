@@ -8,13 +8,21 @@ args:
 run:
   - task:
       name: configure
+      options:
+        required: >-
+          composeproject
+          etherbase
+          geth_image
+          maxnodes
+          netrestrict
+          networkid
+          nodesdir
+          raftblocktime
       args:
         - ${configdir}
   - command:
       exec: |
         set -e
-
-        TUSKDIR=$(pwd)
 
         # read the config file fields into BBAKE_ vars.
         eval ${READ_CONFIG}
@@ -43,8 +51,8 @@ run:
         # docker-compose.yml we are generating. As we do that add the
         # numeric suffices to each nodes service entry and the working_dir
         # it uses
-        cp ${TUSKDIR}/compose/raft/base.yml .
-        cp ${TUSKDIR}/compose/raft/node.yml .
+        cp ${tuskdir}/compose/raft/base.yml .
+        cp ${tuskdir}/compose/raft/node.yml .
         cp base.yml docker-compose.yml
 
         # each document fragment has to be valid. so they all need the

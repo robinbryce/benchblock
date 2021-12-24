@@ -9,12 +9,21 @@ args:
 run:
   - task:
       name: configure
+      options:
+        required: >-
+          composeproject
+          etherbase
+          geth_image
+          maxnodes
+          netrestrict
+          networkid
+          nodesdir
+          raftblocktime
       args:
         - ${configdir}
   - command:
       exec: |
         set -e
-        TUSKDIR=$(pwd)
 
         # read the config file fields into BBAKE_ vars.
         eval ${READ_CONFIG}
@@ -25,8 +34,6 @@ run:
         --raft --raftport 50000 --raftdnsenable --raftblocktime ${BBAKE_RAFTBLOCKTIME}"
         export GAS_OPTS="${BBAKE_RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
 
-        eval ${UPDATE_CONFIG}
-
         cat <<END > .env
         COMPOSE_PROJECT_NAME=${BBAKE_NAME}
         CONSENSUS_OPTS=${CONSENSUS_OPTS}
@@ -35,7 +42,7 @@ run:
         ETHERBASE=${BBAKE_ETHERBASE}
         QUORUM_SRC=${BBAKE_QUORUM_SRC}
         NODESDIR=${BBAKE_NODESDIR}
-        GETH_IMAGE= ${BBAKE_GETH_IMAGE}
+        GETH_IMAGE=${BBAKE_GETH_IMAGE}
         DELVE_IMAGE=${BBAKE_DELVE_IMAGE}
         GAS_OPTS=${GAS_OPTS}
         END
@@ -88,7 +95,7 @@ run:
            > jobs/loadtest/bbeth.json
         echo "Wrote jobs/loadtest/bbeth.json"
         yq eval ".namespace = \"$BBAKE_NAME\"" \
-          ${TUSKDIR}/k8s/jobs/loadtest/kustomization.yaml | \
+          ${tuskdir}/k8s/jobs/loadtest/kustomization.yaml | \
           tee jobs/loadtest/kustomization.yaml
         echo "Wrote jobs/loadtest/kustomization.yaml"
 
@@ -99,7 +106,7 @@ run:
           NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
           .commonLabels.app += env(NODENUM) |
           .commonLabels."app.kubernetes.io/name" += env(NODENUM)' \
-            ${TUSKDIR}/k8s/raft/nodes/node0/kustomization.yaml \
+            ${tuskdir}/k8s/raft/nodes/node0/kustomization.yaml \
             > raft/nodes/node${i}/kustomization.yaml
             cat raft/nodes/node${i}/kustomization.yaml
             echo "Wrote: raft/nodes/node${i}/kustomization.yaml"
@@ -107,7 +114,7 @@ run:
 
         # volumes for all the nodes. no transformation required
         for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
-          cp ${TUSKDIR}/k8s/raft/nodes/node0/statefulset-volumes.yaml raft/nodes/node${i}/statefulset-volumes.yaml
+          cp ${tuskdir}/k8s/raft/nodes/node0/statefulset-volumes.yaml raft/nodes/node${i}/statefulset-volumes.yaml
           cat raft/nodes/node${i}/statefulset-volumes.yaml
           echo "Wrote: raft/nodes/node${i}/statefulset-volumes.yaml"
         done
@@ -115,17 +122,17 @@ run:
         for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
         echo "- ./../nodes/node${i}"
         done | \
-        yq eval-all 'select(fi==0) *+ {"resources": select(fi==1)}' ${TUSKDIR}/k8s/raft/network/kustomization.yaml - \
+        yq eval-all 'select(fi==0) *+ {"resources": select(fi==1)}' ${tuskdir}/k8s/raft/network/kustomization.yaml - \
         > raft/network/kustomization.yaml
         cat raft/network/kustomization.yaml
         echo "Wrote raft/network/kustomization.yaml"
 
         # The namespace is the name - eg raft7
         yq eval ".namespace = \"$BBAKE_NAME\"" \
-          ${TUSKDIR}/k8s/raft/kustomization.yaml | \
+          ${tuskdir}/k8s/raft/kustomization.yaml | \
           tee raft/kustomization.yaml
         echo "Wrote raft/kustomization.yaml"
 
-        cp ${TUSKDIR}/k8s/raft/namespace.yaml raft/
+        cp ${tuskdir}/k8s/raft/namespace.yaml raft/
         cat raft/namespace.yaml
         echo "Wrote raft/namespace.yaml"

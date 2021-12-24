@@ -72,4 +72,3 @@ run:
             o["extraData"] = extraData
         print(json.dumps(o, indent=2, sort_keys=True))
         PYEND
-        echo "-------------------- gethgendoc ok"
