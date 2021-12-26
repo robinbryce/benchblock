@@ -159,7 +159,6 @@ jobs:
           NAMESPACE=${{ inputs.namespaceprefix }}$NAME
           CONFIGDIR=networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
-          pushd networks/${NAME}
           BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           ${BBAKE} wait-for-block $CONFIGDIR
