@@ -132,12 +132,12 @@ jobs:
           CONSENSUS=${{ inputs.consensus }}
           NUMNODES=${{ inputs.numnodes }}
           NAMESPACE=${{ inputs.namespaceprefix }}${{ inputs.consensus }}${{ inputs.numnodes }}
-          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           kubectl -n $NAMESPACE apply -f rendered.yaml
 
           pushd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
+          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
           ${BBAKE} wait-for-network-up .
 
           # ibft and rrr consensus require that blocks are continualy minted.
@@ -157,9 +157,9 @@ jobs:
 
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           NAMESPACE=${{ inputs.namespaceprefix }}$NAME
-          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           pushd networks/${NAME}
+          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           ${BBAKE} wait-for-block .
 
@@ -224,9 +224,9 @@ jobs:
 
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           NAMESPACE=${{ inputs.namespaceprefix }}$NAME
-          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           pushd networks/${NAME}
+          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           [ ! -f rendered.yaml ] && echo "rendered.yaml missing" && exit 0
 
