@@ -27,8 +27,14 @@ run:
         [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
 
         # consensus specific options
-        [ -n "${raftblocktime}" ] && export BBAKE_RAFTBLOCKTIME=${raftblocktime}
 
+        # raft
+        [ -n "${raftblocktime}" ] && export BBAKE_RAFTBLOCKTIME=${raftblocktime}
+        # ibft
+        [ -n "${blockperiod}" ] && export BBAKE_BLOCKPERIOD=${blockperiod}
+        # rrr
+        [ -n "${rrr_src}" ] && export BBAKE_RRR_SRC=${rrr_src}
+        [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrr_image}
 
         [ -z ${BBAKE_COMPOSEPROJECT} ] && export BBAKE_COMPOSEPROJECT=${BBAKE_NAME}
 

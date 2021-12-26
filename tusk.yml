@@ -802,7 +802,7 @@ tasks:
                 --field-selector=status.phase=Running \
                 --output=jsonpath={.items..metadata.name} | wc -w)
 
-              [ "${NRUNNING}" == "${BBAKE_MAXNODES}" ] && break
+              [ "${NRUNNING}" == "${BBAKE_MAXNODES}" ] && echo "ok: $NRUNNING nodes are ready" && break
               [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
               WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
 
