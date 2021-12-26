@@ -753,7 +753,6 @@ tasks:
             set -e
             # read the config file fields into BBAKE_ vars.
             eval ${READ_CONFIG}
-
             cd ${launchdir} && cd ${configdir}
 
             i=${node}
@@ -767,6 +766,113 @@ tasks:
               attach /data/node/geth.ipc \
                 $([ -n '${exec}' ] && echo -n --exec '${exec}')
 
+  wait-for-network-up:
+    usage: wait for all nodes in a network to start (k8s only)
+    options:
+      maxwait:
+        default: 180
+      sleep:
+        default: 3
+      context:
+      cluster:
+
+    args:
+      configdir:
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+            eval ${READ_CONFIG}
+            cd ${launchdir} && cd ${configdir}
+
+            CONTEXT=${context}
+            CLUSTER=${cluster}
+            KUBECTL="kubectl ${CONTEXT:+ --context $CONTEXT} ${CLUSTER:+ --cluster $CLUSTER}"
+
+            WAIT_REMAINING=${maxwait}
+            SLEEP=${sleep}
+
+            while true; do
+
+              NRUNNING=$(${KUBECTL} -n $BBAKE_NAME get pods \
+                --field-selector=status.phase=Running \
+                --output=jsonpath={.items..metadata.name} | wc -w)
+
+              [ "${NRUNNING}" == "${BBAKE_MAXNODES}" ] && break
+              [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
+              WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
+
+              echo "${NRUNNING} of ${BBAKE_MAXNODES} running. (attempts left $((WAIT_REMAINING / SLEEP)),  sleeping for ${SLEEP}s)"
+              sleep ${SLEEP}
+            done
+
+  wait-for-block:
+    usage: read the current block then wait for a new one (k8s only)
+    options:
+      maxwait:
+        default: 180
+      sleep:
+        default: 5
+
+    args:
+      configdir:
+
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+            eval ${READ_CONFIG}
+            cd ${launchdir} && cd ${configdir}
+
+            CONTEXT=${context}
+            CLUSTER=${cluster}
+            KUBECTL="kubectl ${CONTEXT:+ --context $CONTEXT} ${CLUSTER:+ --cluster $CLUSTER}"
+
+            WAIT_REMAINING=${maxwait}
+            SLEEP=${sleep}
+            echo "reading current block"
+
+            # We could try any node, the first is present in all network
+            # configurations so we use that
+            NODENAME=ethnode0-0
+
+            # read current block, if nodes are still starting we need to retry.
+            while true; do
+
+
+              START_BLOCK=$(${KUBECTL} exec -n $BBAKE_NAME $NODENAME -- \
+                geth attach /data/node/geth.ipc --exec eth.blockNumber)
+
+              if [[ $START_BLOCK =~ ^[0-9]+$ ]]; then
+                echo "START_BLOCK: $START_BLOCK"
+                break
+              fi
+
+              [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
+              WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
+              echo "Waiting for current block. got=$START_BLOCK. (time left $WAIT_REMAINING, sleeping for ${SLEEP}s)"
+              sleep $SLEEP
+            done
+
+            while true; do
+              echo "Waiting for block to be produced. (attempts left $((WAIT_REMAINING / SLEEP)) sleeping for ${SLEEP}s"
+              [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
+              WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
+              sleep ${SLEEP}
+
+              BLOCK=$(${KUBECTL} exec -n $BBAKE_NAME $NODENAME -- \
+                geth attach /data/node/geth.ipc --exec eth.blockNumber)
+              # it might be different because the exec fails in some way
+              [ "$START_BLOCK" != "$BLOCK" ] && echo "eth.blockNumber changed: $START_BLOCK -> $BLOCK" && exit 0
+            done
 
   # jupyter reporting
   jpycfg:
