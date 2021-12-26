@@ -132,16 +132,13 @@ jobs:
           CONSENSUS=${{ inputs.consensus }}
           NUMNODES=${{ inputs.numnodes }}
           NAMESPACE=${{ inputs.namespaceprefix }}${{ inputs.consensus }}${{ inputs.numnodes }}
+          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           kubectl -n $NAMESPACE apply -f rendered.yaml
 
-          env | grep KUBE
-          pwd
-          KUBECONFIGDIR=$(dirname $KUBECONFIG)
+          pushd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
-          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v ${KUBECONFIGDIR}:${KUBECONFIGDIR} -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
-
-          ${BBAKE} wait-for-network-up networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+          ${BBAKE} wait-for-network-up .
 
           # ibft and rrr consensus require that blocks are continualy minted.
           # for that style of consensus, we wait for a block to be minted
@@ -151,7 +148,7 @@ jobs:
           # TODO: if ibft or rrr wait for next block
           [ "${CONSENSUS}" == "raft" ] && echo "raft network ready" && exit 0
 
-          ${BBAKE} wait-for-block networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+          ${BBAKE} wait-for-block .
           echo "network ready"
 
       - id: generate_load
@@ -160,38 +157,16 @@ jobs:
 
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           NAMESPACE=${{ inputs.namespaceprefix }}$NAME
+          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           pushd networks/${NAME}
 
-          NODENAME=ethnode0-0
-
-          STARTBLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
-            geth attach /data/node/geth.ipc --exec eth.blockNumber)
+          ${BBAKE} wait-for-block .
 
           kustomize build jobs/loadtest | kubectl -n $NAMESPACE apply -f -
-          echo "waiting for job to complete"
 
-          # this can all be finessed once the basics are working
-          WAIT_REMAINING=${{ inputs.maxwait }}
-          SLEEP=4
-          while true; do
-            echo "Waiting for completion. sleep ${SLEEP}s"
-            sleep ${SLEEP}
-
-            state=$(kubectl  -n $NAMESPACE get pods \
-              --selector=job-name=loadtest -o jsonpath='{.items[0].status.containerStatuses[0].state.terminated.reason}')
-            echo "State: $state"
-            [ "$state" == "Completed" ] && break
-
-            [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
-            WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
-            sleep ${SLEEP}
-
-          done
-
-          ENDBLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
-            geth attach /data/node/geth.ipc \
-              --exec eth.blockNumber)
+          ${BBAKE} wait-job . loadtest
+          ENDBLOCK=$(${BBAKE} blocknumber .)
 
           popd
 
@@ -247,35 +222,13 @@ jobs:
         if: always() && steps.render_manifests.outcome == 'success'
         run: |
 
-          echo "render_manifests.outcome: ${{ steps.render_manifests.outcome }}"
+          NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
+          NAMESPACE=${{ inputs.namespaceprefix }}$NAME
+          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
+
+          pushd networks/${NAME}
 
           [ ! -f rendered.yaml ] && echo "rendered.yaml missing" && exit 0
 
-          NAMESPACE=${{ inputs.namespaceprefix }}${{ inputs.consensus }}${{ inputs.numnodes }}
-
-          NRUNNING=$(kubectl -n $NAMESPACE \
-            get pods --selector=app.kubernetes.io/part-of=ethnet \
-            --output=jsonpath={.items..metadata.name} | wc -w)
-
-          WAIT_REMAINING=${{ inputs.maxwait }}
-          SLEEP=4
-          if [ "$NRUNNING" != "0" ]; then
-
-            set +e
-            kubectl -n $NAMESPACE delete -f rendered.yaml
-
-            while [ "$NRUNNING" != "0" ]; do
-
-              [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
-              ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
-              WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
-
-              NRUNNING=$(kubectl -n $NAMESPACE \
-                get pods --selector=app.kubernetes.io/part-of=ethnet \
-                --output=jsonpath={.items..metadata.name} | wc -w)
-
-              echo "Waiting for $NRUNNING to terminate (attempts left $ATTEMPTS_REMAINING, sleeping for ${SLEEP}s)"
-              sleep ${SLEEP}
-            done
-            set -e
-          fi
+          [[ ! $(kubectl -n $NAMESPACE delete -f rendered.yaml 2> /dev/null) ]] \
+            && echo "nothing found to delete (or delete failed)" && exit 0
