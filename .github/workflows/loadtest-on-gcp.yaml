@@ -168,16 +168,7 @@ jobs:
           ${BBAKE} wait-job $CONFIGDIR loadtest
           ENDBLOCK=$(${BBAKE} blocknumber $CONFIGDIR)
 
-          RESULTSDIR=$(pwd)
-
-          # TODO bbeth collect the blocks
-          echo "loadtest complete"
-          kubectl port-forward -n $NAMESPACE $NODENAME 8300:8300 &
-          PF_PID=$!
-
-          echo "STARTBLOCK: $STARTBLOCK, ENDBLOCK: $ENDBLOCK"
-          ./bbeth -e http://127.0.0.1:8300 --no-progress \
-            collect --dbsource results.db -s $STARTBLOCK --endblock $ENDBLOCK
+          ${BBAKE} collectresults $CONFIGDIR
 
           cp -v results.db networks/${NAME}/${NAMESPACE}.db
 
