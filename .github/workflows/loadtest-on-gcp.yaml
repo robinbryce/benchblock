@@ -137,7 +137,7 @@ jobs:
 
           BBAKE="docker run --rm -v $HOME/.kube:/etc/kube -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
-          ${BBAKE} wait-for-network-up .
+          ${BBAKE} wait-for-network-up networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
           # ibft and rrr consensus require that blocks are continualy minted.
           # for that style of consensus, we wait for a block to be minted
