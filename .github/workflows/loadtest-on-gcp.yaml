@@ -161,7 +161,8 @@ jobs:
 
           BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
-          ${BBAKE} wait-for-block $CONFIGDIR
+          # raft doesn't mint unless tx's are outstanding
+          [ "${CONSENSUS}" == "raft" ] && ${BBAKE} wait-for-block $CONFIGDIR
 
           kustomize build $CONFIGDIR/jobs/loadtest | kubectl -n $NAMESPACE apply -f -
 
