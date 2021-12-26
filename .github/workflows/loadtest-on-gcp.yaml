@@ -135,20 +135,9 @@ jobs:
 
           kubectl -n $NAMESPACE apply -f rendered.yaml
 
-          WAIT_REMAINING=${{ inputs.maxwait }}
-          SLEEP=2
-          while true; do
-            NRUNNING=$(kubectl -n $NAMESPACE get pods \
-              --field-selector=status.phase=Running \
-              --output=jsonpath={.items..metadata.name} | wc -w)
+          BBAKE="docker run --rm -v ~/.kube:/etc/kube -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
-            [ "${NRUNNING}" == "${NUMNODES}" ] && break
-            [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
-            WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
-
-            echo "${NRUNNING} of ${NUMNODES} running. (attempts left $((WAIT_REMAINING / SLEEP)),  sleeping for ${SLEEP}s)"
-            sleep ${SLEEP}
-          done
+          ${BBAKE} wait-for-network-up .
 
           # ibft and rrr consensus require that blocks are continualy minted.
           # for that style of consensus, we wait for a block to be minted
@@ -158,22 +147,7 @@ jobs:
           # TODO: if ibft or rrr wait for next block
           [ "${CONSENSUS}" == "raft" ] && echo "raft network ready" && exit 0
 
-          NODENAME=ethnode0-0
-
-          STARTBLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
-            geth attach /data/node/geth.ipc --exec eth.blockNumber)
-
-          SLEEP=5
-          while true; do
-            echo "Waiting for block to be produced. sleeping for ${SLEEP}s"
-            sleep ${SLEEP}
-
-            BLOCK=$(kubectl exec -n $NAMESPACE $NODENAME -- \
-              geth attach /data/node/geth.ipc --exec eth.blockNumber)
-            # it might be different because the exec fails in some way
-            [ "$STARTBLOCK" != "$BLOCK" ] && echo "eth.blockNumber changed: $STARTBLOCK -> $BLOCK" && exit 0
-
-          done
+          ${BBAKE} wait-for-block .
           echo "network ready"
 
       - id: generate_load
