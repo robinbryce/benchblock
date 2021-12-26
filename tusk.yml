@@ -851,7 +851,7 @@ tasks:
 
             echo "STARTBLOCK: ${start}, ENDBLOCK: ${end}"
             ${BBETH} -e http://127.0.0.1:8300 --no-progress \
-              collect --dbsource results.db -s ${start} --endblock ${end}
+              collect --dbsource ${launchdir}/results.db -s ${start} --endblock ${end}
 
   blocknumber:
     usage: read and print the current block(k8s only)
