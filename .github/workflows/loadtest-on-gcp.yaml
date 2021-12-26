@@ -132,13 +132,13 @@ jobs:
           CONSENSUS=${{ inputs.consensus }}
           NUMNODES=${{ inputs.numnodes }}
           NAMESPACE=${{ inputs.namespaceprefix }}${{ inputs.consensus }}${{ inputs.numnodes }}
+          CONFIGDIR=networks/${{ inputs.consensus }}${{ inputs.numnodes }}
+
+          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           kubectl -n $NAMESPACE apply -f rendered.yaml
 
-          pushd networks/${{ inputs.consensus }}${{ inputs.numnodes }}
-
-          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
-          ${BBAKE} wait-for-network-up .
+          ${BBAKE} wait-for-network-up $CONFIGDIR
 
           # ibft and rrr consensus require that blocks are continualy minted.
           # for that style of consensus, we wait for a block to be minted
@@ -148,7 +148,7 @@ jobs:
           # TODO: if ibft or rrr wait for next block
           [ "${CONSENSUS}" == "raft" ] && echo "raft network ready" && exit 0
 
-          ${BBAKE} wait-for-block .
+          ${BBAKE} wait-for-block $CONFIGDIR
           echo "network ready"
 
       - id: generate_load
@@ -157,18 +157,17 @@ jobs:
 
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           NAMESPACE=${{ inputs.namespaceprefix }}$NAME
+          CONFIGDIR=networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
           pushd networks/${NAME}
           BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
-          ${BBAKE} wait-for-block .
+          ${BBAKE} wait-for-block $CONFIGDIR
 
-          kustomize build jobs/loadtest | kubectl -n $NAMESPACE apply -f -
+          kustomize build $CONFIGDIR/jobs/loadtest | kubectl -n $NAMESPACE apply -f -
 
-          ${BBAKE} wait-job . loadtest
-          ENDBLOCK=$(${BBAKE} blocknumber .)
-
-          popd
+          ${BBAKE} wait-job $CONFIGDIR loadtest
+          ENDBLOCK=$(${BBAKE} blocknumber $CONFIGDIR)
 
           RESULTSDIR=$(pwd)
 
@@ -224,9 +223,6 @@ jobs:
 
           NAME=${{ inputs.consensus }}${{ inputs.numnodes }}
           NAMESPACE=${{ inputs.namespaceprefix }}$NAME
-
-          pushd networks/${NAME}
-          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           [ ! -f rendered.yaml ] && echo "rendered.yaml missing" && exit 0
 
