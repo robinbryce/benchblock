@@ -147,7 +147,7 @@ jobs:
           # TODO: if ibft or rrr wait for next block
           [ "${CONSENSUS}" == "raft" ] && echo "raft network ready" && exit 0
 
-          ${BBAKE} wait-for-block .
+          ${BBAKE} wait-for-block networks/${{ inputs.consensus }}${{ inputs.numnodes }}
           echo "network ready"
 
       - id: generate_load
