@@ -810,6 +810,49 @@ tasks:
               sleep ${SLEEP}
             done
 
+
+  collectresults:
+    usage: read and print the current block(k8s only)
+
+    options:
+      nodename:
+        default: "ethnode0-0"
+      start:
+        default: 0
+
+    args:
+      configdir:
+      end:
+
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+            eval ${READ_CONFIG}
+            cd ${launchdir} && cd ${configdir}
+
+            CONTEXT=${context}
+            CLUSTER=${cluster}
+            KUBECTL="kubectl ${CONTEXT:+ --context $CONTEXT} ${CLUSTER:+ --cluster $CLUSTER}"
+
+            ${KUBECTL} exec -n $BBAKE_NAME ${nodename} -- \
+              geth attach /data/node/geth.ipc --exec eth.blockNumber
+
+            kubectl port-forward -n $BBAKE_NAME ${nodename} 8300:8300 &
+            PF_PID=$!
+
+            BBETH=$GOBIN/bbeth
+            [ ! -f "${BBETH}" ] && BBETH="./bbeth"
+            [ ! -f "${BBETH}" ] && BBETH="bbeth"
+
+            echo "STARTBLOCK: ${start}, ENDBLOCK: ${end}"
+            ${BBETH} -e http://127.0.0.1:8300 --no-progress \
+              collect --dbsource results.db -s ${start} --endblock ${end}
+
   blocknumber:
     usage: read and print the current block(k8s only)
 

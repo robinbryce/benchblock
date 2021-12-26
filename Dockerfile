@@ -62,18 +62,14 @@ ENV PATH /usr/local/bin:${PATH}
 ENV BBAKE_GETH_BIN=/usr/local/bin/geth
 ENV BBAKE_GETH_RRR_BIN=/usr/local/bin/geth-rrr
 ENV BBAKE_RRRCTL_BIN=/usr/local/bin/rrrctl
+ENV GOBIN=/go/bin
+ENV PATH=/usr/local/bin:$PATH
 
-# We take kubectl from the bitnami images to make the image completely self
-# contained for users that are resistent to installing the depenencies. We
-# trust bitnami not to mess with it, but we don't currently set
-# DOCKER_CONTENT_TRUST. If this is something you are worried about, run bbake
-# from a source checkout.
-ENV KUBECTL_VERSION=1.23
-
+ENV KUBECTL_VERSION=1.23.1
 # Setting KUBECONFIG like this makes the referenced path for the config
 # predictable. So that docker run can be used like so:
 #
-#   docker run --rm -v ~/.kube:/.kube -v $(pwd):$(pwd) -w $(pwd)
+#   docker run --rm -v $HOME/.kube:/etc/kube -v $(pwd):$(pwd) -w $(pwd)
 ENV KUBECONFIG=/etc/kube/config
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
@@ -88,11 +84,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
   && curl -sL https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/${YQ_BINARY}.tar.gz \
      | tar xz && mv ${YQ_BINARY} /usr/local/bin/yq
 
+RUN curl -sSLo /usr/local/bin/kubectl \
+  https://storage.googleapis.com/kubernetes-release/release/v$KUBECTL_VERSION/bin/linux/amd64/kubectl \
+  && chmod +x /usr/local/bin/kubectl \
+  &&  mkdir /etc/kube && chmod g+rwX /etc/kube
 
 WORKDIR /bbake
-
-COPY --from=bitnami/kubectl:1.23 /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/kubectl
-RUN mkdir /etc/kube && chmod g+rwX /etc/kube
 
 COPY --from=go-builder /go/bin/bbeth /usr/local/bin/bbeth
 COPY --from=quorum_rrr /usr/local/bin/geth /usr/local/bin/geth
