@@ -136,9 +136,10 @@ jobs:
           kubectl -n $NAMESPACE apply -f rendered.yaml
 
           env | grep KUBE
+          pwd
           KUBECONFIGDIR=$(dirname $KUBECONFIG)
 
-          BBAKE="docker run --rm -v ${KUBECONFIGDIR}:/etc/kube -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
+          BBAKE="docker run --rm -e KUBECONFIG=$KUBECONFIG -v ${KUBECONFIGDIR}:${KUBECONFIGDIR} -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           ${BBAKE} wait-for-network-up networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
