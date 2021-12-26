@@ -136,11 +136,9 @@ jobs:
           kubectl -n $NAMESPACE apply -f rendered.yaml
 
           env | grep KUBE
-          [[ -d $HOME/.kube ]] && find $HOME/.kube || echo "$HOME/.kube not found (1)"
-          [[ -d .kube ]] && find .kube || echo ".kube not found (2)"
-          [[ -d ~/.kube ]] && find ~/.kube || echo "~/.kube not found (2)"
+          KUBECONFIGDIR=$(dirname $KUBECONFIG)
 
-          BBAKE="docker run --rm -v $HOME/.kube:/etc/kube -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
+          BBAKE="docker run --rm -v ${KUBECONFIGDIR}:/etc/kube -v $(pwd):$(pwd) -w $(pwd) robinbryce/bbake:main"
 
           ${BBAKE} wait-for-network-up networks/${{ inputs.consensus }}${{ inputs.numnodes }}
 
