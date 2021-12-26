@@ -810,6 +810,33 @@ tasks:
               sleep ${SLEEP}
             done
 
+  blocknumber:
+    usage: read and print the current block(k8s only)
+
+    options:
+      nodename:
+        default: "ethnode0-0"
+    args:
+      configdir:
+
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+            eval ${READ_CONFIG}
+            cd ${launchdir} && cd ${configdir}
+
+            CONTEXT=${context}
+            CLUSTER=${cluster}
+            KUBECTL="kubectl ${CONTEXT:+ --context $CONTEXT} ${CLUSTER:+ --cluster $CLUSTER}"
+
+            ${KUBECTL} exec -n $BBAKE_NAME ${nodename} -- \
+              geth attach /data/node/geth.ipc --exec eth.blockNumber
+
   wait-for-block:
     usage: read the current block then wait for a new one (k8s only)
     options:
@@ -872,6 +899,81 @@ tasks:
                 geth attach /data/node/geth.ipc --exec eth.blockNumber)
               # it might be different because the exec fails in some way
               [ "$START_BLOCK" != "$BLOCK" ] && echo "eth.blockNumber changed: $START_BLOCK -> $BLOCK" && exit 0
+            done
+
+  wait-for-job:
+    usage: wait for all nodes in a network to start (k8s only)
+    options:
+      maxwait:
+        default: 180
+        short: w
+      sleep:
+        default: 3
+        short: s
+      context:
+      cluster:
+
+    args:
+      configdir:
+      jobname:
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+            eval ${READ_CONFIG}
+            cd ${launchdir} && cd ${configdir}
+
+            CONTEXT=${context}
+            CLUSTER=${cluster}
+            KUBECTL="kubectl ${CONTEXT:+ --context $CONTEXT} ${CLUSTER:+ --cluster $CLUSTER}"
+
+            WAIT_REMAINING=${maxwait}
+            SLEEP=${sleep}
+
+            # Wait for started
+            while true; do
+
+              STARTED=$(${KUBECTL}  -n $BBAKE_NAME get pods \
+                --selector=job-name=${jobname} \
+                -o jsonpath='{range .items[*]}{.status.containerStatuses[0].state.running.startedAt}')
+
+              STATE=$(${KUBECTL}  -n $BBAKE_NAME get pods \
+                --selector=job-name=${jobname} \
+                -o jsonpath='{range .items[*]}{.status.containerStatuses[0].state.terminated.reason}')
+
+              # deal with stale job first. its running state will be gone
+              [ "$STATE" == "Completed" ] && echo "completed: ok" && break
+              [ -n "$STATE" ] && echo "terminated: $STATE" && break
+
+              [ -n "$STARTED" ] && echo "StartedAt: $STARTED" && STARTED=$(date -d $STARTED +%s) && break
+              echo "Waiting for start. sleep ${SLEEP}s"
+              sleep ${SLEEP}
+            done
+
+            while true; do
+
+              STATE=$(${KUBECTL}  -n $BBAKE_NAME get pods \
+                --selector=job-name=${jobname} \
+                -o jsonpath='{range .items[*]}{.status.containerStatuses[0].state.terminated.reason}')
+
+              if [ -n "${STARTED}" ]; then
+                NOW=$(date +%s)
+                RUNNINGFOR="Running for: $(TZ=UTC date -d @$((${NOW}-${STARTED})) +%H:%M:%S). "
+              fi
+              [ "$STATE" == "Completed" ] && echo "completed: ok" && break
+              [ -n "$STATE" ] && echo "terminated: $STATE" && break
+
+
+              [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
+              WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
+
+              echo "${RUNNINGFOR}Sleeping for ${SLEEP}s"
+              sleep ${SLEEP}
+
             done
 
   # jupyter reporting
