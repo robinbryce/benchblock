@@ -31,7 +31,6 @@ run:
         do
 
         POD=ethnode${i}-0
-        [[ $i -lt ${BBAKE_NUMBOOTNODES} ]] && POD=ethnodeboot${i}-0
         export POD
 
         export ADMIN_JSON=$(kubectl \
