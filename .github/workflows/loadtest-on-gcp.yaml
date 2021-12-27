@@ -61,6 +61,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      - id: auth
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.gcp_project_key }}
+
+      - id: get_credentials
+        uses: google-github-actions/get-gke-credentials@v0
+        with:
+          cluster_name: ${{ inputs.cluster_name }}
+          location: ${{ inputs.location }}
+          project_id: ${{ inputs.project_id }}
+
       # It is important the directory is created in the main process. If we let
       # docker create it when it mounts the volume, its created with the wrong
       # ownership and we don't have write access
@@ -105,18 +117,6 @@ jobs:
         uses: imranismail/setup-kustomize@v1
         with:
           kustomize-version: "4.3.0"
-
-      - id: auth
-        uses: google-github-actions/auth@v0
-        with:
-          credentials_json: ${{ secrets.gcp_project_key }}
-
-      - id: get_credentials
-        uses: google-github-actions/get-gke-credentials@v0
-        with:
-          cluster_name: ${{ inputs.cluster_name }}
-          location: ${{ inputs.location }}
-          project_id: ${{ inputs.project_id }}
 
       - id: render_manifests
         # if this step succeedes, the cleanup task will always run and always
