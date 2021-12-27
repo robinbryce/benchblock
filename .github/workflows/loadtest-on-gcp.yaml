@@ -219,3 +219,4 @@ jobs:
 
           [[ ! $(kubectl -n $NAMESPACE delete -f rendered.yaml 2> /dev/null) ]] \
             && echo "nothing found to delete (or delete failed)" && exit 0
+          exit 0
