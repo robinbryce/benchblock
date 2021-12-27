@@ -106,13 +106,17 @@ jobs:
         with:
           kustomize-version: "4.3.0"
 
+      - id: auth
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.gcp_project_key }}
+
       - id: get_credentials
-        uses: google-github-actions/get-gke-credentials@main
+        uses: google-github-actions/get-gke-credentials@v0
         with:
           cluster_name: ${{ inputs.cluster_name }}
           location: ${{ inputs.location }}
           project_id: ${{ inputs.project_id }}
-          credentials: ${{ secrets.gcp_project_key }}
 
       - id: render_manifests
         # if this step succeedes, the cleanup task will always run and always
