@@ -169,7 +169,7 @@ jobs:
           ${BBAKE} wait-for-job $CONFIGDIR loadtest
           ENDBLOCK=$(${BBAKE} blocknumber $CONFIGDIR)
 
-          ${BBAKE} collectresults $CONFIGDIR
+          ${BBAKE} collectresults $CONFIGDIR $ENDBLOCK
 
           cp -v results.db networks/${NAME}/${NAMESPACE}.db
 
