@@ -166,7 +166,7 @@ jobs:
 
           kustomize build $CONFIGDIR/jobs/loadtest | kubectl -n $NAMESPACE apply -f -
 
-          ${BBAKE} wait-job $CONFIGDIR loadtest
+          ${BBAKE} wait-for-job $CONFIGDIR loadtest
           ENDBLOCK=$(${BBAKE} blocknumber $CONFIGDIR)
 
           ${BBAKE} collectresults $CONFIGDIR
