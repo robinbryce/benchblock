@@ -39,4 +39,4 @@ jobs:
       numnodes: ${{ github.event.inputs.numnodes }}
 
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
