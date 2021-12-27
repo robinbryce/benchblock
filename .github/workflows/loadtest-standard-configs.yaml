@@ -5,142 +5,142 @@ jobs:
   raft3:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "raft"
       numnodes: 3
 
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
 
   ibft5:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "ibft"
       numnodes: 5
 
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
 
   rrr5:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 5
 
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
 
   raft9:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "raft"
       numnodes: 9
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
 
   ibft9:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "ibft"
       numnodes: 9
 
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
 
   rrr9:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 9
 
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
 
 
   raft13:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "raft"
       numnodes: 13
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
 
   ibft13:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "ibft"
       numnodes: 13
 
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
 
   rrr13:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 13
 
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
 
   ibft17:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "ibft"
       numnodes: 17
 
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
 
   rrr17:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 17
 
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
 
   rrr30:
     uses: robinbryce/benchblock/.github/workflows/loadtest-on-gcp.yaml@main
     with:
-      project_id: "fetlar-1"
+      project_id: "iona-1"
       location: "europe-west2-a"
       cluster_name: "kluster"
       consensus: "rrr"
       numnodes: 30
 
     secrets:
-      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_FETLAR }}
+      gcp_project_key: ${{ secrets.GCP_PROJECT_KEY_IONA }}
