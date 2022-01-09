@@ -30,6 +30,18 @@ spec:
       - name: geth-rrr
         image: quorumengineering/quorum:21.4.1
         imagePullPolicy: Always
+        ports:
+         - name: tcp-peer
+           containerPort: 7200
+         - name: tcp-rpc
+           containerPort: 8300
+         - name: tcp-wsock
+           containerPort: 8400
+         - name: tcp-metr
+           containerPort: 6060
+         - name: tcp-pprof
+           containerPort: 9545
+
         volumeMounts:
           - name: ethnode-pv
             mountPath: /data
