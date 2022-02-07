@@ -1,6 +1,7 @@
 {
   "name": "",
   "maxnodes": "9",
+  "apisec-nodepath": "/node",
   "numbootnodes": "0",
   "pyenv": "env",
   "networkid": "53456",

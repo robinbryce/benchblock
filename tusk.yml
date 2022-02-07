@@ -78,12 +78,36 @@ options:
 
   etherbase:
     default: ""
+
   k8s:
     usage: >
       Generate a set of kubernetes manifiests (kustomizations) instead of
       the default docker-compose setup.
     type: bool
     short: k
+
+  apisec:
+    usage: >
+      Require a valid "Authorization: Bearer TOKEN" header for json-rpc access.
+      Token aud must be the node identity, the requested method must in in the
+      scopes (which can be wild carded)
+      Only available for k8s manifests
+    type: bool
+
+  apisec-certname:
+    usage: >
+      The name of the kubernetes secret to expect the traefik ingress tls certificate in
+      defaults to "wild-nodes-cert"
+
+  apisec-ingresshost:
+    usage: >
+      enable the traefik ingress route and set the hostname
+
+  apisec-nodepath:
+    usage: >
+      specify an alternate node path. so that the uri for the node is
+      {apisec-nodepath}/ethnode{N}. defaults to /node
+
   maxnodes:
     usage: >
       The number of nodes for the network. For PoA networks, it is the number
@@ -252,6 +276,10 @@ options:
       creating the configuration. Consensus specific sub commands can be used
       to update them later.
     default: >-
+      apisec
+      apisec-ingresshost
+      apisec-nodepath
+      apisec-certname
       bootnode0
       composeproject
       consensus
@@ -328,6 +356,10 @@ tasks:
             # [ -n "${K8S}" ] && BBAKE_K8S=
             BBAKE_CONSENSUS=${consensus}
 
+            [ -n "${apisec}" ] && export BBAKE_APISEC=${apisec}
+            [ -n "${apisec-ingresshost}" ] && export BBAKE_APISEC_INGRESSHOST=${apisec-ingresshost}
+            [ -n "${apisec-nodepath}" ] && export BBAKE_APISEC_NODEPATH=${apisec-nodepath}
+            [ -n "${apisec-certname}" ] && export BBAKE_APISEC_CERTNAME=${apisec-certname}
             [ -n "${composeproject}" ] && export BBAKE_COMPOSEPROJECT=${composeproject}
             [ -n "${etherbase}" ] && export BBAKE_ETHERBASE=${etherbase}
             [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
@@ -393,6 +425,7 @@ tasks:
               [ -d ${tuskdir}/k8s/jobs ] && mkdir -p jobs && cp -r ${tuskdir}/k8s/jobs/* jobs
               [ -d ${tuskdir}/k8s/${BBAKE_CONSENSUS} ] && cp -r ${tuskdir}/k8s/${BBAKE_CONSENSUS}/* ${BBAKE_CONSENSUS}
             fi
+
             cat bench.json
 
       - when:

@@ -1,0 +1,12 @@
+{
+  "tokenValidation": {
+    "issuers": [ "https://localhost" ],
+    "jws": {
+      "endpoint": "http://localhost:3000/jwks"
+    },
+    "jwt": {
+      "authorizationField": "scope",
+      "preferIntrospection": false
+    }
+  }
+}

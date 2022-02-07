@@ -68,7 +68,7 @@ run:
         ETHERBASE=${BBAKE_ETHERBASE}
         GETH_IMAGE=${BBAKE_GETH_IMAGE}
         GAS_OPTS=$GAS_OPTS
-        LOG_OPTS=--vmodule consensus/*=5,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
+        LOG_OPTS=--vmodule consensus/*=3,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
         END
         cat rrr/network/network.env
         echo "Wrote rrr/network/network.env"
@@ -134,7 +134,9 @@ run:
           cat base/rrr/node/statefulset-env-bootnode${i}.yaml
           echo "Wrote: base/rrr/node/statefulset-env-bootnode${i}.yaml"
           echo "- statefulset-env-bootnode${i}.yaml" >> base/rrr/node/kustomization-patches.yaml
+
         done
+
         if [ ${BBAKE_NUMBOOTNODES} -gt 0 ]; then
           yq eval-all --inplace 'select(fi==0) *+ {"patchesStrategicMerge": select(fi==1)}' \
             base/rrr/node/kustomization.yaml base/rrr/node/kustomization-patches.yaml
@@ -183,11 +185,59 @@ run:
         yq eval --inplace '.images[0].newName = env(NEWNAME)' rrr/node/kustomization.yaml
         yq eval --inplace '.images[0].newTag = env(NEWTAG)' rrr/node/kustomization.yaml
 
-        # volumes for all the nodes. no transformation required
+        # volumes for all the nodes. apisec for all the nodes. no transformation required
         for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
           cp ${tuskdir}/k8s/rrr/nodes/node0/statefulset-volumes.yaml rrr/nodes/node${i}/statefulset-volumes.yaml
           cat rrr/nodes/node${i}/statefulset-volumes.yaml
           echo "Wrote: rrr/nodes/node${i}/statefulset-volumes.yaml"
+
+          # if apisec is enabled, patch it in per node (so that at some point
+          # in future we can make it optional per node)
+          if [ "${BBAKE_APISEC}" == "true" ]; then
+            # these get added to ethnode-cfg
+            cp -v ${tuskdir}/k8s/apisec/jwt-auth.json rrr/nodes/node${i}/
+            cp -v ${tuskdir}/k8s/apisec/plugins.json rrr/nodes/node${i}/
+            cp -v ${tuskdir}/k8s/apisec/wild-nodes-cert.yaml rrr/nodes/node${i}/
+            cp -v ${tuskdir}/k8s/apisec/statefulset-env-security-config.yaml rrr/nodes/node${i}/
+            cp -v ${tuskdir}/k8s/apisec/statefulset-volumes-apisec.yaml rrr/nodes/node${i}/
+            cp -v ${tuskdir}/k8s/apisec/traefik-forwardauth-tokenexchange-ingressroute.yaml rrr/nodes/node${i}/ingressroute.yaml
+
+            yq eval --inplace '.resources += "ingressroute.yaml"' \
+                  rrr/nodes/node${i}/kustomization.yaml
+            yq eval --inplace '.resources += "wild-nodes-cert.yaml"' \
+                  rrr/nodes/node${i}/kustomization.yaml
+
+            yq eval --inplace '.patchesStrategicMerge += "statefulset-volumes-apisec.yaml"' \
+                  rrr/nodes/node${i}/kustomization.yaml
+            yq eval --inplace '.patchesStrategicMerge += "statefulset-env-security-config.yaml"' \
+                  rrr/nodes/node${i}/kustomization.yaml
+
+            # per node config map to mount in the jwt-auth.json and plugin.json files
+            cat ${tuskdir}/k8s/apisec/configmapgenerator-ethnode.yaml >> rrr/nodes/node${i}/kustomization.yaml
+
+            # set the ingress route for traefik
+            if [ -n "$BBAKE_APISEC_INGRESSHOST" ]; then
+              ROUTE="Host(\`${BBAKE_APISEC_INGRESSHOST}\`) && Path(\`${BBAKE_APISEC_NODEPATH}/ethnode${i}\`)"
+            else
+              ROUTE="Path(\`${BBAKE_APISEC_NODEPATH}/ethnode${i}\`)"
+            fi
+
+            ROUTE=$ROUTE yq eval --inplace '.spec.routes[] |= select(.match == "traefik-route").match=env(ROUTE)' rrr/nodes/node${i}/ingressroute.yaml
+            ETHNODE="ethnode${i}" \
+            yq eval --inplace '.spec.routes[].services[] |= select(.name == "ethnode0").name=env(ETHNODE)' rrr/nodes/node${i}/ingressroute.yaml
+
+            # tls certificate for the ingress
+            if [ -n "${BBAKE_APISEC_CERTNAME}" ]; then
+              yq eval --inplace '.metadata.name=env(BBAKE_APISEC_CERTNAME)' rrr/nodes/node${i}/wild-nodes-cert.yaml
+              yq eval --inplace '.spec.secretName=env(BBAKE_APISEC_CERTNAME)' rrr/nodes/node${i}/wild-nodes-cert.yaml
+              yq eval --inplace '.spec.tls.secretName=env(BBAKE_APISEC_CERTNAME)' rrr/nodes/node${i}/ingressroute.yaml
+            fi
+            if [ -n "$BBAKE_APISEC_INGRESSHOST" ]; then
+              yq eval --inplace '.spec.commonName=env(BBAKE_APISEC_INGRESSHOST)' rrr/nodes/node${i}/wild-nodes-cert.yaml
+              yq eval --inplace '.spec.dnsNames[0]=env(BBAKE_APISEC_INGRESSHOST)' rrr/nodes/node${i}/wild-nodes-cert.yaml
+              yq eval --inplace '.spec.dnsNames[1]="*." + env(BBAKE_APISEC_INGRESSHOST)' rrr/nodes/node${i}/wild-nodes-cert.yaml
+            fi
+          fi
         done
 
         for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do

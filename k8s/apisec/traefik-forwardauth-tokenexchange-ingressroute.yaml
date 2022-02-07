@@ -1,0 +1,29 @@
+apiVersion: traefik.containo.us/v1alpha1
+# requires a traefik instance with the kubernetes provider enabled and a
+# forwardauth service implementation to exchange a federated oauth/openid
+# connect token for a token with the appropriate aud & scopes. For reference
+# see:
+# * https://github.com/robinbryce/authex - forwardauth target
+# * https://github.com/robinbryce/tokenator - panva node-oidc-provider based RFC 8693 token exchanger
+#
+kind: IngressRoute
+metadata:
+  name: ethnode
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    # traefik-route will be yq replaced to something like
+    # Host(`blockbench.io`) && Path(`/node/ethnode0`)
+    - match: traefik-route
+      kind: Rule
+      services:
+        - kind: Service
+          name: ethnode0
+          scheme: http
+          port: tcp-rpc
+      middlewares:
+        - name: ethnodetokenexchange
+        - name: removepath
+  tls:
+    secretName: wild-nodes-cert

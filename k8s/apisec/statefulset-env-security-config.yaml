@@ -1,0 +1,13 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ethnode
+spec:
+  template:
+    spec:
+      containers:
+        - name: geth-rrr
+          env:
+            - name: SECURITY_CONFIG
+              value: /config/jwt-auth.json
+

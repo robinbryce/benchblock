@@ -25,12 +25,12 @@ configMapGenerator:
   - SYNC_OPTS=--gcmode archive --syncmode full
   - PRIVATE_CONFIG=ignore
   - P2P_PORT=7200
-  - WS_OPTS=--ws  --wsorigins '*' --wsport 8400
+  - WS_OPTS=--ws  --wsorigins=* --wsport 8400
   - >-
     RPC_OPTS=
     --allow-insecure-unlock
     --http --http.addr 0.0.0.0
-    --http.corsdomain '*' --http.vhosts '*' --http.port 8300
+    --http.corsdomain=* --http.vhosts=* --http.port 8300
   - GAS_OPTS=
   - >-
     MINER_OPTS=
@@ -41,7 +41,7 @@ configMapGenerator:
   # that arrived after the current work started. This interferes with some
   # consensus implementations so we make it very long by default. it is
   # interesting to measure the effects of this parameter.
-  - LOG_OPTS=--vmodule consensus/*=2,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
+  - LOG_OPTS=--vmodule rpc/*=3,consensus/*=3,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
 - name: genesis
   files:
   - genesis.json

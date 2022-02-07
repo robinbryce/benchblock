@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wild-nodes-cert
+spec:
+  commonName: "benchblock.dev"
+  secretName: wild-nodes-cert
+  dnsNames:
+    - "benchblock.dev"
+    - "*.benchblock.dev"
+  issuerRef:
+    name: letsencrypt-staging-primary-dns
+    kind: ClusterIssuer

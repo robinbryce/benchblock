@@ -59,9 +59,10 @@ def cmd_new_config(args):
     os.chdir(configdir)
 
     def env(name, default=""):
+      name = '_'.join(name.split('-')).upper()
       # Note that when env vars are set explicitly empty this will
       # trump the default argument here
-      return os.environ.get(f"BBAKE_{name.upper()}", default)
+      return os.environ.get(f"BBAKE_{name}", default)
 
     # if the user supplies a path, resolve it against the launchdir
     # rather than the config dir (so that the result is consistent with
@@ -190,7 +191,7 @@ def cmd_shell_export(args):
 
     j = json.load(open(config, "r"))
     for k, v in j.items():
-        print(f"export BBAKE_{k.upper()}={v}")
+        print(f"export BBAKE_{'_'.join(k.split('-')).upper()}={v}")
 
 
 def run():

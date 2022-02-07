@@ -1,0 +1,6 @@
+configMapGenerator:
+  - name: ethnode-cfg-
+    files:
+      - plugins.json
+      - jwt-auth.json
+
