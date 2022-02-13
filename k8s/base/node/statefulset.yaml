@@ -25,6 +25,8 @@ spec:
         - name: config
           # target for https://github.com/kubernetes/community/blob/master/contributors/design-proposals/node/all-in-one-volume.md
           # sources:
+          projected:
+            sources: []
 
       containers:
       - name: geth-rrr
@@ -99,6 +101,10 @@ spec:
               configMapKeyRef:
                 name: ethnode-cfg
                 key: WS_OPTS
+          - name: POD_LABEL_APP
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels.app
           - name: RPC_OPTS
             valueFrom:
               configMapKeyRef:
@@ -164,6 +170,7 @@ spec:
 
             cd /data/node
             PRIVATE_CONFIG=ignore geth \
+                --identity ${POD_LABEL_APP} \
                 --networkid ${NETWORKID} \
                 ${CONSENSUS_OPTS} \
                 ${GAS_OPTS} \

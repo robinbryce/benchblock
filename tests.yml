@@ -30,14 +30,22 @@ tasks:
       - |
         sudo rm -rf {{.TESTROOT}} && mkdir {{.TESTROOT}}
 
-  run-parallel-tests:
+  run-new-compose:
     deps:
       - test-raft-new-compose
       - test-ibft-new-compose
       - test-rrr-new-compose
+
+  run-new-k8s:
+    deps:
       - test-raft-new-k8s
       - test-ibft-new-k8s
       - test-rrr-new-k8s
+
+  run-parallel-tests:
+    deps:
+      - run-new-compose
+      - run-new-k8s
 
   run-serial-tests:
     cmds:

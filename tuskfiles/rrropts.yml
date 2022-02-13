@@ -1,0 +1,55 @@
+usage: |
+  Generate the standard env files for rrr (compose & k8s)
+
+options:
+  # don't set default values here
+  networkid:
+    default: ""
+  numbootnodes:
+    short: b
+  gastarget:
+    usage: "sets the --miner.gastarget option for the nodes"
+  gaslimit:
+    usage: "sets the --miner.gaslimit option for the nodes"
+  recommit:
+    usage: "sets the --miner.recommit option for the nodes."
+
+args:
+  configdir:
+    usage: >
+      The config root directory.
+
+run:
+  - task:
+      name: configure
+      options:
+        required: >-
+          nodesdir
+          activehorizon
+          committeequorum
+          confirmphase
+          intentphase
+          numcandidates
+          numendorsers
+          roundlength
+
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+
+        # read the config file fields into BBAKE_ vars.
+        eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
+
+        export BBAKE_CONSENSUS_OPTS="${BBAKE_ACTIVEMETHOD:+--rrr.method $BBAKE_ACTIVEMETHOD }\
+        --rrr.nc ${BBAKE_NUMCANDIDATES} \
+        --rrr.ne ${BBAKE_NUMENDORSERS} \
+        --rrr.q ${BBAKE_COMMITTEEQUORUM} \
+        --rrr.ta ${BBAKE_ACTIVEHORIZON} \
+        --rrr.intentphase ${BBAKE_INTENTPHASE} \
+        --rrr.confirmphase ${BBAKE_CONFIRMPHASE} \
+        --rrr.roundlength ${BBAKE_ROUNDLENGTH}"
+
+        cd ${launchdir} && cd ${configdir}
+        ${UPDATE_CONFIG}

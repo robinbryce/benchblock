@@ -1,5 +1,0 @@
-# for defaults which are applied to all bootnodes unless explicitly overriden
-commonLabels:
-  bootnode: "0"
-resources:
-  - ./../node

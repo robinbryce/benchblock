@@ -1,5 +1,6 @@
 {
   "maxnodes": "9",
+  "numbootnodes": "1",
   "numcandidates": "2",
   "numendorsers": "5",
   "committeequorum": "3"

@@ -1,0 +1,27 @@
+usage: |
+  Generate the standard env files for rrr (compose & k8s)
+
+args:
+  configdir:
+    usage: >
+      The config root directory.
+
+run:
+  - task:
+      name: configure
+      options:
+        required: >-
+
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+
+        # read the config file fields into BBAKE_ vars.
+        eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
+
+        export BBAKE_CONSENSUS_OPTS="${BBAKE_REQUESTTIMEOUT:+--istanbul.requesttimeout $BBAKE_REQUESTTIMEOUT }\
+        ${BBAKE_BLOCKPERIOD:+--istanbul.blockperiod $BBAKE_BLOCKPERIOD}"
+        cd ${launchdir} && cd ${configdir}
+        ${UPDATE_CONFIG}

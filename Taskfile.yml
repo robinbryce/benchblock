@@ -5,7 +5,17 @@ silent: true
 # 'tests:'
 
 tasks:
-  test:
+  default:
     - task -t tests.yml
+  tests:
+    - task -t tests.yml
+  test-new-k8s:
+    - task -t tests.yml run-new-k8s
+  test-new-compose:
+    - task -t tests.yml run-new-compose
+  test-compose-up:
+    - task -t tests.yml test-rrr-compose-up
+    - task -t tests.yml test-raft-compose-up
+    - task -t tests.yml test-ibft-compose-up
 
 

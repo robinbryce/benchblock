@@ -20,7 +20,7 @@ jobs:
       - name: test
         run: |
           export PATH
-          task test
+          task tests
       -
         name: Login to dockerhub
         if: github.event_name != 'pull_request'

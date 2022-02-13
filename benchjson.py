@@ -2,6 +2,8 @@
 """
 The tuskfiles invoke this in the appropriate way to update bench.json.
 """
+import shlex
+import sys
 
 import os
 import sys
@@ -28,6 +30,7 @@ def cmd_update(args):
         v = os.environ.get(f"BBAKE_{k.upper()}")
         if not v or v == j.get(k):
             continue
+
         print(f"updating: {k}={v} (was {j.get(k, 'not set')})")
         u[k] = v
     j.update(u)
@@ -59,9 +62,10 @@ def cmd_new_config(args):
     os.chdir(configdir)
 
     def env(name, default=""):
+      name = '_'.join(name.split('-')).upper()
       # Note that when env vars are set explicitly empty this will
       # trump the default argument here
-      return os.environ.get(f"BBAKE_{name.upper()}", default)
+      return os.environ.get(f"BBAKE_{name}", default)
 
     # if the user supplies a path, resolve it against the launchdir
     # rather than the config dir (so that the result is consistent with
@@ -138,6 +142,11 @@ def cmd_new_config(args):
       if v is None:
         continue
 
+      if v in [False, "False"]:
+          v = "false"
+      if v in [True, "True"]:
+          v = "true"
+
       # if there is nothing in the profile (or we don't have one) fall
       # back to the env var (which may have been set from CLI)
       if not bench_json.get(k):
@@ -185,12 +194,22 @@ def cmd_shell_export(args):
     print eval safe 'export BBAKE_{var}=value'
     """
 
+
     configdir = Path(args.configdir).resolve()
     config = configdir.joinpath(args.config).resolve()
 
     j = json.load(open(config, "r"))
     for k, v in j.items():
-        print(f"export BBAKE_{k.upper()}={v}")
+        if v in [True, "True"]:
+            v = "true"
+        if v in [False, "False"]:
+            v = "false"
+        try:
+            vv = shlex.quote(v)
+        except TypeError:
+            print(f"${k} can't quote ${v}", file=sys.stderr)
+            vv = v
+        print(f"export BBAKE_{'_'.join(k.split('-')).upper()}={vv}")
 
 
 def run():
