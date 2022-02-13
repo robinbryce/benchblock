@@ -103,10 +103,21 @@ options:
     usage: >
       enable the traefik ingress route and set the hostname
 
+  apisec-tokenex:
+    usage: >
+      address of the token exchange 'scheme://host:port/path'
+
   apisec-nodepath:
     usage: >
       specify an alternate node path. so that the uri for the node is
       {apisec-nodepath}/ethnode{N}. defaults to /node
+
+  apisec-issuer:
+    usage: >
+      access tokens are required to contain this issuer in their iss claim
+  apisec-jws:
+    usage: >
+      The url of the json webkey set for verifying tokens
 
   maxnodes:
     usage: >
@@ -277,12 +288,16 @@ options:
       to update them later.
     default: >-
       apisec
-      apisec-ingresshost
-      apisec-nodepath
       apisec-certname
+      apisec-ingresshost
+      apisec-issuer
+      apisec-jws
+      apisec-nodepath
+      apisec-tokenex
       bootnode0
       composeproject
       consensus
+      consensus_opts
       delve_image
       etherbase
       gaslimit
@@ -356,10 +371,12 @@ tasks:
             # [ -n "${K8S}" ] && BBAKE_K8S=
             BBAKE_CONSENSUS=${consensus}
 
-            [ -n "${apisec}" ] && export BBAKE_APISEC=${apisec}
-            [ -n "${apisec-ingresshost}" ] && export BBAKE_APISEC_INGRESSHOST=${apisec-ingresshost}
-            [ -n "${apisec-nodepath}" ] && export BBAKE_APISEC_NODEPATH=${apisec-nodepath}
+            ${apisec} && export BBAKE_APISEC="true"
             [ -n "${apisec-certname}" ] && export BBAKE_APISEC_CERTNAME=${apisec-certname}
+            [ -n "${apisec-issuer}" ] && export BBAKE_APISEC_ISSUER=${apisec-issuer}
+            [ -n "${apisec-jws}" ] && export BBAKE_APISEC_JWS=${apisec-jws}
+            [ -n "${apisec-nodepath}" ] && export BBAKE_APISEC_NODEPATH=${apisec-nodepath}
+            [ -n "${apisec-tokenex}" ] && export BBAKE_APISEC_NODEPATH=${apisec-tokenex}
             [ -n "${composeproject}" ] && export BBAKE_COMPOSEPROJECT=${composeproject}
             [ -n "${etherbase}" ] && export BBAKE_ETHERBASE=${etherbase}
             [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
@@ -411,7 +428,7 @@ tasks:
 
             cd ${launchdir} && cd ${configdir}
 
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
 
             echo "creating pyenv using: $(which python3)"
             python3 -m venv ${BBAKE_PYENV}
@@ -420,7 +437,8 @@ tasks:
 
             [ -d ${tuskdir}/k8s/${BBAKE_CONSENSUS} ] && mkdir -p ${BBAKE_CONSENSUS}
 
-            if ${k8s}; then
+            if ${k8s} || ${BBAKE_K8S}; then
+              [ -d ${tuskdir}/k8s/components ] && mkdir -p components && cp -r ${tuskdir}/k8s/components/* components
               [ -d ${tuskdir}/k8s/base ] && mkdir -p base && cp -r ${tuskdir}/k8s/base/* base
               [ -d ${tuskdir}/k8s/jobs ] && mkdir -p jobs && cp -r ${tuskdir}/k8s/jobs/* jobs
               [ -d ${tuskdir}/k8s/${BBAKE_CONSENSUS} ] && cp -r ${tuskdir}/k8s/${BBAKE_CONSENSUS}/* ${BBAKE_CONSENSUS}
@@ -452,7 +470,7 @@ tasks:
           exec: |
             set -e
 
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
             [ "${BBAKE_CONSENSUS}" != "ibft" ] && echo "Configured for ${BBAKE_CONSENSUS} not ibft" && exit 1
@@ -504,13 +522,18 @@ tasks:
           args:
             - ${configdir}
 
+      - task:
+          name: ibftopts
+          args:
+            - ${configdir}
+
       - command:
           exec: |
             set -e
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
 
-            CMD=ibftcompose
-            ${BBAKE_K8S} && CMD=ibftk8s
+            CMD=gethcompose
+            ${BBAKE_K8S} && CMD=gethk8s
 
             cd ${launchdir}
             tusk -qf ${tuskdir}/tusk.yml ${CMD} ${configdir}
@@ -531,7 +554,7 @@ tasks:
           exec: |
             set -e
 
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
             [ "${BBAKE_CONSENSUS}" != "raft" ] && echo "Configured for ${BBAKE_CONSENSUS} not raft" && exit 1
@@ -583,15 +606,19 @@ tasks:
           args:
             - ${configdir}
 
+      - task:
+          name: raftopts
+          args:
+            - ${configdir}
+
       - command:
           exec: |
             set -e
-            eval ${READ_CONFIG}
-
-            CMD=raftcompose
-            ${BBAKE_K8S} && CMD=raftk8s
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
 
             cd ${launchdir}
+            CMD=gethcompose
+            ${BBAKE_K8S} && CMD=gethk8s
             tusk -qf ${tuskdir}/tusk.yml ${CMD} ${configdir}
 
   rrr:
@@ -611,7 +638,7 @@ tasks:
             set -e
 
             # read the config file fields into BBAKE_ vars.
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
             if ${configshow}; then eval ${SHOW_CONFIG}; fi
 
             [ "${BBAKE_CONSENSUS}" != "rrr" ] && echo "Configured for ${BBAKE_CONSENSUS} not rrr" && exit 1
@@ -664,28 +691,27 @@ tasks:
           args:
             - ${configdir}
 
+      - task:
+          name: rrropts
+          args:
+            - ${configdir}
+
       - command:
           exec: |
             set -e
-            eval ${READ_CONFIG}
-
-            CMD=rrrcompose
-            ${BBAKE_K8S} && CMD=rrrk8s
-
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
             cd ${launchdir}
+
+            CMD=gethcompose
+            ${BBAKE_K8S} && CMD=gethk8s
             tusk -qf ${tuskdir}/tusk.yml ${CMD} ${configdir}
 
   configure:
     usage: >
-      Put the rune for reading the config file into an environment variable so
-      that it can be more readily re-used.  This one horror pays for a lot of
-      simplicity elsewhere. The double cd trick combines the launchdir captured
-      before tusk changes directory to the task file and then combines it with
-      the cli choice of current directory. So that the cli choice remains
-      relative to the launchdir.  Then we suck out the top level fields in the
-      json config directory and expose them in a bash friendly format. This
-      enables both shell tusk tasks and python to share the same config,
-      without having to duplicate a bunch of stuff.
+      Put the runes for updating and showing the config file into an
+      environment variable so that it can be more readily re-used. This enables
+      both shell tusk tasks and python to share the same config, with minimal
+      boiler plate.
     private: true
     args:
       configdir:
@@ -694,9 +720,11 @@ tasks:
         usage: "list of values in the config requried by the task"
     run:
       - set-environment:
-          READ_CONFIG: "$(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export ${config})"
           SHOW_CONFIG: "for v in ${configvars}; do vv=BBAKE_${v^^}; echo ${vv}=${!vv}; done"
           UPDATE_CONFIG: python3 ${tuskdir}/benchjson.py update ${config} ${configvars}
+          # This doesn't cope with variables whose values require embeded
+          # spaces.
+          # READ_CONFIG: "$(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)"
 
       - command:
           exec: |
@@ -704,9 +732,10 @@ tasks:
             cd ${launchdir} && cd ${configdir}
             python3 ${tuskdir}/benchjson.py require ${config} ${required}
       # execute these fragments in the task like this:
-      #   eval ${READ_CONFIG}
+      #   eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
       #   if ${configshow}; then eval ${SHOW_CONFIG}; exit 0; fi
-      #
+      # bash variable substitution complexities prevent the read commands from
+      # being expresed as a eval safe variable
   config-update:
     private: true
     run:
@@ -728,23 +757,24 @@ tasks:
   clientcfg:
     include: tuskfiles/clientcfg.yml
 
+  gethcompose:
+    include: tuskfiles/gethcompose.yml
+
+  gethk8s:
+    include: tuskfiles/gethk8s.yml
+
   # raft consensus commands
-  raftk8s:
-    include: tuskfiles/raftk8s.yml
+  raftopts:
+    include: tuskfiles/raftopts.yml
 
   # ibft consensus commands
   ibftextra:
     include: tuskfiles/ibftextra.yml
 
-  ibftcompose:
-    include: tuskfiles/ibftcompose.yml
-
-  ibftk8s:
-    include: tuskfiles/ibftk8s.yml
+  ibftopts:
+    include: tuskfiles/ibftopts.yml
 
   # raft consensus commands
-  raftcompose:
-    include: tuskfiles/raftcompose.yml
 
   # rrr consensus commands
   rrralpha:
@@ -756,12 +786,10 @@ tasks:
   rrrinit:
     include: tuskfiles/rrrinit.yml
 
-  rrrcompose:
-    include: tuskfiles/rrrcompose.yml
+  rrropts:
+    include: tuskfiles/rrropts.yml
 
-  rrrk8s:
-    include: tuskfiles/rrrk8s.yml
-
+  # general ergonomics
   knet:
     include: tuskfiles/knet.yml
 
@@ -785,7 +813,7 @@ tasks:
           exec: |
             set -e
             # read the config file fields into BBAKE_ vars.
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
             cd ${launchdir} && cd ${configdir}
 
             i=${node}
@@ -819,7 +847,7 @@ tasks:
       - command:
           exec: |
             set -e
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
             cd ${launchdir} && cd ${configdir}
 
             CONTEXT=${context}
@@ -865,7 +893,7 @@ tasks:
       - command:
           exec: |
             set -e
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
             cd ${launchdir} && cd ${configdir}
 
             CONTEXT=${context}
@@ -903,7 +931,7 @@ tasks:
       - command:
           exec: |
             set -e
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
             cd ${launchdir} && cd ${configdir}
 
             CONTEXT=${context}
@@ -932,7 +960,7 @@ tasks:
       - command:
           exec: |
             set -e
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
             cd ${launchdir} && cd ${configdir}
 
             CONTEXT=${context}
@@ -1000,7 +1028,7 @@ tasks:
       - command:
           exec: |
             set -e
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
             cd ${launchdir} && cd ${configdir}
 
             CONTEXT=${context}
@@ -1074,7 +1102,7 @@ tasks:
           exec: |
             set -e
 
-            eval ${READ_CONFIG}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
             cd ${launchdir} && cd ${configdir}
 
             source ${pyenv}/bin/activate
@@ -1095,9 +1123,8 @@ tasks:
           exec: |
             set -e
 
-            eval ${READ_CONFIG}
-            cd ${launchdir} && cd ${configdir}
+            eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
 
+            cd ${launchdir} && cd ${configdir}
             source ${pyenv}/bin/activate
             cat standard-plots.md | jupytext --from .md --to notebook --output standard-plots.ipynb
-

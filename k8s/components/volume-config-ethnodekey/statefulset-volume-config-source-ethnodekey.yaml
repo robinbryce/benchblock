@@ -1,0 +1,8 @@
+- op: add
+  path: /spec/template/spec/volumes/0/projected/sources/0
+  value:
+    secret:
+      name: ethnodekey-
+      items:
+        - key: key
+          path: nodekey

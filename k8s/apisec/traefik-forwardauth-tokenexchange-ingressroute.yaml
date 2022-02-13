@@ -19,7 +19,7 @@ spec:
       kind: Rule
       services:
         - kind: Service
-          name: ethnode0
+          name: ethnode
           scheme: http
           port: tcp-rpc
       middlewares:

@@ -1,0 +1,4 @@
+# These are the typical resources for a standard node
+# merge with yq eval-all 'select(fileIndex == 0) *+ select(fileIndex == 1)' target.yaml thisfile.yaml
+# the relative paths are correct for a node dir at <top>/<consensus>/nodes/node{N}
+resources: []

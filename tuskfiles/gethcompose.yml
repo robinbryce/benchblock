@@ -1,12 +1,12 @@
 ---
-usage: |
-  Generate a docker compose configuration for running rrr
+usage: >
+  make a docker-compose for a geth network from a base.yml and a node.yml
+  appropriate for the chosen consensus
 
 args:
   configdir:
     usage: >
       The config root directory.
-
 run:
   - task:
       name: configure
@@ -19,13 +19,6 @@ run:
           netrestrict
           networkid
           nodesdir
-          activehorizon
-          committeequorum
-          confirmphase
-          intentphase
-          numcandidates
-          numendorsers
-          roundlength
       args:
         - ${configdir}
   - command:
@@ -33,54 +26,44 @@ run:
         set -e
 
         # read the config file fields into BBAKE_ vars.
-        eval ${READ_CONFIG}
+        eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
 
         cd ${launchdir} && cd ${configdir}
 
-        export GAS_OPTS="${BBAKE_RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
-        export CONSENSUS_OPTS="\
-        ${BBAKE_ACTIVEMETHOD:+ --rrr.method $BBAKE_ACTIVEMETHOD} \
-        --rrr.nc ${BBAKE_NUMCANDIDATES} \
-        --rrr.ne ${BBAKE_NUMENDORSERS} \
-        --rrr.q ${BBAKE_COMMITTEEQUORUM} \
-        --rrr.ta ${BBAKE_ACTIVEHORIZON} \
-        --rrr.intentphase ${BBAKE_INTENTPHASE} \
-        --rrr.confirmphase ${BBAKE_CONFIRMPHASE} \
-        --rrr.roundlength ${BBAKE_ROUNDLENGTH}"
+        [ -z "$BBAKE_CONSENSUS_OPTS" ] && echo "BBAKE_CONSENSUS_OPTS not defined)" && exit 1
 
-        cat <<END > env.env
-        COMPOSE_PROJECT_NAME=${BBAKE_COMPOSEPROJECT}
-        CONSENSUS_OPTS=${CONSENSUS_OPTS}
+        export GAS_OPTS="${BBAKE_RECOMMIT:+ --miner.recommit "${BBAKE_RECOMMIT}"} --miner.gastarget ${BBAKE_GASTARGET} --miner.gaslimit ${BBAKE_GASLIMIT}"
+
+        DISCOVERY_OPTS=--nodiscover
+        if [ ${BBAKE_NUMBOOTNODES} -gt 0 ]; then
+          BOOTNODE0_PUB=$(cat ${BBAKE_NODESDIR}/node0/enode)
+          DISCOVERY_OPTS="--netrestrict=${BBAKE_NETRESTRICT} --bootnodes=enode://${BOOTNODE0_PUB}@node0:7200"
+        fi
+
+        cat <<END > .env
+        COMPOSE_PROJECT_NAME=${BBAKE_NAME}
+        CONSENSUS_OPTS=${BBAKE_CONSENSUS_OPTS}
         NETWORKID=${BBAKE_NETWORKID}
         NETRESTRICT=${BBAKE_NETRESTRICT}
+        DISCOVERY_OPTS=${DISCOVERY_OPTS}
+        ${BOOTNODE0_PUB:+BOOTNODE0_PUB=${BOOTNODE0_PUB}}
         ETHERBASE=${BBAKE_ETHERBASE}
         QUORUM_SRC=${BBAKE_QUORUM_SRC}
-        RRR_SRC=${BBAKE_RRR_SRC}
         NODESDIR=${BBAKE_NODESDIR}
         GETH_IMAGE= ${BBAKE_GETH_IMAGE}
         DELVE_IMAGE=${BBAKE_DELVE_IMAGE}
-        GAS_OPTS=$GAS_OPTS
+        GAS_OPTS=${GAS_OPTS}
         END
-        cat env.env
-        echo "Wrote env.env"
-
-        cat <<END > bootnodes.env
-        BOOTNODE0_PUB=$(cat ${BBAKE_NODESDIR}/node0/enode)
-        END
-
-        cat bootnodes.env
-        echo "Wrote bootnodes.env"
-
-        cat env.env bootnodes.env > .env
         cat .env
         echo "Wrote .env"
+
 
         # Merge in the appropriate number of copies of node.yml to the
         # docker-compose.yml we are generating. As we do that add the
         # numeric suffices to each nodes service entry and the working_dir
         # it uses
-        cp ${tuskdir}/compose/rrr/base.yml .
-        cp ${tuskdir}/compose/rrr/node.yml .
+        cp ${tuskdir}/compose/${BBAKE_CONSENSUS}/base.yml .
+        cp ${tuskdir}/compose/${BBAKE_CONSENSUS}/node.yml .
         cp base.yml docker-compose.yml
 
         # each document fragment has to be valid. so they all need the
@@ -104,4 +87,4 @@ run:
         yq eval-all --inplace '
             select(fileIndex == 0) * {"services": select(fileIndex == 1)}
             | del(.services.x-node-defaults)' docker-compose.yml tmp.yml
-        # yq eval-all --inplace 'select(fileIndex == 0) * {"services": select(fileIndex == 1)} | del(.services.x-node-defaults)' docker-compose.yml tmp.yml
+        echo "Wrote docker-compose.yml"

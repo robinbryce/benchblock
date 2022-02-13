@@ -1,0 +1,4 @@
+# merge with yq eval-all 'select(fileIndex == 0) *+ select(fileIndex == 1)' target.yaml thisfile.yaml
+# the relative paths are correct for a node dir at <top>/<consensus>/network
+components:
+  - ./../../components/traefik-ingressroute-tokenexchange

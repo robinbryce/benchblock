@@ -1,0 +1,14 @@
+# We do this as a json patch because patchesStrategicMerge isn't clever enough
+# to deal with the list append. it just clobbers what is there
+- op: add
+  # We now the standard volumes are present so there is an element 0. As we use
+  # op add, the new item shuffles the standard volumes down one.
+  path: /spec/template/spec/volumes/0/projected/sources/0
+  value:
+    configMap:
+      name: ethnode-cfg-
+      items:
+        - key: jwt-auth.json
+          path: jwt-auth.json
+        - key: plugins.json
+          path: plugins.json

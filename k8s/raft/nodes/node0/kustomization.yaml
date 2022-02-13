@@ -5,11 +5,3 @@ commonLabels:
 
 resources:
   - ./../../../base/raft/node
-
-patchesStrategicMerge:
-- statefulset-volumes.yaml
-
-secretGenerator:
-- name: ethnodekey-
-  files:
-    - key

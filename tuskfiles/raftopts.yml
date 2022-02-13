@@ -1,0 +1,27 @@
+usage: |
+  Generate the standard env files for rrr (compose & k8s)
+
+args:
+  configdir:
+    usage: >
+      The config root directory.
+run:
+  - task:
+      name: configure
+      options:
+        required: >-
+          raftblocktime
+
+      args:
+        - ${configdir}
+  - command:
+      exec: |
+        set -e
+
+        # read the config file fields into BBAKE_ vars.
+        eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
+
+        export BBAKE_CONSENSUS_OPTS="--raft --raftport 50000 --raftdnsenable --raftblocktime ${BBAKE_RAFTBLOCKTIME}"
+
+        cd ${launchdir} && cd ${configdir}
+        ${UPDATE_CONFIG}

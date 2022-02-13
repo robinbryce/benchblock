@@ -18,7 +18,7 @@ run:
 
         TUSKDIR=$(pwd)
 
-        eval ${READ_CONFIG}
+        eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
         cd ${launchdir} && cd ${configdir}
 
         CONFIGDIR=$(pwd)

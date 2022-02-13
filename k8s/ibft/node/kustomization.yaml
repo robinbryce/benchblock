@@ -1,0 +1,3 @@
+# consumers are expected to override and customise this one
+resources:
+  - ./../../base/ibft/node

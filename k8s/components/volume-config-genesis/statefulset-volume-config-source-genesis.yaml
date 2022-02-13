@@ -1,0 +1,8 @@
+- op: add
+  path: /spec/template/spec/volumes/0/projected/sources/0
+  value:
+    configMap:
+      name: genesis
+      items:
+        - key: genesis.json
+          path: genesis.json

@@ -3,4 +3,3 @@ configMapGenerator:
     files:
       - plugins.json
       - jwt-auth.json
-
