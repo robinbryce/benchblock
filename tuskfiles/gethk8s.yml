@@ -179,6 +179,15 @@ run:
               ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml $source
               echo "Merged: $source -> ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml"
           done
+
+          if [ ! ${BBAKE_NUMBOOTNODES} -gt 0 ]; then
+            for source in $(ls ${tuskdir}/k8s/static-nodes/node-*.yaml); do
+              yq eval-all --inplace 'select(fileIndex == 0) *+ select(fileIndex == 1)' \
+                ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml $source
+                echo "Merged: $source -> ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml"
+            done
+          fi
+          # there are no general kustomization patches for dyanmic discovery nodes
         done
 
         # --------------------------------------------------------------------

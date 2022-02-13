@@ -101,10 +101,10 @@ spec:
               configMapKeyRef:
                 name: ethnode-cfg
                 key: WS_OPTS
-          - name: POD_LABEL_APP
+          - name: APP_LABEL
             valueFrom:
               fieldRef:
-                fieldPath: metadata.labels.app
+                fieldPath: metadata.labels['app']
           - name: RPC_OPTS
             valueFrom:
               configMapKeyRef:
@@ -170,7 +170,7 @@ spec:
 
             cd /data/node
             PRIVATE_CONFIG=ignore geth \
-                --identity ${POD_LABEL_APP} \
+                --identity ${APP_LABEL} \
                 --networkid ${NETWORKID} \
                 ${CONSENSUS_OPTS} \
                 ${GAS_OPTS} \
