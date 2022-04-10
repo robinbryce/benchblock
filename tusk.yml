@@ -46,6 +46,7 @@ usage: |
 
 options:
 
+  # general options ---
   blockperiod:
     usage: >
       ibft - sets the interval between blocks
@@ -86,6 +87,48 @@ options:
     type: bool
     short: k
 
+  maxnodes:
+    usage: >
+      The number of nodes for the network. For PoA networks, it is the number
+      of *validating* nodes.
+    default: ""
+    short: "n"
+  name:
+    usage: >
+      The network name, defaults to <consensus><maxnodes>
+    default: ""
+
+  node-namespace:
+    usage: >
+      The namespace nodes are put in for k8s, defaults to <consensus><maxnodes>
+    default: ""
+
+  netrestrict:
+    default: ""
+
+  chainid:
+    default: ""
+  networkid:
+    default: ""
+  nodesdir:
+    usage: >
+      each node gets a subdirectory here named node{N}. relative paths are
+      relative to the callers cwd.  defaults to <consensus>/nodes
+    default: ""
+  nodeallocs:
+    usage: >
+      How many of the node keys to create alloc accounts for. The ballance
+      is set to gendoc_balance for all.
+    default: 0
+
+  pyenv:
+    usage: >
+      Override the directory to create the python virtualenv in. By default
+      there is an env per network. This option can be used to share the env.
+      By default it will be called env and created in the configdir
+    default: ""
+
+  # feature: apisec
   apisec:
     usage: >
       Require a valid "Authorization: Bearer TOKEN" header for json-rpc access.
@@ -119,36 +162,17 @@ options:
     usage: >
       The url of the json webkey set for verifying tokens
 
-  maxnodes:
+  # feature: sealedsecrets
+  sealedsecrets-cert:
     usage: >
-      The number of nodes for the network. For PoA networks, it is the number
-      of *validating* nodes.
-    default: ""
-    short: "n"
-  name:
+      path to the public key to seal the secrets with
+  sealedsecrets-namespace:
     usage: >
-      The network name, defaults to <consensus><maxnodes>
-    default: ""
-  netrestrict:
-    default: ""
-  networkid:
-    default: ""
-  nodesdir:
+      the namespace for the sealedsecrets
+  sealedsecrets-controller-namespace:
     usage: >
-      each node gets a subdirectory here named node{N}. relative paths are
-      relative to the callers cwd.  defaults to <consensus>/nodes
-    default: ""
-  nodeallocs:
-    usage: >
-      How many of the node keys to create alloc accounts for. The ballance
-      is set to gendoc_balance for all.
-    default: 0
-  pyenv:
-    usage: >
-      Override the directory to create the python virtualenv in. By default
-      there is an env per network. This option can be used to share the env.
-      By default it will be called env and created in the configdir
-    default: ""
+      the namespace the bitnami/sealedsecrets controller is deployed in
+
   # source options. only used for compose networks and then only if
   # interactively debuging the node
   quorum_src:
@@ -157,6 +181,7 @@ options:
       clone.  only required if you need to interactively debug the node.
     default:
       command: echo ""
+  # raft options ---
   recommit:
     usage: >
       sets the --miner.recommit option for the nodes. currently set high
@@ -298,8 +323,10 @@ options:
       composeproject
       consensus
       consensus_opts
+      chainid
       delve_image
       etherbase
+      features
       gaslimit
       gastarget
       gendoc_balance
@@ -310,6 +337,7 @@ options:
       k8s
       maxnodes
       name
+      node-namespace
       netrestrict
       networkid
       nodeallocs
@@ -318,6 +346,9 @@ options:
       pyenv
       quorum_src
       recommit
+      sealedsecrets-cert
+      sealedsecrets-namespace
+      sealedsecrets-controller-namespace
       ${ibftvars}
       ${raftvars}
       ${rrrvars}
@@ -371,12 +402,16 @@ tasks:
             # [ -n "${K8S}" ] && BBAKE_K8S=
             BBAKE_CONSENSUS=${consensus}
 
-            ${apisec} && export BBAKE_APISEC="true"
+            ${apisec} && export BBAKE_APISEC="true" && export BBAKE_FEATURES="$BBAKE_FEATURES apisec"
+            [ -n "${sealedsecrets-cert}" ] && export BBAKE_SEALEDSECRETS_CERT=${sealedsecrets-cert} && export BBAKE_FEATURES="$BBAKE_FEATURES sealedsecrets"
+            [ -n "${sealedsecrets-namespace}" ] && export BBAKE_SEALEDSECRETS_NAMESPACE=${sealedsecrets-namespace}
+            [ -n "${sealedsecrets-controller-namespace}" ] && export BBAKE_SEALEDSECRETS_CONTROLLER_NAMESPACE=${sealedsecrets-controller-namespace}
             [ -n "${apisec-certname}" ] && export BBAKE_APISEC_CERTNAME=${apisec-certname}
+            [ -n "${apisec-ingresshost}" ] && export BBAKE_APISEC_INGRESSHOST=${apisec-ingresshost}
             [ -n "${apisec-issuer}" ] && export BBAKE_APISEC_ISSUER=${apisec-issuer}
             [ -n "${apisec-jws}" ] && export BBAKE_APISEC_JWS=${apisec-jws}
             [ -n "${apisec-nodepath}" ] && export BBAKE_APISEC_NODEPATH=${apisec-nodepath}
-            [ -n "${apisec-tokenex}" ] && export BBAKE_APISEC_NODEPATH=${apisec-tokenex}
+            [ -n "${apisec-tokenex}" ] && export BBAKE_APISEC_TOKENEX=${apisec-tokenex}
             [ -n "${composeproject}" ] && export BBAKE_COMPOSEPROJECT=${composeproject}
             [ -n "${etherbase}" ] && export BBAKE_ETHERBASE=${etherbase}
             [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
@@ -386,6 +421,8 @@ tasks:
             [ -n "${geth_image}" ] && export BBAKE_GETH_IMAGE=${geth_image}
             [ -n "${maxnodes}" ] && export BBAKE_MAXNODES=${maxnodes}
             [ -n "${name}" ] && export BBAKE_NAME=${name}
+            [ -n "${node-namespace}" ] && export BBAKE_NODE_NAMESPACE=${node-namespace}
+            [ -n "${chainid}" ] && export BBAKE_CHAINID=${chainid}
             [ -n "${networkid}" ] && export BBAKE_NETWORKID=${networkid}
             [ -n "${netrestrict}" ] && export BBAKE_NETRESTRICT=${netrestrict}
             [ -n "${nodeallocs}" ] && export BBAKE_NODEALLOCS=${nodeallocs}
@@ -411,6 +448,12 @@ tasks:
             [ -n "${rrr_image}" ] && export BBAKE_RRR_IMAGE=${rrr_image}
             [ -n "${rrr_src}" ] && export BBAKE_RRR_SRC=${rrr_src}
             [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrr_image}
+
+            # If we don't have feature sealedsecrets force devnodekeys. Its a
+            # bit crude but it will serve for now
+            if echo "$BBAKE_FEATURES" | grep -v sealedsecrets; then
+              export BBAKE_FEATURES="$BBAKE_FEATURES devnodekeys"
+            fi
 
             deploymode="k8s"
             [ "${k8s}" != true ] && deploymode="compose"
@@ -762,6 +805,9 @@ tasks:
 
   gethk8s:
     include: tuskfiles/gethk8s.yml
+
+  gethsealedsecrets:
+    include: tuskfiles/gethsealedsecrets.yml
 
   # raft consensus commands
   raftopts:

@@ -4,3 +4,4 @@ namespace: ethnet
 resources:
 - namespace.yaml
 - network
+- nodes

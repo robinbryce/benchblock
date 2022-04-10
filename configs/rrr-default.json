@@ -1,6 +1,6 @@
 {
   "rrrctl_image": "robustroundrobin/rrrctl:main",
   "geth_image": "robustroundrobin/geth:0.1",
-  "numbootnodes": 2,
+  "numbootnodes": "2",
   "recommit": "60000s"
 }

@@ -3,6 +3,10 @@ usage: "geth genral purpose genesis - keeps existing keys and so on"
 options:
   sudo:
     type: bool
+  chainid:
+    type: string
+    default: ""
+
 args:
   configdir:
     usage: >

@@ -6,7 +6,9 @@ options:
   networkid:
     default: ""
   numbootnodes:
-    short: b
+    short: "b"
+  node-namespace:
+    default: ""
   gastarget:
     usage: "sets the --miner.gastarget option for the nodes"
   gaslimit:
@@ -38,13 +40,19 @@ run:
         set -e
 
         eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
+
+        [ -n "${node-namespace}" ] && export BBAKE_NODE_NAMESPACE=${node-namespace}
+        [ -z "${BBAKE_NODE_NAMESPACE}" ] && export BBAKE_NODE_NAMESPACE=$BBAKE_NAME
+
         echo "BBAKE_CONSENSUS: $BBAKE_CONSENSUS"
         echo "BBAKE_CONSENSUS_OPTS: $BBAKE_CONSENSUS_OPTS"
+        echo "BBAKE_FEATURES: $BBAKE_FEATURES"
+        echo "BBAKE_NODE_NAMESPACE: $BBAKE_NODE_NAMESPACE"
 
-        cd ${launchdir} && cd ${configdir}
 
         [ -z "$BBAKE_CONSENSUS_OPTS" ] && echo "BBAKE_CONSENSUS_OPTS not defined" && exit 1
 
+        cd ${launchdir} && cd ${configdir}
         # --------------------------------------------------------------------
         # root
         # The namespace is the name - eg rrr7
@@ -60,15 +68,9 @@ run:
         # --------------------------------------------------------------------
         # network
         mkdir -p ${BBAKE_CONSENSUS}/network
-
-        for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
-        echo "- ./../nodes/node${i}"
-        done | \
-        yq eval-all 'select(fi==0) *+ {"resources": select(fi==1)}' ${tuskdir}/k8s/${BBAKE_CONSENSUS}/network/kustomization.yaml - \
-        > ${BBAKE_CONSENSUS}/network/kustomization.yaml
+        cp -v ${tuskdir}/k8s/${BBAKE_CONSENSUS}/network/kustomization.yaml ${BBAKE_CONSENSUS}/network/kustomization.yaml
         cat ${BBAKE_CONSENSUS}/network/kustomization.yaml
         echo "Wrote ${BBAKE_CONSENSUS}/network/kustomization.yaml"
-
 
         cp ${BBAKE_NODESDIR}/genesis.json ${BBAKE_CONSENSUS}/network
 
@@ -92,7 +94,7 @@ run:
           rm -f ${BBAKE_CONSENSUS}/network/bootnodes.env
           for i in $(seq 0 $((${BBAKE_NUMBOOTNODES} - 1))); do
             echo "BOOTNODE_PUB${i}=$(cat ${BBAKE_NODESDIR}/node${i}/enode)" >> ${BBAKE_CONSENSUS}/network/bootnodes.env
-            echo "BOOTNODE_HOST${i}=ethnode${i}-0.ethnode${i}.${BBAKE_NAME}.svc.cluster.local" >> ${BBAKE_CONSENSUS}/network/bootnodes.env
+            echo "BOOTNODE_HOST${i}=ethnode${i}-0.ethnode${i}.${BBAKE_NODE_NAMESPACE}.svc.cluster.local" >> ${BBAKE_CONSENSUS}/network/bootnodes.env
           done
           cat ${BBAKE_CONSENSUS}/network/bootnodes.env
           echo "Wrote ${BBAKE_NUMBOOTNODES} bootnodes to ${BBAKE_CONSENSUS}/network/bootnodes.env"
@@ -112,7 +114,7 @@ run:
         from urllib.parse import urlparse, urlunparse
         nodes = []
         nodesdir = os.environ['BBAKE_NODESDIR']
-        namespace = os.environ['BBAKE_NAME']
+        namespace = os.environ['BBAKE_NODE_NAMESPACE']
         consensus = os.environ['BBAKE_CONSENSUS']
         for i, u in enumerate(json.load(open(f"{nodesdir}/static-nodes.json"))):
           u = urlparse(u)
@@ -157,7 +159,21 @@ run:
         #
         # kustomizations for all the nodes
         # * suffix app and k8s/name labels with the node index
+        #
+        mkdir -p ${BBAKE_CONSENSUS}/nodes
+
+        cat << EOF > ${BBAKE_CONSENSUS}/nodes/kustomizations.yaml
+        # default include all nodes. convenience for when no further node kustomizations are required
+        resources:
+        EOF
         for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
+          echo "- ./node${i}" >> ${BBAKE_CONSENSUS}/nodes/kustomizations.yaml
+        done
+
+        for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
+
+          mkdir -p ${BBAKE_CONSENSUS}/nodes/node${i}
+
           NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
           .commonLabels.app += env(NODENUM) |
           .commonLabels."app.kubernetes.io/name" += env(NODENUM)' \
@@ -172,6 +188,25 @@ run:
               ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml $source
               echo "Merged: $source -> ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml"
           done
+
+          # node features. first, if there are no features merge in the defaults
+          if [ -z "${BBAKE_FEATURES}" ]; then
+            echo "No node features enabled, merging defaults"
+            for source in $(ls ${tuskdir}/k8s/base/node/default-features-node-*.yaml); do
+              yq eval-all --inplace 'select(fileIndex == 0) *+ select(fileIndex == 1)' \
+                ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml $source
+                echo "Merged: $source -> ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml"
+            done
+          else
+            for feature in ${BBAKE_FEATURES}; do
+              echo "Node feature: ${feature}"
+              for source in $(ls ${tuskdir}/k8s/base/node/feature-${feature}-node-*.yaml); do
+                yq eval-all --inplace 'select(fileIndex == 0) *+ select(fileIndex == 1)' \
+                  ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml $source
+                  echo "Merged $feature: $source -> ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml"
+              done
+            done
+          fi
 
           # merge in the ${BBAKE_CONSENSUS}/nodes/node0/node-xxx.yaml files
           for source in $(ls ${tuskdir}/k8s/${BBAKE_CONSENSUS}/nodes/node0/node-*.yaml); do
@@ -288,10 +323,10 @@ run:
 
             # set the ingress route for traefik
             if [ -n "$BBAKE_APISEC_INGRESSHOST" ]; then
-              ROUTE="Host(\`${BBAKE_APISEC_INGRESSHOST}\`) && Path(\`${BBAKE_APISEC_NODEPATH}/ethnode${i}\`)"
+              ROUTE="Host(\`${BBAKE_APISEC_INGRESSHOST}\`) && PathPrefix(\`${BBAKE_APISEC_NODEPATH}/ethnode${i}\`)"
             else
               # If there is no host specified simply set the path
-              ROUTE="Path(\`${BBAKE_APISEC_NODEPATH}/ethnode${i}\`)"
+              ROUTE="PathPrefix(\`${BBAKE_APISEC_NODEPATH}/ethnode${i}\`)"
             fi
             ROUTE=$ROUTE yq eval --inplace '.spec.routes[] |= select(.match == "traefik-route").match=env(ROUTE)' ${BBAKE_CONSENSUS}/nodes/node${i}/ingressroute.yaml
             ETHNODE="ethnode${i}" \

@@ -1,5 +1,17 @@
 ---
 usage: "regenerate all node keys and wallets"
+options:
+  start:
+    usage: "index of first node to generate a key for"
+    short: s
+    type: int
+    default: 0
+  end:
+    usage: "index of last node to generate a key for"
+    short: e
+    type: int
+    default: -1
+
 args:
   configdir:
     usage: >
@@ -30,7 +42,12 @@ run:
         nodesdir = os.environ['BBAKE_NODESDIR']
         maxnodes = int(os.environ['BBAKE_MAXNODES'])
 
-        for i in range(maxnodes):
+        start = int("${start}")
+        end = int("${end}")
+        if end == -1:
+          end = maxnodes - 1
+
+        for i in range(start, end + 1):
 
             dirname = f"{nodesdir}/node{i}"
 
@@ -58,35 +75,38 @@ run:
 
         # Now record the node0 pub key as the bootnode address (not all
         # configurations support discovery)
-        keyfile = f"{nodesdir}/node0/key"
-        pub = None
-        with open(Path(keyfile)) as f:
-            key = coincurve.PrivateKey.from_hex(f.read())
-            pub = key.public_key.format(compressed=False)[1:]
-        addr = pub[-20:]
+        if start == 0:
+          keyfile = f"{nodesdir}/node0/key"
+          pub = None
+          with open(Path(keyfile)) as f:
+              key = coincurve.PrivateKey.from_hex(f.read())
+              pub = key.public_key.format(compressed=False)[1:]
+          addr = pub[-20:]
 
-        j = None
-        with open("bench.json") as f:
-            j = json.load(f)
+          j = None
+          with open("bench.json") as f:
+              j = json.load(f)
 
-        j["bootnode0"] = pub.hex()
-        with open("bench.json", "w") as f:
-            json.dump(j, f, indent=2, sort_keys=True)
+          j["bootnode0"] = pub.hex()
+          with open("bench.json", "w") as f:
+              json.dump(j, f, indent=2, sort_keys=True)
 
-        print(f"Wrote bootnode0 to config: {pub.hex()}")
+          print(f"Wrote bootnode0 to config: {pub.hex()}")
         PYEND
         echo "gethkeys: done"
         cat bench.json
 
+        if $((${start} == 0)); then
         cat <<END > bootnodes.env
         BOOTNODE0_PUB=$(cat ${BBAKE_NODESDIR}/node0/enode)
         END
-        cat bootnodes.env
-        echo "Updated bootnode.env for docker-compose"
+          cat bootnodes.env
+          echo "Updated bootnode.env for docker-compose"
 
-        if [ -f env.env ]; then
-          cat env.env bootnodes.env > .env
-          cat .env
-          echo "Updated .env for docker-compose"
+          if [ -f env.env ]; then
+            cat env.env bootnodes.env > .env
+            cat .env
+            echo "Updated .env for docker-compose"
+          fi
         fi
         echo "-------------------- gethkeys ok"

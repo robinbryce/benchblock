@@ -52,6 +52,7 @@ run:
         nodeallocs = int(os.environ.get('BBAKE_NODEALLOCS', '0'))
         gendoc_wallet = os.environ.get('BBAKE_GENDOC_WALLET', '')
         gendoc_balance = os.environ.get("BBAKE_GENDOC_BALANCE", "1230000000000000000000000000")
+        chainid = int(os.environ.get("BBAKE_CHAINID", "99"))
 
         allocs = {}
         if not gendoc_wallet and nodeallocs == 0:
@@ -63,6 +64,7 @@ run:
                 allocs[readnodeaddr(i).hex()] = dict(balance=gendoc_balance)
 
         o = json.load(open(templatefile))
+        o["config"]["chainId"] = chainid
         o["alloc"] = allocs
 
         extraData = os.environ["EXTRADATA"]
