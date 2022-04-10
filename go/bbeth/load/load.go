@@ -301,17 +301,21 @@ func (lo *Loader) adder(ethC *ethclient.Client, wg *sync.WaitGroup, banner strin
 
 	var err error
 
-	// First, initialise the nonces for the transactors in the AccountSet, and also set the ctx in the auth's
-	for i := 0; i < lo.loadCfg.ThreadAccounts; i++ {
+	updateNonce := func(ias, i int) {
 		var nonce uint64
 		ctx, cancel := context.WithTimeout(context.Background(), lo.rootCfg.ClientTimeout)
 		nonce, err = ethC.PendingNonceAt(ctx, lo.accounts[ias].Wallets[i])
 		cancel()
 		if err != nil {
-			fmt.Printf("terminating client for %s. error initialsing nonce: %v\n", lo.ethCUrl[ias], err)
+			fmt.Printf("client for %s. error updating nonce: %v\n", lo.ethCUrl[ias], err)
 		}
 
 		lo.accounts[ias].Auth[i].Nonce = big.NewInt(int64(nonce))
+	}
+
+	// First, initialise the nonces for the transactors in the AccountSet, and also set the ctx in the auth's
+	for i := 0; i < lo.loadCfg.ThreadAccounts; i++ {
+		updateNonce(ias, i)
 	}
 
 	for r := 0; r < numBatches; r++ {
@@ -335,7 +339,9 @@ func (lo *Loader) adder(ethC *ethclient.Client, wg *sync.WaitGroup, banner strin
 			}
 			lo.pb.IssuedIncrement()
 
-			lo.accounts[ias].IncNonce(i)
+			// lo.accounts[ias].IncNonce(i)
+			updateNonce(ias, i)
+
 			batch[i] = tx
 		}
 		if lo.loadCfg.CheckReceipts {
