@@ -162,12 +162,12 @@ run:
         #
         mkdir -p ${BBAKE_CONSENSUS}/nodes
 
-        cat << EOF > ${BBAKE_CONSENSUS}/nodes/kustomizations.yaml
+        cat << EOF > ${BBAKE_CONSENSUS}/nodes/kustomization.yaml
         # default include all nodes. convenience for when no further node kustomizations are required
         resources:
         EOF
         for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
-          echo "- ./node${i}" >> ${BBAKE_CONSENSUS}/nodes/kustomizations.yaml
+          echo "- ./node${i}" >> ${BBAKE_CONSENSUS}/nodes/kustomization.yaml
         done
 
         for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
