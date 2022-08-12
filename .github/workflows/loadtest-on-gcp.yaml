@@ -101,7 +101,8 @@ jobs:
 
       - id: create_network_manifests
         name: create network manifests
-        uses: docker://robinbryce/bbake:main
+        #uses: docker://robinbryce/bbake:main
+        uses: docker://robinbryce/bbake:0.4
         with:
           args: >
             new
