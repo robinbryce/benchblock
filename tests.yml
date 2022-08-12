@@ -146,7 +146,7 @@ tasks:
         # read current block, if nodes are still starting we need to retry.
         while true; do
 
-          CURRENT_BLOCK=$(docker exec {{.NAME}}_node0_1 \
+          CURRENT_BLOCK=$(docker exec {{.NAME}}-node0-1 \
             geth attach /nodes/node0/data/geth.ipc --exec eth.blockNumber)
 
           if [[ $CURRENT_BLOCK =~ '^[0-9]+$' ]]; then
@@ -165,7 +165,7 @@ tasks:
           [ $((WAIT_REMAINING > 0)) -ne 1 ] && echo "maxwait exhausted" && exit -1
           WAIT_REMAINING=$((WAIT_REMAINING - SLEEP))
 
-          BLOCK=$(docker exec {{.NAME}}_node0_1 \
+          BLOCK=$(docker exec {{.NAME}}-node0-1 \
             geth attach /nodes/node0/data/geth.ipc --exec eth.blockNumber)
 
           [ "$BLOCK" != "$CURRENT_BLOCK" ] && echo "new block $BLOCK" && exit 0
