@@ -17,10 +17,10 @@ jobs:
         name: checkout
         uses: actions/checkout@v2
 
-      - name: test
-        run: |
-          export PATH
-          task tests
+      # - name: test
+      #   run: |
+      #     export PATH
+      #     task tests
       -
         name: Login to dockerhub
         if: github.event_name != 'pull_request'
