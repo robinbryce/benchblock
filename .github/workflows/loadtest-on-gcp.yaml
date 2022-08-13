@@ -18,12 +18,12 @@ on:
       geth_image:
         description: 'The geth image to use'
         type: string
-        default: 'robustroundrobin/geth:main'
+        default: 'robustroundrobin/geth:master'
 
       rrrctl_image:
         description: 'The geth image to use'
         type: string
-        default: 'robustroundrobin/rrrctl:main'
+        default: 'robustroundrobin/rrrctl:master'
 
       consensus:
         description: 'The name of a consensus scheme supported by benchblock. Eg, raft ibft or rrr'
