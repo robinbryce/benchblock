@@ -111,6 +111,7 @@ func NewConfigLoader() Config {
 }
 
 func (cfg *Config) SetDefaults() {
+	cfg.MangeNonce = true
 	cfg.Threads = 12
 	cfg.ThreadAccounts = 6
 	cfg.NumTransactions = 5000
@@ -301,22 +302,21 @@ func (lo *Loader) adder(ethC *ethclient.Client, wg *sync.WaitGroup, banner strin
 
 	var err error
 
-	updateNonce := func(ias, i int) {
-		var nonce uint64
-		ctx, cancel := context.WithTimeout(context.Background(), lo.rootCfg.ClientTimeout)
-		nonce, err = ethC.PendingNonceAt(ctx, lo.accounts[ias].Wallets[i])
-		cancel()
-		if err != nil {
-			fmt.Printf("client for %s. error updating nonce: %v\n", lo.ethCUrl[ias], err)
-		}
-
-		lo.accounts[ias].Auth[i].Nonce = big.NewInt(int64(nonce))
-	}
+	// updateNonce := func(ias, i int) {
+	// 	var nonce uint64
+	// 	ctx, cancel := context.WithTimeout(context.Background(), lo.rootCfg.ClientTimeout)
+	// 	defer cancel()
+	// 	nonce, err = ethC.PendingNonceAt(ctx, lo.accounts[ias].Wallets[i])
+	// 	if err != nil {
+	// 		fmt.Printf("client for %s. error updating nonce: %v\n", lo.ethCUrl[ias], err)
+	// 	}
+	// 	lo.accounts[ias].Auth[i].Nonce = big.NewInt(int64(nonce))
+	// }
 
 	// First, initialise the nonces for the transactors in the AccountSet, and also set the ctx in the auth's
-	for i := 0; i < lo.loadCfg.ThreadAccounts; i++ {
-		updateNonce(ias, i)
-	}
+	// for i := 0; i < lo.loadCfg.ThreadAccounts; i++ {
+	// 	updateNonce(ias, i)
+	// }
 
 	for r := 0; r < numBatches; r++ {
 
@@ -330,17 +330,20 @@ func (lo *Loader) adder(ethC *ethclient.Client, wg *sync.WaitGroup, banner strin
 			}
 
 			// Set the ctx for the auth
-			_, cancel := lo.accounts[ias].WithTimeout(context.Background(), lo.rootCfg.ClientTimeout, i)
+			ctx, cancel := lo.accounts[ias].WithTimeout(context.Background(), lo.rootCfg.ClientTimeout, i)
+			lo.accounts[ias].Auth[i].Context = ctx
 			tx, err = lo.contract.Transact(lo.accounts[ias].Auth[i], "add", big.NewInt(2))
 			cancel()
 			if err != nil {
-				fmt.Printf("terminating client for %s. error from transact: %v\n", lo.ethCUrl[ias], err)
-				return
+				fmt.Printf("client for %s. error from transact: %v\n", lo.ethCUrl[ias], err)
+				// updateNonce(ias, i)
+				continue
 			}
 			lo.pb.IssuedIncrement()
-
-			// lo.accounts[ias].IncNonce(i)
-			updateNonce(ias, i)
+			// updateNonce(ias, i)
+			if lo.loadCfg.AccountConfig.MangeNonce {
+				lo.accounts[ias].IncNonce(i)
+			}
 
 			batch[i] = tx
 		}

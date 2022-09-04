@@ -7,6 +7,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"github.com/robinbryce/benchblock/bbeth/collect"
@@ -71,7 +72,12 @@ func (r *CollectRunner) ProcessConfigxxx() error {
 func (r *CollectRunner) ProcessConfig() error {
 	// Call parent first, results in root down processing order.
 	r.cfgDir = filepath.Dir(r.vroot.ConfigFileUsed())
-	ReconcileOptions(r.cmd, r.vroot.Sub(root.GetRunnerName(r)))
+	v := r.vroot.Sub(root.GetRunnerName(r))
+	if v == nil {
+		fmt.Printf("no config for collect")
+		return nil
+	}
+	ReconcileOptions(r.cmd, v)
 	return nil
 }
 

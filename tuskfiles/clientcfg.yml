@@ -34,7 +34,7 @@ run:
         [ -n "${blockperiod}" ] && export BBAKE_BLOCKPERIOD=${blockperiod}
         # rrr
         [ -n "${rrr_src}" ] && export BBAKE_RRR_SRC=${rrr_src}
-        [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrr_image}
+        [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrrctl_image}
 
         [ -z ${BBAKE_COMPOSEPROJECT} ] && export BBAKE_COMPOSEPROJECT=${BBAKE_NAME}
 

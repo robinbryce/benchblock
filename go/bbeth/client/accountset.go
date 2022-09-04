@@ -22,6 +22,7 @@ var (
 type AccountConfig struct {
 	GasLimit   uint64
 	PrivateFor string
+	MangeNonce bool
 }
 
 // AcountSet groups a set of accounts together. Each thread works with its own
@@ -83,6 +84,9 @@ func NewAccountSet(ctx context.Context, ethC *ethclient.Client, cfg *AccountConf
 		a.Auth[i].GasLimit = cfg.GasLimit
 		a.Auth[i].GasPrice = big.NewInt(0)
 
+		if !cfg.MangeNonce {
+			continue
+		}
 		if nonce, err = ethC.PendingNonceAt(ctx, a.Wallets[i]); err != nil {
 			return AccountSet{}, err
 		}

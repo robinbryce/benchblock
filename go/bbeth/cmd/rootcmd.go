@@ -92,7 +92,13 @@ number of retries for any eth request (a geometric backoff is applied between ea
 func (r *RootRunner) ProcessConfig() error {
 	r.cfgDir = filepath.Dir(r.vroot.ConfigFileUsed())
 
-	ReconcileOptions(r.cmd, r.vroot.Sub(root.GetRunnerName(r)))
+	v := r.vroot.Sub(root.GetRunnerName(r))
+	if v == nil {
+		fmt.Println("no config found")
+		return nil
+	}
+
+	ReconcileOptions(r.cmd, v)
 	return nil
 }
 

@@ -447,7 +447,7 @@ tasks:
             [ -n "${roundlength}" ] && export BBAKE_ROUNDLENGTH=${roundlength}
             [ -n "${rrr_image}" ] && export BBAKE_RRR_IMAGE=${rrr_image}
             [ -n "${rrr_src}" ] && export BBAKE_RRR_SRC=${rrr_src}
-            [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrr_image}
+            [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrrctl_image}
 
             # If we don't have feature sealedsecrets force devnodekeys. Its a
             # bit crude but it will serve for now
@@ -703,7 +703,7 @@ tasks:
             [ -n "${recommit}" ] && export BBAKE_RECOMMIT=${recommit}
             [ -n "${rrr_image}" ] && export BBAKE_RRR_IMAGE=${rrr_image}
             [ -n "${rrr_src}" ] && export BBAKE_RRR_SRC=${rrr_src}
-            [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrr_image}
+            [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrrctl_image}
 
             cd ${launchdir} && cd ${configdir}
             ${UPDATE_CONFIG}

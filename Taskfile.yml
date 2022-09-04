@@ -3,10 +3,84 @@ version: '3'
 silent: true
 # Cant include tests.yml because we want a clean .TASK name (not prefixed with
 # 'tests:'
+#
+env:
+  ENV: .local/dev
+  PROFILE: '{{.PROFILE | default ""}}'
+dotenv: [".env", '{{.ENV}}/.env', '{{.HOME}}/.env']
 
 tasks:
   default:
     - task -t tests.yml
+
+  bootstrap:
+    desc: |
+      initialise/re-initialise env. delete .local/dev/.env before re-running
+
+      This needs to be done explicitly before running build for the first time
+
+    cmds:
+      - |
+        set -e
+
+        mkdir -p {{.ENV}}
+
+        # automatic defaults
+        CONTEXT="{{.CONTEXT}}"
+        [ -z "${CONTEXT}" ] && CONTEXT=$(kubectl config current-context)
+        CLUSTER="{{.CLUSTER}}"
+        [ -z "${CLUSTER}" ] && CLUSTER=$(kubectl config get-contexts ${CONTEXT} --no-headers=true | tr -s ' ' | cut -d ' ' -f3)
+        SKAFFOLD_DEFAULT_REPO="{{.SKAFFOLD_DEFAULT_REPO}}"
+        [ -z "${SKAFFOLD_DEFAULT_REPO}" ] && SKAFFOLD_DEFAULT_REPO="eu.gcr.io/${CONTEXT}"
+
+        cat <<EOF > {{.ENV}}/.env
+        CONTEXT=${CONTEXT}
+        CLUSTER=${CLUSTER}
+        SKAFFOLD_DEFAULT_REPO=${SKAFFOLD_DEFAULT_REPO}
+        EOF
+
+        # literal defaults
+        cat <<EOF >> {{.ENV}}/.env
+        NAMESPACE={{.NAMESPACE}}
+        TAG={{.TAG}}
+        PROFILE={{.PROFILE}}
+        EOF
+
+        source {{.ENV}}/.env
+
+    vars:
+      # automatic defaults
+      CONTEXT: '{{.CONTEXT | default (env "CONTEXT") }}'
+      NAMESPACE: '{{.NAMESPACE | default (env "NAMESPACE") | default "stage-iona-iam" }}'
+      SKAFFOLD_DEFAULT_REPO: '{{.SKAFFOLD_DEFAULT_REPO | default (env "SKAFFOLD_DEFAULT_REPO") }}'
+
+      # literal defaults
+      TAG: '{{.TAG | default (env "TAG") | default "master-latest" }}'
+      PROFILE: '{{.PROFILE | default (env "PROFILE")}}'
+
+  build:
+    desc: |
+      build beth load test tool
+
+      Note - set SKAFFOLD_DEFAULT_REPO via bootstrap to chose the container
+      registry Or use PROFILE=local to disable push
+
+    cmds:
+      - |
+        CMD="skaffold build ${PROFILE:+-p $PROFILE} ${TAG:+-t $TAG} -b bbeth"
+        echo $CMD && $CMD
+
+    vars:
+      SKAFFOLD_DEFAULT_REPO: '{{.SKAFFOLD_DEFAULT_REPO | default (env "SKAFFOLD_DEFAULT_REPO") }}'
+      TAG: '{{.TAG | default (env "TAG") | default "master-latest" }}'
+      PROFILE: '{{.PROFILE | default (env "PROFILE")}}'
+
+  install-bbeth:
+    cmds:
+      - |
+        cd go/beth
+        go build -o ~/.local/bin/bbeth
+
   tests:
     - task -t tests.yml
   test-new-k8s:
