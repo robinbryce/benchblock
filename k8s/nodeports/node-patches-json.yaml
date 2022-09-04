@@ -1,0 +1,5 @@
+patchesJson6902:
+  - target:
+      kind: Service
+      name: ethnode
+    path: patch-json-service-nodeport.yaml

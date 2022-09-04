@@ -12,6 +12,13 @@ import pathlib
 from pathlib import Path
 import json
 
+
+def env(name, default=""):
+  name = '_'.join(name.split('-')).upper()
+  # Note that when env vars are set explicitly empty this will
+  # trump the default argument here
+  return os.environ.get(f"BBAKE_{name}", default)
+
 def cmd_update(args):
     """write BBAKE_ vars back to bench.json
 
@@ -27,8 +34,9 @@ def cmd_update(args):
 
     u = {}
     for k in args.configvars:
-        v = os.environ.get(f"BBAKE_{k.upper()}")
-        if not v or v == j.get(k):
+
+        v = env(k, None)
+        if v is None or v == j.get(k):
             continue
 
         print(f"updating: {k}={v} (was {j.get(k, 'not set')})")
@@ -60,12 +68,6 @@ def cmd_new_config(args):
     configdir = launchdir.joinpath(args.configdir).resolve()
     configdir.mkdir(parents=True, exist_ok=True)
     os.chdir(configdir)
-
-    def env(name, default=""):
-      name = '_'.join(name.split('-')).upper()
-      # Note that when env vars are set explicitly empty this will
-      # trump the default argument here
-      return os.environ.get(f"BBAKE_{name}", default)
 
     # if the user supplies a path, resolve it against the launchdir
     # rather than the config dir (so that the result is consistent with
@@ -204,6 +206,7 @@ def cmd_shell_export(args):
             v = "true"
         if v in [False, "False"]:
             v = "false"
+
         try:
             vv = shlex.quote(v)
         except TypeError:

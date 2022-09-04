@@ -162,6 +162,22 @@ options:
     usage: >
       The url of the json webkey set for verifying tokens
 
+  # feature: nodeports
+  nodeports:
+    usage: >
+      Expose all nodes via nodeports
+    type: bool
+
+  nodeports-base:
+    usage: >
+      This option sets the port allocated to the first node. NodePorts must be
+      in the range 30000-32767. The port exposes the p2p traffic for the node
+
+  nodeports-stride:
+    usage: >
+      This option sets the increment added to the node port for each successive
+      node. This allows for nodes to have groups of related ports.
+
   # feature: sealedsecrets
   sealedsecrets-cert:
     usage: >
@@ -319,6 +335,9 @@ options:
       apisec-jws
       apisec-nodepath
       apisec-tokenex
+      nodeports
+      nodeports-base
+      nodeports-stride
       bootnode0
       composeproject
       consensus
@@ -403,6 +422,7 @@ tasks:
             BBAKE_CONSENSUS=${consensus}
 
             ${apisec} && export BBAKE_APISEC="true" && export BBAKE_FEATURES="$BBAKE_FEATURES apisec"
+            ${nodeports} && export BBAKE_NODEPORTS="true" && export BBAKE_FEATURES="$BBAKE_FEATURES nodeports"
             [ -n "${sealedsecrets-cert}" ] && export BBAKE_SEALEDSECRETS_CERT=${sealedsecrets-cert} && export BBAKE_FEATURES="$BBAKE_FEATURES sealedsecrets"
             [ -n "${sealedsecrets-namespace}" ] && export BBAKE_SEALEDSECRETS_NAMESPACE=${sealedsecrets-namespace}
             [ -n "${sealedsecrets-controller-namespace}" ] && export BBAKE_SEALEDSECRETS_CONTROLLER_NAMESPACE=${sealedsecrets-controller-namespace}
@@ -412,6 +432,9 @@ tasks:
             [ -n "${apisec-jws}" ] && export BBAKE_APISEC_JWS=${apisec-jws}
             [ -n "${apisec-nodepath}" ] && export BBAKE_APISEC_NODEPATH=${apisec-nodepath}
             [ -n "${apisec-tokenex}" ] && export BBAKE_APISEC_TOKENEX=${apisec-tokenex}
+
+            [ -n "${nodeports-base}" ] && export BBAKE_NODEPORTS_BASE=${nodeports-base}
+            [ -n "${nodeports-stride}" ] && export BBAKE_NODEPORTS_STRIDE=${nodeports-stride}
             [ -n "${composeproject}" ] && export BBAKE_COMPOSEPROJECT=${composeproject}
             [ -n "${etherbase}" ] && export BBAKE_ETHERBASE=${etherbase}
             [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}
@@ -706,7 +729,7 @@ tasks:
             [ -n "${rrrctl_image}" ] && export BBAKE_RRRCTL_IMAGE=${rrrctl_image}
 
             cd ${launchdir} && cd ${configdir}
-            ${UPDATE_CONFIG}
+            # ${UPDATE_CONFIG}
             cat bench.json
 
       - task:
