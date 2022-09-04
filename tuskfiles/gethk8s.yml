@@ -44,6 +44,10 @@ run:
         [ -n "${node-namespace}" ] && export BBAKE_NODE_NAMESPACE=${node-namespace}
         [ -z "${BBAKE_NODE_NAMESPACE}" ] && export BBAKE_NODE_NAMESPACE=$BBAKE_NAME
 
+        if [ "${BBAKE_NODEPORTS}" == "true" ]; then
+          [ -z "${BBAKE_NODEPORTS_EXTIP}" ] && echo "--nodeports-extip is required" && exit 1
+        fi
+
         echo "BBAKE_CONSENSUS: $BBAKE_CONSENSUS"
         echo "BBAKE_CONSENSUS_OPTS: $BBAKE_CONSENSUS_OPTS"
         echo "BBAKE_FEATURES: $BBAKE_FEATURES"
@@ -276,10 +280,61 @@ run:
                 echo "Merged: $source -> ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml"
             done
 
+            # expose the extip and nodeport for this node, they are pushed into
+            # the workload via the downward API which references the values on
+            # pod labels. (so all of this is discoverable with normal k8s
+            # tooling).
             port=$((base + stride * i))
 
-            cp -v ${tuskdir}/k8s/nodeports/patch-json-service-nodeport.yaml ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-service-nodeport.yaml
-            NODEPORT=$port yq eval --inplace '.[0].value = env(NODEPORT)' ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-service-nodeport.yaml
+            # all pods get their own nodeport exposed. they are all on the same
+            # extip for now. it might make sense to seperate out the bootnodes.
+            # it might also be un-necessary to expose the 'not bootnodes' on
+            # nodeports at all - as given stable bootnodes *it might* be ok
+        cat <<EOF | yq eval-all --inplace 'select(fileIndex == 0) *+ select(fileIndex == 1)' ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml -
+        commonLabels:
+          extip: "${BBAKE_NODEPORTS_EXTIP}"
+          nodeport: "${port}"
+        EOF
+
+            # Note: these don't need adjusting for the value - the
+            # value is on the label
+            cp -v ${tuskdir}/k8s/nodeports/patch-json-statefulset-env-nodeport.yaml \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/
+            cp -v ${tuskdir}/k8s/nodeports/patch-json-statefulset-env-extip.yaml \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/
+            # source=${tuskdir}/k8s/nodeports/patch-json-statefulset-label-nodeport.yaml
+            # source=${tuskdir}/k8s/nodeports/patch-json-statefulset-label-extip.yaml
+
+            # expose the bootnode details if we are using discovery
+            for iboot in $(seq 0 $((BBAKE_NUMBOOTNODES - 1))); do
+
+              bootnode_port=$((base + stride * iboot))
+        cat <<EOF | yq eval-all --inplace  'select(fileIndex == 0) *+ select(fileIndex == 1)' ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml -
+        commonLabels:
+          bootnode${iboot}-extip: "${BBAKE_NODEPORTS_EXTIP}"
+          bootnode${iboot}-nodeport: "${bootnode_port}"
+        EOF
+
+              source=${tuskdir}/k8s/nodeports/patches-bootnode${iboot}-json.yaml
+
+              yq eval-all --inplace 'select(fileIndex == 0) *+ select(fileIndex == 1)' \
+                ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml $source
+                echo "Merged: $source -> ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml"
+
+              cp -v ${tuskdir}/k8s/nodeports/patch-json-statefulset-env-bootnode${iboot}-*.yaml \
+                ${BBAKE_CONSENSUS}/nodes/node${i}/
+            done
+
+            cp -v ${tuskdir}/k8s/nodeports/patch-json-service-nodeport.yaml ${BBAKE_CONSENSUS}/nodes/node${i}/
+
+            # TODO: we will need a normal service for rpc & wsock and those can
+            # use cluster dns names. for now just make everything a node port
+            NODEPORT=$((port + 0)) yq eval --inplace '.[0].value = env(NODEPORT)' \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-service-nodeport.yaml
+            NODEPORT=$((port + 1)) yq eval --inplace '.[1].value = env(NODEPORT)' \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-service-nodeport.yaml
+            NODEPORT=$((port + 2)) yq eval --inplace '.[2].value = env(NODEPORT)' \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-service-nodeport.yaml
 
             # cp -v ${tuskdir}/k8s/nodeports/patch-service-nodeport.yaml ${BBAKE_CONSENSUS}/nodes/node${i}/patch-service-nodeport.yaml
             # NODEPORT=$port yq eval --inplace '.spec.ports[] |= select(.name == "tcp-peer").nodePort=env(NODEPORT)' ${BBAKE_CONSENSUS}/nodes/node${i}/patch-service-nodeport.yaml

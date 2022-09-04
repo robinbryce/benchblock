@@ -1,0 +1,8 @@
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: BOOTNODE0_NODEPORT
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.labels['bootnode0-nodeport']
+

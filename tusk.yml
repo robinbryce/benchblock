@@ -173,6 +173,11 @@ options:
       This option sets the port allocated to the first node. NodePorts must be
       in the range 30000-32767. The port exposes the p2p traffic for the node
 
+  nodeports-extip:
+    usage: >
+      The external IP to assume all node port exposed nodes are available at.
+      Used to set the geth --nat extip:IP option
+
   nodeports-stride:
     usage: >
       This option sets the increment added to the node port for each successive
@@ -337,6 +342,7 @@ options:
       apisec-tokenex
       nodeports
       nodeports-base
+      nodeports-extip
       nodeports-stride
       bootnode0
       composeproject
@@ -434,6 +440,7 @@ tasks:
             [ -n "${apisec-tokenex}" ] && export BBAKE_APISEC_TOKENEX=${apisec-tokenex}
 
             [ -n "${nodeports-base}" ] && export BBAKE_NODEPORTS_BASE=${nodeports-base}
+            [ -n "${nodeports-extip}" ] && export BBAKE_NODEPORTS_EXTIP=${nodeports-extip}
             [ -n "${nodeports-stride}" ] && export BBAKE_NODEPORTS_STRIDE=${nodeports-stride}
             [ -n "${composeproject}" ] && export BBAKE_COMPOSEPROJECT=${composeproject}
             [ -n "${etherbase}" ] && export BBAKE_ETHERBASE=${etherbase}

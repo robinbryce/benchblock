@@ -76,6 +76,7 @@ spec:
               configMapKeyRef:
                 name: ethnode-cfg
                 key: DISCOVERY_OPTS
+
           - name: RPC_APIS
             valueFrom:
               configMapKeyRef:
@@ -125,6 +126,13 @@ spec:
               configMapKeyRef:
                 name: ethnode-cfg
                 key: LOG_OPTS
+          - name: BOOTNODE
+            # If this is a bootnode, this label will be present and have its
+            # node index
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['bootnode']
+
         command:
           - sh
         args:
@@ -133,33 +141,53 @@ spec:
             set -ex
 
             NAT_OPTS="--nat=none"
+            [ -n "${EXTIP}" ] && NAT_OPTS="--nat=extip:${EXTIP}"
 
-            # quorum resolves the bootnode dns names once on startup
-            if [ -n "$BOOTNODE_PUB0" ]; then
-              BOOTNODES=enode://${BOOTNODE_PUB0}@${BOOTNODE_HOST0}:${P2P_PORT}
-            fi
+            if [ -n "$BOOTNODE0_NODEPORT" ]; then
+                [ -z "${BOOTNODE0_EXTIP}" ] && echo "BOOTNODE0_NODEPORT requires BOOTNODE0_EXTIP" && exit 1
 
-            if [ -n "$BOOTNODE_PUB1" ]; then
-              [ -n "${BOOTNODES}" ] && BOOTNODES="${BOOTNODES},"
-              BOOTNODES="${BOOTNODES}enode://${BOOTNODE_PUB1}@${BOOTNODE_HOST1}:${P2P_PORT}"
-            fi
+                BOOTNODES=enode://${BOOTNODE_PUB0}@${BOOTNODE0_EXTIP}:${BOOTNODE0_NODEPORT}
+                if [ -n "$BOOTNODE1_NODEPORT" ]; then
+                  [ -z "${BOOTNODE1_EXTIP}" ] && echo "BOOTNODE1_NODEPORT requires BOOTNODE1_EXTIP" && exit 1
+                  BOOTNODES=enode://${BOOTNODE_PUB0}@${BOOTNODE1_EXTIP}:${BOOTNODE1_NODEPORT}
+                fi
 
-            # if we expect bootnodes and are not one of them, hang around until
-            # one is available. k8s dns will fail until the node is ready
-            HOSTNAME=$(hostname -f)
-            if [ -n "$BOOTNODE_PUB0" ] && { [ "${HOSTNAME}" != "${BOOTNODE_HOST0}" ] && [ "${HOSTNAME}" != "${BOOTNODE_HOST1}" ]; }; then
-            while true; do
-              [ -n "${BOOTNODE_HOST0}" ] && nslookup -type=a ${BOOTNODE_HOST0} && break
-              [ -n "${BOOTNODE_HOST1}" ] && nslookup -type=a ${BOOTNODE_HOST1} && break
-              echo "waiting for a bootnode to be available ..."
-              sleep 1
-            done
-            fi
-            if [ -n "$BOOTNODE_PUB0" ]; then
-              if  { [ "${HOSTNAME}" = "${BOOTNODE_HOST0}" ] || [ "${HOSTNAME}" = "${BOOTNODE_HOST1}" ]; }; then
-                DISCOVERY_OPTS="--netrestrict=${POD_IP}/16"
-              else
-                DISCOVERY_OPTS="--netrestrict=${POD_IP}/16 --bootnodes=${BOOTNODES}"
+                # Note at the moment all nodes are on the same ip so it
+                # doesn't matter which bootnode ip we pick
+                if [ -n "${BOOTNODE}" ]; then
+                  echo "BOOTNODE: ${BOOTNODE}"
+                  DISCOVERY_OPTS="--netrestrict=${BOOTNODE0_EXTIP}/32"
+                else
+                  DISCOVERY_OPTS="--netrestrict=${BOOTNODE0_EXTIP}/32 --bootnodes=${BOOTNODES}"
+                fi
+            else
+              # quorum resolves the bootnode dns names once on startup
+              if [ -n "$BOOTNODE_PUB0" ]; then
+                BOOTNODES=enode://${BOOTNODE_PUB0}@${BOOTNODE_HOST0}:${P2P_PORT}
+              fi
+
+              if [ -n "$BOOTNODE_PUB1" ]; then
+                [ -n "${BOOTNODES}" ] && BOOTNODES="${BOOTNODES},"
+                BOOTNODES="${BOOTNODES}enode://${BOOTNODE_PUB1}@${BOOTNODE_HOST1}:${P2P_PORT}"
+              fi
+
+              # if we expect bootnodes and are not one of them, hang around until
+              # one is available. k8s dns will fail until the node is ready
+              HOSTNAME=$(hostname -f)
+              if [ -n "$BOOTNODE_PUB0" ] && { [ "${HOSTNAME}" != "${BOOTNODE_HOST0}" ] && [ "${HOSTNAME}" != "${BOOTNODE_HOST1}" ]; }; then
+              while true; do
+                [ -n "${BOOTNODE_HOST0}" ] && nslookup -type=a ${BOOTNODE_HOST0} && break
+                [ -n "${BOOTNODE_HOST1}" ] && nslookup -type=a ${BOOTNODE_HOST1} && break
+                echo "waiting for a bootnode to be available ..."
+                sleep 1
+              done
+              fi
+              if [ -n "$BOOTNODE_PUB0" ]; then
+                if  { [ "${HOSTNAME}" = "${BOOTNODE_HOST0}" ] || [ "${HOSTNAME}" = "${BOOTNODE_HOST1}" ]; }; then
+                  DISCOVERY_OPTS="--netrestrict=${POD_IP}/16"
+                else
+                  DISCOVERY_OPTS="--netrestrict=${POD_IP}/16 --bootnodes=${BOOTNODES}"
+                fi
               fi
             fi
 

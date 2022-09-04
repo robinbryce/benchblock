@@ -1,0 +1,26 @@
+          - name: EXTIP
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['extip']
+          - name: NODEPORT
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['nodeport']
+
+          - name: BOOTNODE0_EXTIP
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['bootnode0-extip']
+          - name: BOOTNODE0_NODEPORT
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['bootnode0-nodeport']
+          - name: BOOTNODE1_EXTIP
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['bootnode1-extip']
+          - name: BOOTNODE1_NODEPORT
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['bootnode1-nodeport']
+
