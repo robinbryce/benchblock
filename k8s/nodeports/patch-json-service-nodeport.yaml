@@ -1,11 +1,21 @@
 - op: add
   path: /spec/ports/0/nodePort
   value: 32760
+- op: replace
+  path: /spec/ports/0/port
+  value: 32760
+# geth discovery starts on udp then connects to the same port on tcp
 - op: add
   path: /spec/ports/1/nodePort
-  value: 32761
+  value: 32760
+- op: replace
+  path: /spec/ports/1/port
+  value: 32760
 - op: add
   path: /spec/ports/2/nodePort
+  value: 32761
+- op: add
+  path: /spec/ports/3/nodePort
   value: 32762
 - op: add
   path: /spec/type

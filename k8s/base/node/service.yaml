@@ -10,6 +10,11 @@ metadata:
 spec:
   ports:
   - name: tcp-peer
+    protocol: TCP
+    port: 7200
+  # geth discovery starts on udp then connects to the same port on tcp
+  - name: udp-peer
+    protocol: UDP
     port: 7200
   - name: tcp-rpc
     port: 8300

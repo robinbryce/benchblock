@@ -93,10 +93,7 @@ spec:
                 name: ethnode-cfg
                 key: PRIVATE_CONFIG
           - name: P2P_PORT
-            valueFrom:
-              configMapKeyRef:
-                name: ethnode-cfg
-                key: P2P_PORT
+            value: "7200"
           - name: WS_OPTS
             valueFrom:
               configMapKeyRef:
@@ -140,25 +137,33 @@ spec:
           - |
             set -ex
 
-            NAT_OPTS="--nat=none"
-            [ -n "${EXTIP}" ] && NAT_OPTS="--nat=extip:${EXTIP}"
+            apt-get install -y netcat
+            # touch SLEEPING
+            while [ -f SLEEPING ]; do
+              sleep 1
+              echo "sleeping for 1s"
+            done
+
+            export NAT_OPTS="--nat=none"
+            [ -n "${EXTIP}" ] && export NAT_OPTS="--nat=extip:${EXTIP}"
 
             if [ -n "$BOOTNODE0_NODEPORT" ]; then
                 [ -z "${BOOTNODE0_EXTIP}" ] && echo "BOOTNODE0_NODEPORT requires BOOTNODE0_EXTIP" && exit 1
 
-                BOOTNODES=enode://${BOOTNODE_PUB0}@${BOOTNODE0_EXTIP}:${BOOTNODE0_NODEPORT}
+                export BOOTNODES=enode://${BOOTNODE_PUB0}@${BOOTNODE0_EXTIP}:${BOOTNODE0_NODEPORT}
                 if [ -n "$BOOTNODE1_NODEPORT" ]; then
                   [ -z "${BOOTNODE1_EXTIP}" ] && echo "BOOTNODE1_NODEPORT requires BOOTNODE1_EXTIP" && exit 1
-                  BOOTNODES=enode://${BOOTNODE_PUB0}@${BOOTNODE1_EXTIP}:${BOOTNODE1_NODEPORT}
+                  [ -n "${BOOTNODES}" ] && BOOTNODES="${BOOTNODES},"
+                  export BOOTNODES=${BOOTNODES}enode://${BOOTNODE_PUB1}@${BOOTNODE1_EXTIP}:${BOOTNODE1_NODEPORT}
                 fi
 
                 # Note at the moment all nodes are on the same ip so it
                 # doesn't matter which bootnode ip we pick
                 if [ -n "${BOOTNODE}" ]; then
                   echo "BOOTNODE: ${BOOTNODE}"
-                  DISCOVERY_OPTS="--netrestrict=${BOOTNODE0_EXTIP}/32"
+                  DISCOVERY_OPTS="--netrestrict=${BOOTNODE0_EXTIP}/32,${POD_IP}/16"
                 else
-                  DISCOVERY_OPTS="--netrestrict=${BOOTNODE0_EXTIP}/32 --bootnodes=${BOOTNODES}"
+                  DISCOVERY_OPTS="--netrestrict=${BOOTNODE0_EXTIP}/32,${POD_IP}/16 --bootnodes=${BOOTNODES}"
                 fi
             else
               # quorum resolves the bootnode dns names once on startup
@@ -197,6 +202,8 @@ spec:
             [ -f /config/static-nodes.json ] && cp -v /config/static-nodes.json /data/node/ && cat /data/node/static-nodes.json
 
             cd /data/node
+            env | grep _OPTS
+            env | grep BOOTNODE
             PRIVATE_CONFIG=ignore geth \
                 --identity ${APP_LABEL} \
                 --networkid ${NETWORKID} \

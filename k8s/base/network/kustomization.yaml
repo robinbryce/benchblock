@@ -41,7 +41,7 @@ configMapGenerator:
   # that arrived after the current work started. This interferes with some
   # consensus implementations so we make it very long by default. it is
   # interesting to measure the effects of this parameter.
-  - LOG_OPTS=--vmodule rpc/*=3,consensus/*=3,miner/*=2,eth/*=2,p2p/discover/*=2 --verbosity 2
+  - LOG_OPTS=--vmodule rpc/*=3,consensus/*=3,miner/*=2,eth/*=2,p2p/discover/*=7 --verbosity 2
 - name: genesis
   files:
   - genesis.json

@@ -168,6 +168,12 @@ options:
       Expose all nodes via nodeports
     type: bool
 
+  nodeports-allnodes:
+    usage: >
+      by default only the bootnodes use node ports. set this to use node ports
+      for all nodes. if bootnodes are not enabled this flag must be set in
+      order to use nodeports at all.
+
   nodeports-base:
     usage: >
       This option sets the port allocated to the first node. NodePorts must be
@@ -341,6 +347,7 @@ options:
       apisec-nodepath
       apisec-tokenex
       nodeports
+      nodeports-allnodes
       nodeports-base
       nodeports-extip
       nodeports-stride
@@ -440,6 +447,7 @@ tasks:
             [ -n "${apisec-tokenex}" ] && export BBAKE_APISEC_TOKENEX=${apisec-tokenex}
 
             [ -n "${nodeports-base}" ] && export BBAKE_NODEPORTS_BASE=${nodeports-base}
+            [ -n "${nodeports-allnodes}" ] && export BBAKE_NODEPORTS_ALLNODES=${nodeports-allnodes}
             [ -n "${nodeports-extip}" ] && export BBAKE_NODEPORTS_EXTIP=${nodeports-extip}
             [ -n "${nodeports-stride}" ] && export BBAKE_NODEPORTS_STRIDE=${nodeports-stride}
             [ -n "${composeproject}" ] && export BBAKE_COMPOSEPROJECT=${composeproject}
