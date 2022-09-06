@@ -137,18 +137,32 @@ spec:
           - |
             set -ex
 
-            apt-get install -y netcat
             # touch SLEEPING
             while [ -f SLEEPING ]; do
               sleep 1
               echo "sleeping for 1s"
             done
+            apt-get install -y netcat
 
-            export NAT_OPTS="--nat=none"
-            [ -n "${EXTIP}" ] && export NAT_OPTS="--nat=extip:${EXTIP}"
+            #export NAT_OPTS="--nat=extip:${POD_IP}"
+            #export NAT_OPTS="--nat=none"
+            #[ -n "${EXTIP}" ] && export NAT_OPTS="--nat=extip:${POD_IP}"
+            if [ -n "${EXTIP}" ]; then
+              # if we want to permit external peers we should set the external
+              # ip. Othwerwise set the lan ip as that lets the bootnodes connect to each other.
+              # For bootnodes on extip:PUBLIC-IP the reported IP is WAN but the resolved is local and geth disallows this
+              # with the consequence that the bootnodes don't connect to each
+              # other
+              export NAT_OPTS="--nat=extip:${EXTIP}"
+              #export NAT_OPTS="--nat=extip:${POD_IP}"
+              #export NAT_OPTS="--nat=none"
+            else
+              export NAT_OPTS="--nat=extip:${POD_IP}"
+            fi
 
             if [ -n "$BOOTNODE0_NODEPORT" ]; then
                 [ -z "${BOOTNODE0_EXTIP}" ] && echo "BOOTNODE0_NODEPORT requires BOOTNODE0_EXTIP" && exit 1
+                [ -z "${BOOTNODE1_EXTIP}" ] && echo "Using the NODEPORT feature requires two bootnodes" && exit 1
 
                 export BOOTNODES=enode://${BOOTNODE_PUB0}@${BOOTNODE0_EXTIP}:${BOOTNODE0_NODEPORT}
                 if [ -n "$BOOTNODE1_NODEPORT" ]; then
@@ -157,11 +171,20 @@ spec:
                   export BOOTNODES=${BOOTNODES}enode://${BOOTNODE_PUB1}@${BOOTNODE1_EXTIP}:${BOOTNODE1_NODEPORT}
                 fi
 
-                # Note at the moment all nodes are on the same ip so it
-                # doesn't matter which bootnode ip we pick
-                if [ -n "${BOOTNODE}" ]; then
-                  echo "BOOTNODE: ${BOOTNODE}"
-                  DISCOVERY_OPTS="--netrestrict=${BOOTNODE0_EXTIP}/32,${POD_IP}/16"
+                HOSTNAME=$(hostname -f)
+                if [ -n "${EXTIP}" ]; then
+                while true; do
+                  [ -n "${BOOTNODE0_EXTIP}" ] && nc -vzu ${BOOTNODE0_EXTIP} ${BOOTNODE0_NODEPORT} && break
+                  [ -n "${BOOTNODE1_EXTIP}" ] && nc -vzu ${BOOTNODE1_EXTIP} ${BOOTNODE1_NODEPORT} && break
+                  echo "waiting for a bootnode to be available ..."
+                  sleep 1
+                done
+                fi
+
+                if [ "${BOOTNODE} == "0" ]; then
+                  DISCOVERY_OPTS="--netrestrict=10.0.0.9/24,${BOOTNODE1_EXTIP}/32,${POD_IP}/16 --bootnodes=enode://${BOOTNODE_PUB1}@${BOOTNODE1_EXTIP}:${BOOTNODE1_NODEPORT}"
+                elif [ "${BOOTNODE} == "1" ]; then
+                  DISCOVERY_OPTS="--netrestrict=10.0.0.9/24,${BOOTNODE1_EXTIP}/32,${POD_IP}/16 --bootnodes=enode://${BOOTNODE_PUB0}@${BOOTNODE0_EXTIP}:${BOOTNODE0_NODEPORT}"
                 else
                   DISCOVERY_OPTS="--netrestrict=${BOOTNODE0_EXTIP}/32,${POD_IP}/16 --bootnodes=${BOOTNODES}"
                 fi
@@ -237,7 +260,10 @@ spec:
           - |
             set -e
             [ -f /data/node/geth/LOCK ] && exit 0
+
             echo "initialising node"
+            apt-get install -y jq netcat
+
             geth init \
                 --datadir /data/node \
                   /config/genesis.json

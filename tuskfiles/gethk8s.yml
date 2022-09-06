@@ -87,7 +87,7 @@ run:
         ETHERBASE=${BBAKE_ETHERBASE}
         GETH_IMAGE=${BBAKE_GETH_IMAGE}
         GAS_OPTS=$GAS_OPTS
-        LOG_OPTS=--vmodule consensus/*=3,miner/*=2,eth/*=5,p2p/*=5 --verbosity 3
+        LOG_OPTS=--vmodule consensus/*=3,miner/*=2,eth/*=2,p2p/*=2 --verbosity 3
         END
         cat ${BBAKE_CONSENSUS}/network/network.env
         echo "Wrote ${BBAKE_CONSENSUS}/network/network.env"
