@@ -92,8 +92,9 @@ spec:
               configMapKeyRef:
                 name: ethnode-cfg
                 key: PRIVATE_CONFIG
-          - name: P2P_PORT
-            value: "7200"
+          # This is _always_ patched in. so that the patch is easily replaced
+          #- name: P2P_PORT
+          #  value: "7200"
           - name: WS_OPTS
             valueFrom:
               configMapKeyRef:

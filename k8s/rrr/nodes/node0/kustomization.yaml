@@ -4,3 +4,12 @@ commonLabels:
   app.kubernetes.io/name: ethnode
 resources:
   - ./../../node
+patchesJson6902:
+  # we add the default port this way because it makese it easier to customise.
+  # The alternantive - patching a default value in an array entry in yaml via
+  # json patch - is very brittle
+  - target:
+      kind: StatefulSet
+      name: ethnode
+    path: patch-json-statefulset-env-p2p-port.yaml
+

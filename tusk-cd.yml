@@ -1,0 +1,96 @@
+interpreter: bash -c
+name: benchblock-cd
+usage: |
+  These tasks support the CI/CD for the benchblock repository
+options:
+  attempts:
+    default: 30
+    type: int
+  sleep:
+    default: 4
+    type: int
+
+  namespace:
+  manifestsdir:
+  launchdir:
+    # treat this as private
+    usage: >
+      Don't set this option. Its a work around for a go-tusk peculiarity
+    environment: PWD
+
+tasks:
+  delete-network:
+    run:
+      - command:
+          exec: |
+            exec: |
+              set -ex
+              ATTEMPTS_REMAINING=${attempts}
+              SLEEP=${sleep}
+              NAMESPACE=${namespace}
+              MANIFESTSDIR=${manifestsdir}
+
+              [ ! -d $MANIFESTSDIR ] && echo "Manifest dir not found at: ${MANIFESTSDIR}" && exit 1
+
+              cd ${launchdir}
+
+              NRUNNING=$(kubectl -n $NAMESPACE \
+                get pods --selector=app.kubernetes.io/part-of=ethnet \
+                --output=jsonpath={.items..metadata.name} | wc -w)
+
+              if [ "$NRUNNING" != "0" ]; then
+
+                kustomize build ${MANIFESTSDIR} | tee rendered.yaml
+
+                set +e
+                kustomize build ${MANIFESTSDIR} | kubectl -n $NAMESPACE \
+                      delete -f rendered.yaml
+
+                while [ "$NRUNNING" != "0" ]; do
+
+                  [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
+                  ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
+
+                  NRUNNING=$(kubectl -n $NAMESPACE \
+                    get pods --selector=app.kubernetes.io/part-of=ethnet \
+                    --output=jsonpath={.items..metadata.name} | wc -w)
+
+                  echo "Waiting for $NRUNNING to terminate (attempts left $ATTEMPTS_REMAINING, sleeping for ${SLEEP}s)"
+                  sleep ${SLEEP}
+                done
+                set -e
+              fi
+
+  start-network:
+    args:
+      numnodes:
+        type: int
+    run:
+      - command:
+          exec: |
+            exec: |
+              set -ex
+              ATTEMPTS_REMAINING=${attempts}
+              SLEEP=${sleep}
+              NAMESPACE=${namespace}
+              MANIFESTSDIR=${manifestsdir}
+
+              [ ! -d $MANIFESTSDIR ] && echo "Manifest dir not found at: ${MANIFESTSDIR}" && exit 1
+
+              cd ${launchdir}
+              kustomize build ${MANIFESTSDIR} \
+                | kubectl -n $NAMESPACE apply -f rendered.yaml
+
+              while true; do
+                NRUNNING=$(kubectl -n $NAMESPACE get pods \
+                  --field-selector=status.phase=Running \
+                  --output=jsonpath={.items..metadata.name} | wc -w)
+
+                [ "${NRUNNING}" == "${numnodes}" ] && break
+
+                [ "$ATTEMPTS_REMAINING" == "0" ] && exit -1
+                ATTEMPTS_REMAINING=$((ATTEMPTS_REMAINING - 1))
+
+                echo "${NRUNNING} of ${numnodes} running. (attempts left $ATTEMPTS_REMAINING,  sleeping for ${SLEEP}s)"
+                sleep ${SLEEP}
+              done

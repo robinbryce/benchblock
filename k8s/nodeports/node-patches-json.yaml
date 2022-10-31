@@ -15,7 +15,4 @@ patchesJson6902:
       kind: StatefulSet
       name: ethnode
     path: patch-json-statefulset-port-containerport.yaml
-  - target:
-      kind: StatefulSet
-      name: ethnode
-    path: patch-json-statefulset-env-p2p-port.yaml
+  # the env-p2p-port is already in the kustomization

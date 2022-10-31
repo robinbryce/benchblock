@@ -1,0 +1,7 @@
+# copied into all node folders. may be replaced by different features
+# features that have conflicting port requirements can't be used together
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: P2P_PORT
+    value: "7200"

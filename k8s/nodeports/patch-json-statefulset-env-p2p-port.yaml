@@ -2,4 +2,4 @@
   path: /spec/template/spec/containers/0/env/-
   value:
     name: P2P_PORT
-    value: "7200"
+    value: "${BBAKE_NODEPORT-7200}"

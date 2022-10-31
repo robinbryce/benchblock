@@ -178,15 +178,19 @@ run:
 
           mkdir -p ${BBAKE_CONSENSUS}/nodes/node${i}
 
-          NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
+          # copy over the default json patches
+          for source in ${tuskdir}/k8s/base/node/patch-json-*.yaml; do
+            cp -v $source ${BBAKE_CONSENSUS}/nodes/node${i}/
+          done
+
+          NODENUM=$i yq eval '.nameSuffix = strenv(NODENUM) |
           .commonLabels.app += env(NODENUM) |
           .commonLabels."app.kubernetes.io/name" += env(NODENUM)' \
             ${tuskdir}/k8s/${BBAKE_CONSENSUS}/nodes/node0/kustomization.yaml \
             > ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml
             echo "Wrote: ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml"
 
-          # Add the component entries for a standard node (the first file is
-          # updated)
+          # Add the component entries for a standard node (file for fileIndex 0 is updated)
           for source in $(ls ${tuskdir}/k8s/base/node/node-*.yaml); do
             yq eval-all --inplace 'select(fileIndex == 0) *+ select(fileIndex == 1)' \
               ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml $source
@@ -226,7 +230,6 @@ run:
                 echo "Merged: $source -> ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml"
             done
           fi
-          # there are no general kustomization patches for dyanmic discovery nodes
         done
 
         # --------------------------------------------------------------------
@@ -333,30 +336,17 @@ run:
 
             cp -v ${tuskdir}/k8s/nodeports/patch-json-service-nodeport.yaml ${BBAKE_CONSENSUS}/nodes/node${i}/
 
+            export BBAKE_NODEPORT=$((port + 0))
             # TODO: we will need a normal service for rpc & wsock and those can
             # use cluster dns names. for now just make everything a node port
-            NODEPORT=$((port + 0)) yq eval --inplace '.[0].value = env(NODEPORT)' \
-              ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-service-nodeport.yaml
-            # Make the containerPort equal the nodePort for the tcp-peer port
-            NODEPORT=$((port + 0)) yq eval --inplace '.[1].value = env(NODEPORT)' \
-              ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-service-nodeport.yaml
-
-            # udp
-            NODEPORT=$((port + 0)) yq eval --inplace '.[2].value = env(NODEPORT)' \
-              ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-service-nodeport.yaml
-            # Make the containerPort equal the nodePort for the tcp-peer port
-            NODEPORT=$((port + 0)) yq eval --inplace '.[3].value = env(NODEPORT)' \
-              ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-service-nodeport.yaml
-
-
-            NODEPORT=$((port + 1)) yq eval --inplace '.[4].value = env(NODEPORT)' \
-              ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-service-nodeport.yaml
-            NODEPORT=$((port + 2)) yq eval --inplace '.[5].value = env(NODEPORT)' \
+            yq eval --inplace \
+              '(.. | select(tag == "!!str" and test("\bBBAKE_"))) |= ( envsubst(nu) | . tag= "!!int" )' \
               ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-service-nodeport.yaml
 
             cp -v ${tuskdir}/k8s/nodeports/patch-json-statefulset-port-containerport.yaml \
               ${BBAKE_CONSENSUS}/nodes/node${i}/
-            NODEPORT=$((port + 0)) yq eval --inplace '.[0].value = env(NODEPORT)' \
+            yq eval --inplace \
+              '(.. | select(tag == "!!str" and test("\bBBAKE_"))) |= ( envsubst(nu) | . tag= "!!int" )' \
               ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-statefulset-port-containerport.yaml
             # udp isn't seperately declared for the statefulset, its actually
             # irrelevant what the port list is - the service is all that
@@ -364,14 +354,9 @@ run:
 
             cp -v ${tuskdir}/k8s/nodeports/patch-json-statefulset-env-p2p-port.yaml \
               ${BBAKE_CONSENSUS}/nodes/node${i}/
-            NODEPORT=$((port + 0)) yq eval --inplace '.[0].value.value = strenv(NODEPORT)' \
+            yq eval --inplace \
+              '(.. | select(tag == "!!str" and test("\bBBAKE_"))) |= envsubst(nu)' \
               ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-statefulset-env-p2p-port.yaml
-
-            # cp -v ${tuskdir}/k8s/nodeports/patch-service-nodeport.yaml ${BBAKE_CONSENSUS}/nodes/node${i}/patch-service-nodeport.yaml
-            # NODEPORT=$port yq eval --inplace '.spec.ports[] |= select(.name == "tcp-peer").nodePort=env(NODEPORT)' ${BBAKE_CONSENSUS}/nodes/node${i}/patch-service-nodeport.yaml
-
-            #ETHNODE="ethnode${i}" \
-            #yq eval --inplace '.metadata.name=env(ETHNODE)' ${BBAKE_CONSENSUS}/nodes/node${i}/patch-service-nodeport.yaml
 
           done
         fi
