@@ -473,6 +473,8 @@ tasks:
 
             eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)
 
+            # XXX: TODO add a command to create this env directly. because
+            # otherwise, unless you run new you don't have it
             echo "creating pyenv using: $(which python3)"
             python3 -m venv ${BBAKE_PYENV}
             source ${BBAKE_PYENV}/bin/activate
@@ -496,6 +498,28 @@ tasks:
             set -e
             cd ${launchdir}
             tusk -qf ${tuskdir}/tusk.yml ${consensus} ${configdir}
+
+  pyenv:
+    usage: >
+      create the pyenv independently of `new' DOES NOT READ PYENV from THE
+      CONFIG (it might not be correct for local fs NOTE - this command needs
+      some thought, the use case is where the results of bbake are commited to
+      vcs and then someone else clones them. lots of bits in bench.json are
+      going to be not right for the local fs
+    run:
+      - task:
+          name: configure
+          args:
+            - ${configdir}
+      - command:
+          exec: |
+            set -e
+            cd ${launchdir} && cd ${configdir}
+
+            echo "creating pyenv using: $(which python3)"
+            python3 -m venv ${pyenv}
+            source ${pyenv}/bin/activate
+            pip3 install -r ${tuskdir}/requirements.txt
 
   ibft:
     usage: >
@@ -669,6 +693,10 @@ tasks:
       Configure, or re-configure, an rrr network
       # This task also ilustrates the full sequence of steps to prepare an rrr
       # compose setup
+    options:
+      init-only:
+        type: bool
+        short: "i"
     args:
       configdir:
     run:
@@ -708,38 +736,46 @@ tasks:
             cd ${launchdir} && cd ${configdir}
             ${UPDATE_CONFIG}
             cat bench.json
-
-      - task:
+      - when:
+          equal: {init-only: false}
+        task:
           name: gethkeys
           args:
             - ${configdir}
-      - task:
-          # this is just to provide config for the loadtool. its ignored
-          # otherwise
+      - when:
+          equal: {init-only: false}
+        task:
           name: gethstatic
           args:
             - ${configdir}
-      - task:
+      - when:
+          equal: {init-only: false}
+        task:
           name: rrralpha
           args:
             - ${configdir}
-
-      - task:
+      - when:
+          equal: {init-only: false}
+        task:
           name: rrrinit
           args:
             - ${configdir}
-
-      - task:
+      - when:
+          equal: {init-only: false}
+        task:
           name: clientcfg
           args:
             - ${configdir}
 
-      - task:
+      - when:
+          equal: {init-only: false}
+        task:
           name: rrropts
           args:
             - ${configdir}
-
-      - command:
+      - when:
+          equal: {init-only: false}
+        command:
           exec: |
             set -e
             eval $(cd ${launchdir} && cd ${configdir} && python3 ${tuskdir}/benchjson.py shell-export bench.json)

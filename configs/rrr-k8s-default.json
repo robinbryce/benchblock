@@ -1,6 +1,7 @@
 {
-  "activehorizon": "500",
-  "roundlength": "5000",
-  "intentphase": "1700",
-  "confirmphase": "1300"
+  "recommit": "60000",
+  "activehorizon": "600",
+  "roundlength": "1200",
+  "intentphase": "300",
+  "confirmphase": "100"
 }

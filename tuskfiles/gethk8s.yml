@@ -56,7 +56,7 @@ run:
         # --------------------------------------------------------------------
         # root
         # The namespace is the name - eg rrr7
-        yq eval ".namespace = \"$BBAKE_NODE_NAMESPACE\"" \
+        yq eval ".namespace = \"$BBAKE_NAME\"" \
           ${tuskdir}/k8s/${BBAKE_CONSENSUS}/kustomization.yaml | \
           tee ${BBAKE_CONSENSUS}/kustomization.yaml
         echo "Wrote ${BBAKE_CONSENSUS}/kustomization.yaml"
@@ -108,7 +108,7 @@ run:
 
         # this assumes static-nodes.json is generated for compose with the hosts listed in
         # ascending order node0, node1 ...
-        # > ethnode8.{BBAKE_NODE_NAMESPACE}.svc.cluster.local
+        # > ethnode8.{BBAKE_NAME}.svc.cluster.local
         cat <<PYEND | python3
         import os, json
         from urllib.parse import urlparse, urlunparse
@@ -138,7 +138,7 @@ run:
            .bbeth.load.threads = (env.BBAKE_MAXNODES|tonumber)' \
            > jobs/loadtest/bbeth.json
         echo "Wrote jobs/loadtest/bbeth.json"
-        yq eval ".namespace = \"$BBAKE_NODE_NAMESPACE\"" \
+        yq eval ".namespace = \"$BBAKE_NAME\"" \
           ${tuskdir}/k8s/jobs/loadtest/kustomization.yaml \
           > jobs/loadtest/kustomization.yaml
         echo "Wrote ${BBAKE_CONSENSUS}/kustomization.yaml"
@@ -173,6 +173,11 @@ run:
         for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
 
           mkdir -p ${BBAKE_CONSENSUS}/nodes/node${i}
+
+          # force the key file into git ignore to avoid gitops accidents
+          if ! grep key ${BBAKE_CONSENSUS}/nodes/node${i}/.gitignore 2>&1 >> /dev/null; then
+            echo key >> ${BBAKE_CONSENSUS}/nodes/node${i}/.gitignore
+          fi
 
           NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
           .commonLabels.app += env(NODENUM) |
