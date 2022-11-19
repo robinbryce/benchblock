@@ -1,0 +1,9 @@
+patchesJson6902:
+  - target:
+      kind: StatefulSet
+      name: ethnode
+    path: patch-json-statefulset-env-nodeport.yaml
+  - target:
+      kind: StatefulSet
+      name: ethnode
+    path: patch-json-statefulset-env-extip.yaml

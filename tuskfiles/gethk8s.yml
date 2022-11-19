@@ -44,11 +44,19 @@ run:
         [ -n "${node-namespace}" ] && export BBAKE_NODE_NAMESPACE=${node-namespace}
         [ -z "${BBAKE_NODE_NAMESPACE}" ] && export BBAKE_NODE_NAMESPACE=$BBAKE_NAME
 
+        # XXX: Wart, because there is something odd about tusk's handling of
+        # flag options that prevents adding --bootnode-nodeports as a new
+        # option flag
+        [ -n "${BBAKE_BOOTNODE0_IP}" ] && export BBAKE_BOOTNODE_NODEPORTS=true
+
         echo "BBAKE_CONSENSUS: $BBAKE_CONSENSUS"
         echo "BBAKE_CONSENSUS_OPTS: $BBAKE_CONSENSUS_OPTS"
         echo "BBAKE_FEATURES: $BBAKE_FEATURES"
         echo "BBAKE_NODE_NAMESPACE: $BBAKE_NODE_NAMESPACE"
-
+        echo "BBAKE_BOOTNODE0_IP: $BBAKE_BOOTNODE0_IP"
+        echo "BBAKE_BOOTNODE0_NODEPORT: $BBAKE_BOOTNODE0_NODEPORT"
+        echo "BBAKE_BOOTNODE1_IP: $BBAKE_BOOTNODE1_IP"
+        echo "BBAKE_BOOTNODE1_NODEPORT: $BBAKE_BOOTNODE1_NODEPORT"
 
         [ -z "$BBAKE_CONSENSUS_OPTS" ] && echo "BBAKE_CONSENSUS_OPTS not defined" && exit 1
 
@@ -151,7 +159,7 @@ run:
 
         yq eval --inplace '
           .images[0].newName = env(NEWNAME) |
-          .images[0].newTag = env(NEWTAG)' \
+          .images[0].newTag = strenv(NEWTAG)' \
           ${BBAKE_CONSENSUS}/node/kustomization.yaml
 
         # --------------------------------------------------------------------
@@ -179,7 +187,7 @@ run:
             echo key >> ${BBAKE_CONSENSUS}/nodes/node${i}/.gitignore
           fi
 
-          NODENUM=$i yq eval '.nameSuffix = env(NODENUM) |
+          NODENUM=$i yq eval '.nameSuffix = strenv(NODENUM) |
           .commonLabels.app += env(NODENUM) |
           .commonLabels."app.kubernetes.io/name" += env(NODENUM)' \
             ${tuskdir}/k8s/${BBAKE_CONSENSUS}/nodes/node0/kustomization.yaml \
@@ -260,13 +268,107 @@ run:
         # to change
 
         # --------------------------------------------------------------------
+        # bootnode-nodeports
+        if [ "${BBAKE_BOOTNODE_NODEPORTS}" == "true" ]; then
+
+          # node port additions for all nodes
+          for i in $(seq 0 $((${BBAKE_MAXNODES} - 1))); do
+
+            # files we need to adjust
+            for j in $(seq 0 $((${BBAKE_NUMBOOTNODES} - 1))); do
+
+              ipvar="BBAKE_BOOTNODE${i}_IP"
+              nodeportvar="BBAKE_BOOTNODE${i}_NODEPORT"
+
+              cp -v ${tuskdir}/k8s/bootnode-nodeports/patch-json-statefulset-env-bootnode${j}-*.yaml \
+                ${BBAKE_CONSENSUS}/nodes/node${i}/
+
+              # port substitutions first
+              # Note: each of these part files has a value field which
+              for part in statefulset-env-p2p-port; do
+                cp -v ${tuskdir}/k8s/bootnode-nodeports/patch-json-${part}.yaml \
+                  ${BBAKE_CONSENSUS}/nodes/node${i}/
+                PORT=${!nodeportvar} yq -i '(.[].value | select(. == 31210)) |= env(PORT)' ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-${part}.yaml
+              done
+            done
+        cat <<END > ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization-tmp-labels.yaml
+        commonLabels:
+          bootnode0-extip: "$BBAKE_BOOTNODE0_IP"
+          bootnode0-nodeport: "$BBAKE_BOOTNODE0_NODEPORT"
+          bootnode1-extip: "$BBAKE_BOOTNODE1_IP"
+          bootnode1-nodeport: "$BBAKE_BOOTNODE1_NODEPORT"
+        END
+
+            # Update the kustomization.yaml to include the patches
+            yq eval-all --inplace '. as $item ireduce ({}; . *+ $item )' \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml \
+              ${tuskdir}/k8s/bootnode-nodeports/kustomization-statefulset-env-node-bootnode-patches.yaml
+
+            yq eval-all --inplace '. as $item ireduce ({}; . *+ $item )' \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization-tmp-labels.yaml
+
+            rm -f ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization-tmp-labels.yaml
+
+          done
+
+          # node port additions exclusively for boot nodes
+
+          # files we just copy
+          for i in $(seq 0 $((${BBAKE_NUMBOOTNODES} - 1))); do
+            cp -v ${tuskdir}/k8s/bootnode-nodeports/patch-json-statefulset-env-bootnode${i}-*.yaml \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/
+            for part in service-nodeport statefulset-env-extip statefulset-env-nodeport; do
+              cp -v ${tuskdir}/k8s/bootnode-nodeports/patch-json-${part}.yaml \
+                ${BBAKE_CONSENSUS}/nodes/node${i}/
+            done
+          done
+
+          # files we need to adjust
+          for i in $(seq 0 $((${BBAKE_NUMBOOTNODES} - 1))); do
+            ipvar="BBAKE_BOOTNODE${i}_IP"
+            nodeportvar="BBAKE_BOOTNODE${i}_NODEPORT"
+            # port substitutions first
+            # Note: each of these part files has a value field which
+            for part in service-nodeport-ports statefulset-env-p2p-port statefulset-port-containerport; do
+              cp -v ${tuskdir}/k8s/bootnode-nodeports/patch-json-${part}.yaml \
+                ${BBAKE_CONSENSUS}/nodes/node${i}/
+              PORT=${!nodeportvar} yq -i '(.[].value | select(. == 31210)) |= env(PORT)' ${BBAKE_CONSENSUS}/nodes/node${i}/patch-json-${part}.yaml
+            done
+
+        cat <<END > ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization-tmp-labels.yaml
+        commonLabels:
+          extip: "${!ipvar}"
+          nodeport: "${!nodeportvar}"
+        END
+
+            # Update the kustomization.yaml to include the patches
+            yq eval-all --inplace '. as $item ireduce ({}; . *+ $item )' \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml \
+              ${tuskdir}/k8s/bootnode-nodeports/kustomization-statefulset-env-bootnode-patches.yaml \
+              ${tuskdir}/k8s/bootnode-nodeports/kustomization-service-nodeport-patches.yaml \
+              ${tuskdir}/k8s/bootnode-nodeports/kustomization-statefulset-containerport-patch.yaml
+
+            yq eval-all --inplace '. as $item ireduce ({}; . *+ $item )' \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization.yaml \
+              ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization-tmp-labels.yaml
+
+            rm -f ${BBAKE_CONSENSUS}/nodes/node${i}/kustomization-tmp-labels.yaml
+
+          done
+
+          #if [ -n "${BBAKE_BOOTNODE1_IP}" ]; then
+          #fi
+        fi
+
+        # --------------------------------------------------------------------
         # apisec
         if [ "${BBAKE_APISEC}" == "true" ]; then
 
             [ -z "${BBAKE_APISEC_INGRESSHOST}" ] && echo "--apisec-ingresshost is required if --apisec is enabled" && exit 1
             [ -z "${BBAKE_APISEC_CERTNAME}" ] && echo "--apisec-certname is required if --apisec is enabled" && exit 1
             [ -z "${BBAKE_APISEC_TOKENEX}" ] && echo "--apisec-tokenex is required if --apisec is enabled" && exit 1
-
+            [ -z "${BBAKE_APISEC_CERTISSUER}" ] && export BBAKE_APISEC_CERTISSUER=letsencrypt-staging-primary-dns
             # network wide
             for source in $(ls ${tuskdir}/k8s/apisec/network-*.yaml); do
               yq eval-all --inplace 'select(fileIndex == 0) *+ select(fileIndex == 1)' \
@@ -291,6 +393,7 @@ run:
               '.metadata.name=env(BBAKE_APISEC_CERTNAME) |
                .spec.commonName=env(BBAKE_APISEC_INGRESSHOST) |
                .spec.secretName=env(BBAKE_APISEC_CERTNAME) |
+               .spec.issuerRef.name=env(BBAKE_APISEC_CERTISSUER) |
                .spec.dnsNames[0]=env(BBAKE_APISEC_INGRESSHOST) |
                .spec.dnsNames[1]="*." + env(BBAKE_APISEC_INGRESSHOST)' \
             ${BBAKE_CONSENSUS}/network/wild-nodes-cert.yaml

@@ -4,3 +4,7 @@ commonLabels:
   app.kubernetes.io/name: ethnode
 resources:
   - ./../../node
+
+patchesJson6902:
+
+components:

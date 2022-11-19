@@ -142,6 +142,14 @@ options:
       The name of the kubernetes secret to expect the traefik ingress tls certificate in
       defaults to "wild-nodes-cert"
 
+  apisec-certissuer:
+    usage: >
+      The name of the isser for the certificate request CRD.
+      Use 'letsencrypt-staging-primary-dns' for testing.
+      Use 'letsencrypt-prod-primary-dns' when the configuration is stable
+      defaults to "letsencrypt-staging-primary-dns"
+
+
   apisec-ingresshost:
     usage: >
       enable the traefik ingress route and set the hostname
@@ -172,6 +180,17 @@ options:
   sealedsecrets-controller-namespace:
     usage: >
       the namespace the bitnami/sealedsecrets controller is deployed in
+  # feature: bootnode-nodeports
+  bootnode0-ip:
+    default: "127.0.0.1"
+  bootnode0-nodeport:
+    default: "9900"
+
+  bootnode1-ip:
+    default: "127.0.0.1"
+  bootnode1-nodeport:
+    usage: "make this at least 3 more than bootnode0-nodeport"
+    default: "9903"
 
   # source options. only used for compose networks and then only if
   # interactively debuging the node
@@ -314,12 +333,18 @@ options:
     default: >-
       apisec
       apisec-certname
+      apisec-certissuer
       apisec-ingresshost
       apisec-issuer
       apisec-jws
       apisec-nodepath
       apisec-tokenex
+      bootnode-nodeports
       bootnode0
+      bootnode0-ip
+      bootnode0-nodeport
+      bootnode1-ip
+      bootnode1-nodeport
       composeproject
       consensus
       consensus_opts
@@ -402,16 +427,25 @@ tasks:
             # [ -n "${K8S}" ] && BBAKE_K8S=
             BBAKE_CONSENSUS=${consensus}
 
-            ${apisec} && export BBAKE_APISEC="true" && export BBAKE_FEATURES="$BBAKE_FEATURES apisec"
             [ -n "${sealedsecrets-cert}" ] && export BBAKE_SEALEDSECRETS_CERT=${sealedsecrets-cert} && export BBAKE_FEATURES="$BBAKE_FEATURES sealedsecrets"
             [ -n "${sealedsecrets-namespace}" ] && export BBAKE_SEALEDSECRETS_NAMESPACE=${sealedsecrets-namespace}
             [ -n "${sealedsecrets-controller-namespace}" ] && export BBAKE_SEALEDSECRETS_CONTROLLER_NAMESPACE=${sealedsecrets-controller-namespace}
+
+            ${apisec} && export BBAKE_APISEC="true" && export BBAKE_FEATURES="$BBAKE_FEATURES apisec"
             [ -n "${apisec-certname}" ] && export BBAKE_APISEC_CERTNAME=${apisec-certname}
+            [ -n "${apisec-certissuer}" ] && export BBAKE_APISEC_CERTISSUER=${apisec-certissuer}
             [ -n "${apisec-ingresshost}" ] && export BBAKE_APISEC_INGRESSHOST=${apisec-ingresshost}
             [ -n "${apisec-issuer}" ] && export BBAKE_APISEC_ISSUER=${apisec-issuer}
             [ -n "${apisec-jws}" ] && export BBAKE_APISEC_JWS=${apisec-jws}
             [ -n "${apisec-nodepath}" ] && export BBAKE_APISEC_NODEPATH=${apisec-nodepath}
             [ -n "${apisec-tokenex}" ] && export BBAKE_APISEC_TOKENEX=${apisec-tokenex}
+
+            [ -n "${bootnode0-ip}" ] export BBAKE_BOOTNODE_NODEPORTS="true" && export BBAKE_FEATURES="$BBAKE_FEATURES bootnode-nodeports"
+            [ -n "${bootnode0-ip}" ] && export BBAKE_BOOTNODE0_IP=${bootnode0-ip}
+            [ -n "${bootnode0-nodeport}" ] && export BBAKE_BOOTNODE0_NODEPORT=${bootnode0-nodeport}
+            [ -n "${bootnode1-ip}" ] && export BBAKE_BOOTNODE1_IP=${bootnode1-ip}
+            [ -n "${bootnode1-nodeport}" ] && export BBAKE_BOOTNODE1_NODEPORT=${bootnode1-nodeport}
+
             [ -n "${composeproject}" ] && export BBAKE_COMPOSEPROJECT=${composeproject}
             [ -n "${etherbase}" ] && export BBAKE_ETHERBASE=${etherbase}
             [ -n "${gaslimit}" ] && export BBAKE_GASLIMIT=${gaslimit}

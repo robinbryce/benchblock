@@ -1,0 +1,5 @@
+- op: add
+  path: /spec/type
+  value: NodePort
+- op: remove
+  path: /spec/clusterIP

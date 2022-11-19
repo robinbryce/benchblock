@@ -1,0 +1,6 @@
+patchesJson6902:
+  - target:
+      kind: StatefulSet
+      name: ethnode
+    path: patch-json-statefulset-port-containerport.yaml
+
